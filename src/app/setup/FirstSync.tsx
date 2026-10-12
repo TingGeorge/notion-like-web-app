@@ -1,5 +1,5 @@
 /** D14 / M14 (SETUP-10): first download with progress. */
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 import { Check, Circle, Lightbulb, RefreshCw } from 'lucide-react'
 import type { InitialSyncProgress } from '../../lib/sync/engine'
 import { t } from '../../strings/zh-TW'
@@ -24,6 +24,7 @@ export function FirstSync({ repoName, runInitialSync, onFinished, deviceName }: 
   const [error, setError] = useState<string | null>(null)
   const [attempt, setAttempt] = useState(0)
   const started = useRef<number | null>(null)
+  const titleId = useId()
 
   const mounted = useRef(false)
   useEffect(() => {
@@ -70,7 +71,9 @@ export function FirstSync({ repoName, runInitialSync, onFinished, deviceName }: 
 
   return (
     <SetupPage step={3} footer={footer}>
-      <h1 className="setup-title">{t.setup.preparingTitle}</h1>
+      <h1 className="setup-title" id={titleId}>
+        {t.setup.preparingTitle}
+      </h1>
       <p className="setup-intro">
         {deviceName ? t.setup.preparingIntro.replace('這台裝置', `這台 ${deviceName}`) : t.setup.preparingIntro}
       </p>
@@ -78,6 +81,7 @@ export function FirstSync({ repoName, runInitialSync, onFinished, deviceName }: 
       <div
         className="progress"
         role="progressbar"
+        aria-labelledby={titleId}
         aria-valuemin={0}
         aria-valuemax={100}
         aria-valuenow={Math.round(ratio * 100)}

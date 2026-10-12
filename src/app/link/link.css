@@ -4,14 +4,6 @@
   /* Safe areas; the design harness overrides these to draw the iPhone frame. */
   --sat: env(safe-area-inset-top, 0px);
   --sab: env(safe-area-inset-bottom, 0px);
-  /* A QR code has to stay dark-on-light in every theme or phones cannot read it. */
-  --qr-bg: #ffffff;
-  --qr-fg: #191919;
-  /* The camera view is always dark (M15). */
-  --cam-bg-top: #1b1b1b;
-  --cam-bg-bottom: #333333;
-  --cam-text: #ffffff;
-  --cam-text-dim: #b4b4b4;
 }
 
 /* ---------- Show: modal (desktop) ---------- */
@@ -94,12 +86,17 @@
   align-items: center;
   gap: 5px;
   font-size: 12px;
+  color: var(--text-primary);
+}
+/* NFR-3: amber is for the icon (3:1); amber text would not reach 4.5:1. */
+.link-warning svg {
   color: var(--status-warning);
+  flex: none;
 }
 .link-countdown {
   margin-top: 8px;
   font-size: 12px;
-  color: var(--text-tertiary);
+  color: var(--text-secondary);
 }
 .link-clipboard-note {
   margin-top: 8px;
@@ -195,7 +192,7 @@
   margin: 2px 0 12px;
   padding: 4px 12px;
   font-size: 13px;
-  color: var(--accent-default);
+  color: var(--accent-text);
 }
 .link-screen .link-actions {
   flex: none;
@@ -260,7 +257,7 @@
   position: relative;
   width: 238px;
   height: 238px;
-  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 25%);
+  box-shadow: inset 0 0 0 1px var(--cam-line);
   overflow: visible;
 }
 .scan-video {
@@ -322,7 +319,7 @@
   color: var(--cam-text-dim);
 }
 .scan-status.is-error {
-  color: #ffb4ab;
+  color: var(--cam-error);
 }
 .scan-bottom {
   flex: none;
@@ -346,8 +343,8 @@
   height: 36px;
   padding: 0 16px;
   border-radius: 18px;
-  background: #fff;
-  color: #37352f;
+  background: var(--cam-button-bg);
+  color: var(--cam-button-text);
   font-size: 12px;
 }
 .scan-paste {
@@ -362,8 +359,8 @@
   width: 100%;
   padding: 10px 12px;
   border-radius: var(--radius-m);
-  border: 1px solid rgb(255 255 255 / 25%);
-  background: rgb(255 255 255 / 8%);
+  border: 1px solid var(--cam-line);
+  background: var(--cam-field-bg);
   color: var(--cam-text);
   font-family: var(--font-mono);
   font-size: 13px;
@@ -444,7 +441,7 @@
   border-radius: 8px;
   border: 1px solid var(--border-strong);
   background: var(--bg-default);
-  box-shadow: 0 1px 2px rgb(15 15 15 / 6%);
+  box-shadow: var(--shadow-control);
   caret-color: var(--accent-default);
 }
 .pair-box:focus {

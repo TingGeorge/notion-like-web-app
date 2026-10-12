@@ -18,8 +18,8 @@
   padding: 8px 8px 8px 14px;
   min-height: 36px;
   border-radius: 8px;
-  background: #2f2f2f;
-  color: #fff;
+  background: var(--toast-bg);
+  color: var(--toast-text);
   font-size: 14px;
   box-shadow: var(--shadow-popover);
   pointer-events: auto;
@@ -29,7 +29,7 @@
   padding-right: 14px;
 }
 .toast.is-error {
-  background: var(--status-danger);
+  background: var(--status-danger-fill);
 }
 .toast-message {
   flex: 1;
@@ -37,11 +37,11 @@
 .toast-action {
   padding: 4px 8px;
   border-radius: var(--radius-s);
-  color: #7ab8f5;
+  color: var(--toast-action);
   font-weight: 600;
 }
 .toast-action:hover {
-  background: rgb(255 255 255 / 10%);
+  background: var(--toast-hover);
 }
 @keyframes toast-in {
   from {

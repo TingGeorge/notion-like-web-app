@@ -34,7 +34,7 @@
   color: var(--text-on-accent);
 }
 .btn-primary:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--accent-default) 88%, #000);
+  background: var(--accent-hover);
 }
 .btn-primary:disabled {
   background: var(--bg-input);
@@ -55,11 +55,11 @@
   background: var(--bg-hover);
 }
 .btn-danger {
-  background: var(--status-danger);
-  color: #fff;
+  background: var(--status-danger-fill);
+  color: var(--text-on-accent);
 }
 .btn-danger:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--status-danger) 88%, #000);
+  background: var(--status-danger-fill-hover);
 }
 .btn-danger-ghost {
   color: var(--status-danger);
@@ -144,8 +144,8 @@
   width: 14px;
   height: 14px;
   border-radius: 50%;
-  background: #fff;
-  box-shadow: 0 1px 2px rgb(0 0 0 / 20%);
+  background: var(--switch-thumb);
+  box-shadow: var(--shadow-thumb);
   transition: transform 150ms var(--ease);
 }
 .switch.is-on .switch-thumb {
@@ -299,7 +299,7 @@
   white-space: nowrap;
 }
 .menu-hint {
-  color: var(--text-tertiary);
+  color: var(--text-secondary);
   font-size: 12px;
 }
 .menu-check {

@@ -100,7 +100,7 @@
 }
 .home-card-time {
   font-size: 12px;
-  color: var(--text-tertiary);
+  color: var(--text-secondary);
 }
 .home-list {
   list-style: none;
@@ -146,5 +146,5 @@
   color: var(--text-tertiary);
 }
 .home-empty {
-  color: var(--text-tertiary);
+  color: var(--text-secondary);
 }

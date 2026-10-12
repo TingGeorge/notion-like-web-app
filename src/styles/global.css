@@ -111,7 +111,7 @@ p {
     display: none !important;
   }
   body {
-    background: #fff;
-    color: #000;
+    background: var(--print-bg);
+    color: var(--print-text);
   }
 }
