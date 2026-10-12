@@ -52,6 +52,61 @@ describe('folder moves', () => {
   })
 })
 
+describe('DATA-17: links follow pages the engine moves', () => {
+  it('rule 5: a link to the local page that had to be renamed points at its new name', async () => {
+    const gh = await makeGitHub({ '首頁.md': '首頁\n' })
+    const d = device(gh, 'A')
+    await d.engine.pull()
+    await d.edit('會議.md', page(ID_A, '這台的會議\n'))
+    await d.edit('首頁.md', '首頁\n\n[會議](/會議.md)\n')
+    await gh.commit(FULL, { files: { '會議.md': page(ID_B, '另一台的會議\n') } })
+    await d.engine.pull()
+    expect(await d.paths()).toEqual(['會議 (2).md', '會議.md', '首頁.md'])
+    expect(await d.text('首頁.md')).toBe('首頁\n\n[會議](/會議%20%282%29.md)\n')
+    expect(d.changed.flat()).toContain('首頁.md')
+  })
+
+  it('rule 5 with the same page on both sides: the renamed version gets its own id (DATA-9a)', async () => {
+    const gh = await makeGitHub({ 'README.md': 'x\n' })
+    const d = device(gh, 'A')
+    await d.engine.pull()
+    await d.edit('b.md', page(ID_A, '這台\n'))
+    await gh.commit(FULL, { files: { 'b.md': page(ID_A, '另一台\n') } })
+    await d.engine.pull()
+    expect(await d.text('b.md')).toBe(page(ID_A, '另一台\n'))
+    const renamed = (await d.text('b (2).md'))!
+    const meta = readPageMeta(splitPageFile(renamed).frontmatter)
+    expect(meta.id).not.toBe(ID_A)
+    expect(meta.title).toBe('b')
+    expect(splitPageFile(renamed).body).toBe('這台\n')
+  })
+
+  it('an unpushed child that follows a folder moved elsewhere keeps its inbound links', async () => {
+    const gh = await makeGitHub({ '專案.md': page(ID_A, '專案\n'), '首頁.md': '首頁\n' })
+    const d = device(gh, 'A')
+    await d.engine.pull()
+    await d.edit('專案/新子頁.md', '新的\n')
+    await d.edit('首頁.md', '首頁\n\n[新子頁](/專案/新子頁.md#標題)\n')
+    await gh.commit(FULL, { files: { '專案.md': null, '計畫.md': page(ID_A, '專案\n') } })
+    await d.engine.pull()
+    expect(await d.paths()).toEqual(['計畫.md', '計畫/新子頁.md', '首頁.md'])
+    expect(await d.text('首頁.md')).toBe(`首頁\n\n[新子頁](/計畫/新子頁.md#${encodeURIComponent('標題')})\n`)
+  })
+
+  it('links added here to a page moved on another device follow it; links GitHub has are left alone', async () => {
+    const gh = await makeGitHub({ 'x.md': page(ID_A, 'x\n'), 'a.md': '[舊](/x.md)\n', 'b.md': 'b\n' })
+    const d = device(gh, 'A')
+    await d.engine.pull()
+    await d.edit('a.md', '[舊](/x.md)\n\n[新](/x.md)\n')
+    await d.edit('b.md', 'b\n\n[x](/x.md)\n')
+    await gh.commit(FULL, { files: { 'x.md': null, 'y/x.md': page(ID_A, 'x\n') }, message: 'move on github.com' })
+    await d.engine.pull()
+    // a.md already linked to x.md on GitHub: that page's links are the other side's to rewrite.
+    expect(await d.text('a.md')).toBe('[舊](/x.md)\n\n[新](/x.md)\n')
+    expect(await d.text('b.md')).toBe('b\n\n[x](/y/x.md)\n')
+  })
+})
+
 describe('conflicts on a page moved here', () => {
   async function movedConflict() {
     const gh = await makeGitHub({ 'x.md': BASE, '工作.md': page(ID_B, '工作\n') })

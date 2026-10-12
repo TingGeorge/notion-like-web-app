@@ -3,7 +3,7 @@
  * Every function here must be called inside a Dexie transaction that includes `files`.
  */
 import { db } from '../store/db'
-import type { FileKind, FileRow } from '../types'
+import { TRASH_DIR, type FileKind, type FileRow } from '../types'
 
 export function now(): number {
   return Date.now()
@@ -105,7 +105,9 @@ export async function moveFile(from: string, to: string, text?: string): Promise
   moved.blobSha = row.blobSha ?? null
   moved.mode = row.mode
   moved.deleted = false
-  moved.conflict = null
+  // A pending conflict (SYNC-6) follows the page so the banner and the dialog still see it; into
+  // the trash it is dropped (a delete wins, the remote version stays in git history).
+  moved.conflict = to.startsWith(TRASH_DIR) ? null : (row.conflict ?? null)
   // Moving back to where it came from is no move at all.
   moved.movedFrom = origin === to ? null : origin
   moved.movedTo = null
@@ -116,7 +118,7 @@ export async function moveFile(from: string, to: string, text?: string): Promise
     await db().files.delete(from)
     if (origin) await db().files.update(origin, { movedTo: to })
   } else {
-    await db().files.put({ ...row, deleted: true, dirty: true, movedTo: to, movedFrom: null, updatedAt: now() })
+    await db().files.put({ ...row, deleted: true, dirty: true, movedTo: to, movedFrom: null, conflict: null, updatedAt: now() })
   }
   await db().files.put(moved)
 }

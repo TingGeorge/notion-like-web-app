@@ -5,7 +5,7 @@ import { readPageMeta, splitPageFile } from '../markdown'
 import { NotesDB, setDb, db } from '../store/db'
 import { SETTINGS_PATH, TRASH_INDEX_PATH, type FileRow } from '../types'
 import { moveFile } from './files'
-import { reindexAll } from './indexer'
+import { reindexAll, reindexPaths } from './indexer'
 import {
   createPage,
   deletePage,
@@ -213,6 +213,85 @@ describe('duplicate', () => {
     expect(copy.icon).toBe('🚀')
     const child = readPageMeta(splitPageFile((await text('A (2)/B.md'))!).frontmatter)
     expect(child.id).not.toBe('01J00000000000000000000BBB')
+  })
+})
+
+describe('DATA-9a duplicate ids', () => {
+  const K = '01J00000000000000000000DUP'
+
+  beforeEach(async () => {
+    await remoteFile('a.md', `---\nid: ${K}\n---\na\n`)
+    await remoteFile('b.md', `---\nid: ${K}\n---\nb\n`)
+    await reindexAll()
+  })
+
+  it('the smaller path keeps the id; the other page gets a new one when it needs one', async () => {
+    expect((await getPage(K))?.path).toBe('a.md')
+    const id = await ensureId('path:b.md')
+    expect(id).not.toBe(K)
+    expect(readPageMeta(splitPageFile((await text('b.md'))!).frontmatter).id).toBe(id)
+    expect(await text('a.md')).toBe(`---\nid: ${K}\n---\na\n`)
+    expect((await getPage(id))?.path).toBe('b.md')
+  })
+
+  it('operations on the page without the id act on that page, not on the holder', async () => {
+    await renamePage('path:b.md', 'c')
+    expect(await text('a.md')).toBe(`---\nid: ${K}\n---\na\n`)
+    expect((await row('b.md'))?.movedTo).toBe('c.md')
+    const saved = await savePageBody('path:a.md', 'x\n').catch(() => null)
+    expect(saved).toBe(K)
+  })
+
+  it('the other page gets the id back once the holder is gone', async () => {
+    await db().files.delete('a.md')
+    await reindexPaths(['a.md'])
+    expect((await getPage(K))?.path).toBe('b.md')
+    expect(await db().pages.where('path').equals('b.md').count()).toBe(1)
+  })
+})
+
+describe('a save that races a move (the pages index still has the old path)', () => {
+  const ID = '01J0000000000000000000RACE'
+
+  it('writes to where a pushed page moved, without bringing the old path back', async () => {
+    await remoteFile('a.md', `---\nid: ${ID}\n---\nold\n`)
+    await reindexAll()
+    await db().transaction('rw', db().files, async () => moveFile('a.md', 'b.md'))
+    await savePageBody(ID, 'typed\n')
+    expect(await row('a.md')).toMatchObject({ deleted: true, movedTo: 'b.md' })
+    expect(await text('b.md')).toBe(`---\nid: ${ID}\n---\ntyped\n`)
+    expect((await row('b.md'))?.movedFrom).toBe('a.md')
+  })
+
+  it('finds a never-pushed page by id after it moved', async () => {
+    const id = await createPage({ title: '舊', body: 'x\n' })
+    await db().transaction('rw', db().files, async () => moveFile('舊.md', '新.md'))
+    await savePageBody(id, 'y\n')
+    expect(await row('舊.md')).toBeUndefined()
+    expect(splitPageFile((await text('新.md'))!).body).toBe('y\n')
+  })
+
+  it('keeps typing for a page that was just deleted in its trash copy', async () => {
+    await remoteFile('a.md', `---\nid: ${ID}\n---\nold\n`)
+    await reindexAll()
+    await db().transaction('rw', db().files, async () => {
+      await moveFile('a.md', '.notes/trash/T/a.md')
+      await db().files.update('.notes/trash/T/a.md', { kind: 'trash' })
+    })
+    await savePageBody(ID, 'last words\n')
+    expect(await row('a.md')).toMatchObject({ deleted: true })
+    expect(await row('.notes/trash/T/a.md')).toMatchObject({ kind: 'trash', text: `---\nid: ${ID}\n---\nlast words\n` })
+  })
+
+  it('renames from where the page is now', async () => {
+    await remoteFile('a.md', `---\nid: ${ID}\n---\nold\n`)
+    await reindexAll()
+    await db().transaction('rw', db().files, async () => moveFile('a.md', 'b.md', `---\nid: ${ID}\n---\nnewer\n`))
+    await renamePage(ID, 'c')
+    expect(await row('b.md')).toBeUndefined()
+    expect(await text('c.md')).toBe(`---\nid: ${ID}\n---\nnewer\n`)
+    expect((await row('c.md'))?.movedFrom).toBe('a.md')
+    expect((await row('a.md'))?.movedTo).toBe('c.md')
   })
 })
 

@@ -62,10 +62,17 @@ async function clearNotes(): Promise<void> {
   resetSearchIndex()
 }
 
+/** Stop syncing and wait for a pull or push that is still running, so it cannot write after a clear. */
+async function stopAndSettle(): Promise<void> {
+  const engine = session()?.engine
+  stopSession()
+  await engine?.idle()
+}
+
 /** 更換 repo: clear the notes and go back to choosing a repo (D13). The token stays. */
 export async function changeRepo(): Promise<void> {
   const s = session()
-  stopSession()
+  await stopAndSettle()
   await clearNotes()
   if (s) await db().config.put({ key: 'resume', value: { token: s.workspace.token, tokenExpiresOn: s.workspace.tokenExpiresOn } })
   await db().config.delete('workspace')
@@ -74,7 +81,7 @@ export async function changeRepo(): Promise<void> {
 
 /** 中斷連結: clear the whole database and return to D01/M01. */
 export async function disconnect(): Promise<void> {
-  stopSession()
+  await stopAndSettle()
   await clearNotes()
   await db().config.clear()
   notifyWorkspaceChanged()
@@ -85,6 +92,7 @@ export async function clearDeviceData(onProgress?: (p: InitialSyncProgress) => v
   const s = session()
   if (!s) return
   s.engine.stop()
+  await s.engine.idle()
   await clearNotes()
   await runInitialSync(onProgress ?? (() => undefined))
   s.engine.start()
@@ -94,7 +102,13 @@ export async function clearDeviceData(onProgress?: (p: InitialSyncProgress) => v
 export async function runInitialSync(onProgress: (p: InitialSyncProgress) => void): Promise<void> {
   const s = session()
   if (!s) throw new Error('no session')
-  await s.engine.initialSync(onProgress)
+  // The index is rebuilt once below; the engine's own 「done」 would enable 「開始使用」 too early.
+  await s.engine.initialSync(
+    (p) => {
+      if (p.phase === 'list' || p.phase === 'download') onProgress(p)
+    },
+    { notifyFilesChanged: false },
+  )
   onProgress({ phase: 'index', done: 0, total: 1 })
   await reindexAll()
   onProgress({ phase: 'done', done: 1, total: 1 })
