@@ -1,0 +1,168 @@
+/*
+ * Design tokens exported from the Figma variables (ARCH-5, file N3TDXtJeqjUd6wiUBHPzNu, page 設計系統).
+ * `data-theme` on <html> is set by the app ("light" / "dark"); without it the system setting applies.
+ *
+ * NFR-3: text tokens meet WCAG AA (4.5:1) on every surface they are used on, and icon/border
+ * tokens 3:1. Where the Figma values fell short, the lightness was adjusted and the hue kept:
+ * text-secondary, text-tertiary, accent, danger, warning and some palette text colours.
+ * `--accent-text` and `--status-danger-fill` are added because one value cannot be both a fill
+ * under white text and a text colour on dark surfaces.
+ */
+:root {
+  color-scheme: light;
+  --bg-default: #ffffff;
+  --bg-sidebar: #f8f8f7;
+  --bg-hover: #37352f0f;
+  --bg-selected: #37352f14;
+  --bg-elevated: #ffffff;
+  --bg-overlay: #0f0f0f66;
+  --bg-code: #f7f6f3;
+  --bg-input: #f2f1ee;
+  --text-primary: #37352f;
+  --text-secondary: #696966;
+  --text-tertiary: #8a8884;
+  --text-sidebar: #5f5e5b;
+  --text-on-accent: #ffffff;
+  --border-default: #e9e9e7;
+  --border-strong: #d3d2cf;
+  --accent-default: #1c77d2;
+  --accent-hover: #1969b9;
+  --accent-text: #196cbf;
+  --accent-soft: #2383e224;
+  --status-success: #448361;
+  --status-warning: #b27f29;
+  --status-danger: #c7342e;
+  --status-danger-fill: #d24540;
+  --status-danger-fill-hover: #b93d38;
+
+  --palette-text-gray: #72716e;
+  --palette-text-brown: #96654e;
+  --palette-text-orange: #ad5c0a;
+  --palette-text-yellow: #946922;
+  --palette-text-green: #417d5d;
+  --palette-text-blue: #3077a0;
+  --palette-text-purple: #8b5ead;
+  --palette-text-pink: #be4284;
+  --palette-text-red: #cf3933;
+  --palette-bg-gray: #f1f1ef;
+  --palette-bg-brown: #f4eeee;
+  --palette-bg-orange: #fbecdd;
+  --palette-bg-yellow: #fbf3db;
+  --palette-bg-green: #edf3ec;
+  --palette-bg-blue: #e7f3f8;
+  --palette-bg-purple: #f6f3f9;
+  --palette-bg-pink: #faf1f5;
+  --palette-bg-red: #fdebec;
+
+  --shadow-popover: 0 0 0 1px rgb(15 15 15 / 5%), 0 3px 6px rgb(15 15 15 / 10%), 0 9px 24px rgb(15 15 15 / 20%);
+  --shadow-dialog: 0 0 0 1px rgb(15 15 15 / 5%), 0 5px 10px rgb(15 15 15 / 10%), 0 15px 40px rgb(15 15 15 / 20%);
+  --shadow-control: 0 1px 2px rgb(15 15 15 / 6%);
+  --shadow-card: 0 1px 2px rgb(15 15 15 / 4%);
+  --shadow-segment: 0 1px 2px rgb(0 0 0 / 12%);
+
+  /* The same in every theme. */
+  --switch-thumb: #ffffff;
+  --shadow-thumb: 0 1px 2px rgb(0 0 0 / 20%);
+  --toast-bg: #2f2f2f;
+  --toast-text: #ffffff;
+  --toast-action: #7ab8f5;
+  --toast-hover: rgb(255 255 255 / 10%);
+  /* A QR code has to stay dark-on-light in every theme or phones cannot read it. */
+  --qr-bg: #ffffff;
+  --qr-fg: #191919;
+  /* The camera view is always dark (M15). */
+  --cam-bg-top: #1b1b1b;
+  --cam-bg-bottom: #333333;
+  --cam-text: #ffffff;
+  --cam-text-dim: #b4b4b4;
+  --cam-error: #ffb4ab;
+  --cam-line: rgb(255 255 255 / 25%);
+  --cam-field-bg: rgb(255 255 255 / 8%);
+  --cam-button-bg: #ffffff;
+  --cam-button-text: #37352f;
+  --print-bg: #ffffff;
+  --print-text: #000000;
+
+  /* Cover gradients, `cover: gradient:<1-8>` (DATA-8). */
+  --cover-1: linear-gradient(90deg, #f8d7b4 0%, #f2c9cf 45%, #c9d3f5 100%);
+  --cover-2: linear-gradient(90deg, #c2e9fb 0%, #a1c4fd 100%);
+  --cover-3: linear-gradient(90deg, #d4fc79 0%, #96e6a1 100%);
+  --cover-4: linear-gradient(90deg, #fbc2eb 0%, #a6c1ee 100%);
+  --cover-5: linear-gradient(90deg, #fdcbf1 0%, #e6dee9 100%);
+  --cover-6: linear-gradient(90deg, #ffecd2 0%, #fcb69f 100%);
+  --cover-7: linear-gradient(90deg, #e0c3fc 0%, #8ec5fc 100%);
+  --cover-8: linear-gradient(90deg, #f5f7fa 0%, #c3cfe2 100%);
+
+  --font-ui: -apple-system, BlinkMacSystemFont, 'PingFang TC', 'Microsoft JhengHei', 'Noto Sans TC', 'Segoe UI',
+    sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+  --radius-s: 4px;
+  --radius-m: 6px;
+  --radius-l: 10px;
+  --radius-xl: 14px;
+
+  --sidebar-width: 240px;
+  --topbar-height: 44px;
+  --page-width: 708px;
+  --ease: cubic-bezier(0.2, 0, 0, 1);
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --bg-default: #191919;
+  --bg-sidebar: #202020;
+  --bg-hover: #ffffff0e;
+  --bg-selected: #ffffff17;
+  --bg-elevated: #252525;
+  --bg-overlay: #00000099;
+  --bg-code: #202020;
+  --bg-input: #2a2a2a;
+  --text-primary: #d4d4d4;
+  --text-secondary: #a2a2a2;
+  --text-tertiary: #828282;
+  --text-sidebar: #a3a3a3;
+  --text-on-accent: #ffffff;
+  --border-default: #2f2f2f;
+  --border-strong: #3f3f3f;
+  --accent-default: #1c77d2;
+  --accent-hover: #1969b9;
+  --accent-text: #62a7ea;
+  --accent-soft: #2383e24d;
+  --status-success: #529e72;
+  --status-warning: #ca9849;
+  --status-danger: #e98786;
+  --status-danger-fill: #da3b39;
+  --status-danger-fill-hover: #c03432;
+
+  --palette-text-gray: #9b9b9b;
+  --palette-text-brown: #ba856f;
+  --palette-text-orange: #c77d48;
+  --palette-text-yellow: #ca9849;
+  --palette-text-green: #529e72;
+  --palette-text-blue: #658ccb;
+  --palette-text-purple: #a676d7;
+  --palette-text-pink: #d5659f;
+  --palette-text-red: #e26361;
+  --palette-bg-gray: #2f2f2f;
+  --palette-bg-brown: #4a3228;
+  --palette-bg-orange: #5c3b23;
+  --palette-bg-yellow: #564328;
+  --palette-bg-green: #243d30;
+  --palette-bg-blue: #143a4e;
+  --palette-bg-purple: #3c2d49;
+  --palette-bg-pink: #4e2c3c;
+  --palette-bg-red: #522e2a;
+
+  --shadow-popover: 0 0 0 1px rgb(255 255 255 / 6%), 0 3px 6px rgb(0 0 0 / 30%), 0 9px 24px rgb(0 0 0 / 40%);
+  --shadow-dialog: 0 0 0 1px rgb(255 255 255 / 6%), 0 5px 10px rgb(0 0 0 / 30%), 0 15px 40px rgb(0 0 0 / 50%);
+
+  --cover-1: linear-gradient(90deg, #6b4a33 0%, #6b3a44 45%, #34406b 100%);
+  --cover-2: linear-gradient(90deg, #1f4a5c 0%, #2c3f6b 100%);
+  --cover-3: linear-gradient(90deg, #4a5c1f 0%, #2c6b3a 100%);
+  --cover-4: linear-gradient(90deg, #6b3a5c 0%, #3a4a6b 100%);
+  --cover-5: linear-gradient(90deg, #6b3a63 0%, #4a4450 100%);
+  --cover-6: linear-gradient(90deg, #6b5a40 0%, #6b4433 100%);
+  --cover-7: linear-gradient(90deg, #4f3a6b 0%, #34506b 100%);
+  --cover-8: linear-gradient(90deg, #3a3f47 0%, #2c3444 100%);
+}

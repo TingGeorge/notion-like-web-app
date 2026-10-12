@@ -1,0 +1,1621 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<!-- Visual companion to SPEC.md (v0.2). SPEC.md is the source of truth; regenerate this page when the spec changes. -->
+<title>GitHub Notes Spec v0.2</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=STIX+Two+Text:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Noto+Serif+TC:wght@400;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: a light "chalkboard-on-paper" explainer. Sticky contents rail on the left, one reading column,
+   diagrams drawn in Manim's palette (blue/teal/gold/red on near-white), requirement IDs colour-coded by area. */
+:root{
+  color-scheme: light;
+  --paper:#FAFBFC; --panel:#F0F3F6; --panel-2:#E7ECF1; --ink:#1A2330; --ink-2:#4B5665; --ink-3:#7A8492; --rule:#D6DDE5;
+  --blue:#1E6E93; --blue-l:#58C4DD; --blue-bg:#E6F3F8;
+  --teal:#21917A; --teal-bg:#E3F3EE;
+  --green:#4F8E30; --green-bg:#E9F2E1;
+  --gold:#AE7626; --gold-l:#E2B04A; --gold-bg:#F7EEDD;
+  --red:#CC4434; --red-bg:#FAE8E5;
+  --purple:#7A5797; --purple-bg:#EFE8F5;
+  --brown:#736357; --brown-bg:#EFEBE7;
+  --serif:"STIX Two Text","Noto Serif TC","Songti TC",Georgia,serif;
+  --mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,"Noto Serif TC",monospace;
+  --step-0:1.0625rem; --step-1:1.25rem; --step-2:1.6rem; --step-3:2.2rem; --step-4:3.2rem;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--paper);color:var(--ink);font-family:var(--serif);font-size:var(--step-0);line-height:1.6;}
+a{color:var(--blue);text-decoration-thickness:1px;text-underline-offset:3px}
+a:focus-visible,button:focus-visible,input:focus-visible{outline:2px solid var(--blue-l);outline-offset:2px;border-radius:3px}
+code,.mono{font-family:var(--mono);font-size:.84em}
+code{background:var(--panel);padding:.08em .35em;border-radius:4px;color:#2B3644;white-space:break-spaces}
+.shell{display:grid;grid-template-columns:220px minmax(0,1fr);gap:48px;max-width:1180px;margin:0 auto;padding-inline:24px;padding-block:0 96px}
+nav.toc{position:sticky;top:env(safe-area-inset-top,0px);align-self:start;max-height:100vh;overflow:auto;padding-block:40px 24px;font-size:.92rem}
+nav.toc .lbl{font-family:var(--mono);font-size:.7rem;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-3);margin-bottom:10px}
+nav.toc ol{list-style:none;margin:0;padding:0;display:grid;gap:2px;counter-reset:t}
+nav.toc a{display:flex;gap:10px;align-items:baseline;padding:4px 8px;border-radius:6px;color:var(--ink-2);text-decoration:none}
+nav.toc a:hover{background:var(--panel);color:var(--ink)}
+nav.toc a.on{background:var(--blue-bg);color:var(--blue)}
+nav.toc .n{font-family:var(--mono);font-size:.72rem;color:var(--ink-3);min-width:1.4em}
+main{min-width:0;max-width:820px}
+header.hero{padding-block:56px 32px;border-bottom:1px solid var(--rule)}
+.eyebrow{font-family:var(--mono);font-size:.74rem;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3)}
+h1{font-size:var(--step-4);line-height:1.05;margin:.2em 0 .25em;font-weight:500;letter-spacing:-.01em;text-wrap:balance}
+h1 em{color:var(--blue);font-style:italic}
+.lede{font-size:var(--step-1);color:var(--ink-2);max-width:40em;margin:0}
+.thesis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:28px}
+.thesis div{padding:14px 16px;background:var(--panel);border-radius:10px}
+.thesis b{display:block;font-weight:500;font-size:1.05rem}
+.thesis span{color:var(--ink-2);font-size:.92rem}
+.meta{display:flex;flex-wrap:wrap;gap:8px 24px;margin-top:24px;font-size:.92rem;color:var(--ink-2)}
+.legend{display:flex;flex-wrap:wrap;gap:6px;margin-top:16px}
+section{padding-block:56px 8px;scroll-margin-top:12px}
+h2{font-size:var(--step-3);font-weight:500;margin:0 0 6px;line-height:1.15;text-wrap:balance;display:flex;gap:14px;align-items:baseline}
+h2 .sn{font-family:var(--mono);font-size:.95rem;color:var(--blue);font-weight:500}
+h3{font-size:var(--step-2);font-weight:500;margin:44px 0 10px;line-height:1.2;text-wrap:balance}
+h3 .sn{font-family:var(--mono);font-size:.8rem;color:var(--ink-3);margin-right:10px;font-weight:400}
+h4{font-size:var(--step-1);font-weight:600;margin:28px 0 8px}
+p{margin:.6em 0;max-width:40em}
+.sub{color:var(--ink-2);margin-top:0}
+ul.clean{margin:.4em 0;padding-left:1.2em}
+ul.clean li{margin:.2em 0}
+ul.clean li::marker{color:var(--blue-l)}
+/* requirement chips */
+.id{font-family:var(--mono);font-size:.72rem;font-weight:500;letter-spacing:.02em;padding:2px 7px;border-radius:999px;white-space:nowrap;background:var(--c-bg,var(--panel));color:var(--c,var(--ink-2));border:1px solid color-mix(in srgb,var(--c,var(--ink-3)) 30%,transparent)}
+[data-a=arch]{--c:var(--blue);--c-bg:var(--blue-bg)}
+[data-a=data]{--c:var(--teal);--c-bg:var(--teal-bg)}
+[data-a=store]{--c:var(--purple);--c-bg:var(--purple-bg)}
+[data-a=sync]{--c:var(--gold);--c-bg:var(--gold-bg)}
+[data-a=setup]{--c:var(--green);--c-bg:var(--green-bg)}
+[data-a=ui]{--c:var(--blue);--c-bg:#EEF4FB}
+[data-a=sec]{--c:var(--red);--c-bg:var(--red-bg)}
+[data-a=nfr]{--c:var(--brown);--c-bg:var(--brown-bg)}
+[data-a=test]{--c:var(--ink-2);--c-bg:var(--panel-2)}
+.req{display:grid;grid-template-columns:96px minmax(0,1fr);gap:14px;padding-block:14px;border-top:1px solid var(--rule)}
+.req:first-of-type{border-top:0}
+.req>.id{justify-self:start;align-self:start;margin-top:4px}
+.req .b{min-width:0}
+.req .b>p:first-child{margin-top:0}
+.req .b>p:last-child{margin-bottom:0}
+.must{font-family:var(--mono);font-size:.68rem;letter-spacing:.08em;color:var(--red);border:1px solid var(--red);padding:0 5px;border-radius:3px;vertical-align:2px}
+/* tables */
+.tw{overflow-x:auto;margin:14px 0;border:1px solid var(--rule);border-radius:10px;background:#fff}
+table{border-collapse:collapse;width:100%;font-size:.94rem}
+th,td{text-align:left;padding:9px 14px;vertical-align:top;border-bottom:1px solid var(--rule)}
+tr:last-child td{border-bottom:0}
+th{font-family:var(--mono);font-weight:500;font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3);background:var(--panel)}
+td code{white-space:nowrap}
+td.wrap code{white-space:break-spaces}
+/* code blocks */
+pre{font-family:var(--mono);font-size:.82rem;line-height:1.55;background:#fff;border:1px solid var(--rule);border-radius:10px;padding:14px 18px;overflow-x:auto;margin:14px 0;color:#2B3644}
+pre .c{color:var(--ink-3)} pre .k{color:var(--blue)} pre .s{color:var(--teal)} pre .y{color:var(--gold)} pre .r{color:var(--red)} pre .p{color:var(--purple)}
+/* figures */
+figure{margin:20px 0;padding:0}
+.fig{background:#fff;border:1px solid var(--rule);border-radius:12px;padding:18px;overflow-x:auto}
+.fig svg{display:block;width:100%;height:auto;min-width:560px}
+.fig.narrow svg{min-width:0}
+figcaption{font-size:.88rem;color:var(--ink-3);margin-top:8px;font-style:italic}
+svg text{font-family:var(--serif);fill:var(--ink)}
+svg .mono{font-family:var(--mono);font-size:11px}
+svg .sm{font-size:12px} svg .xs{font-size:10.5px;fill:var(--ink-2)} svg .lg{font-size:15px;font-weight:500}
+svg .mut{fill:var(--ink-3)}
+svg .fb{fill:var(--blue)} svg .ft{fill:var(--teal)} svg .fg{fill:var(--gold)} svg .fr{fill:var(--red)} svg .fp{fill:var(--purple)} svg .fgr{fill:var(--green)}
+.flow{stroke-dasharray:5 5;animation:march 1.2s linear infinite}
+@keyframes march{to{stroke-dashoffset:-20}}
+@media (prefers-reduced-motion:reduce){.flow{animation:none}}
+/* cards & grids */
+.grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin:16px 0}
+.grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:16px 0}
+.card{background:#fff;border:1px solid var(--rule);border-radius:10px;padding:14px 16px;min-width:0}
+.card h5{margin:0 0 6px;font-size:1rem;font-weight:600;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.card p{font-size:.94rem;margin:.3em 0}
+.card ul{margin:.3em 0;padding-left:1.1em;font-size:.94rem}
+.tint-b{background:var(--blue-bg);border-color:transparent}
+.tint-t{background:var(--teal-bg);border-color:transparent}
+.tint-g{background:var(--gold-bg);border-color:transparent}
+.tint-r{background:var(--red-bg);border-color:transparent}
+.tint-p{background:var(--purple-bg);border-color:transparent}
+.tint-gr{background:var(--green-bg);border-color:transparent}
+.note{border-left:3px solid var(--blue-l);background:var(--blue-bg);padding:10px 16px;border-radius:0 8px 8px 0;margin:16px 0;font-size:.96rem}
+.note.warn{border-color:var(--gold-l);background:var(--gold-bg)}
+.note.risk{border-color:var(--red);background:var(--red-bg)}
+.math{font-family:var(--serif);font-style:italic;font-size:1.12rem;text-align:center;padding:14px;background:#fff;border:1px solid var(--rule);border-radius:10px;margin:14px 0;overflow-x:auto}
+.math .op{font-style:normal;color:var(--blue);padding:0 .25em}
+.math .fn{font-style:normal;font-family:var(--mono);font-size:.85em;color:var(--teal)}
+.math .str{font-style:normal;font-family:var(--mono);font-size:.85em;color:var(--gold)}
+/* steps */
+ol.steps{list-style:none;counter-reset:s;padding:0;margin:14px 0;display:grid;gap:0}
+ol.steps>li{counter-increment:s;display:grid;grid-template-columns:34px minmax(0,1fr);gap:14px;position:relative;padding-bottom:18px}
+ol.steps>li::before{content:counter(s);width:28px;height:28px;border-radius:50%;border:1.5px solid var(--c,var(--blue));color:var(--c,var(--blue));font-family:var(--mono);font-size:.8rem;display:grid;place-items:center;background:var(--paper);z-index:1}
+ol.steps>li::after{content:"";position:absolute;left:14px;top:30px;bottom:0;border-left:1.5px dashed var(--rule)}
+ol.steps>li:last-child::after{display:none}
+ol.steps>li>div{min-width:0;padding-top:2px}
+ol.steps.gold{--c:var(--gold)} ol.steps.teal{--c:var(--teal)} ol.steps.green{--c:var(--green)}
+.pill{display:inline-flex;align-items:center;gap:6px;padding:3px 11px;border-radius:999px;font-size:.9rem;border:1px solid var(--rule);background:#fff}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--c,var(--ink-3));display:inline-block}
+kbd{font-family:var(--mono);font-size:.78rem;padding:2px 6px;border:1px solid var(--rule);border-bottom-width:2px;border-radius:5px;background:#fff;white-space:nowrap}
+.swatches{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0}
+.sw{font-family:var(--mono);font-size:.76rem;padding:3px 9px;border-radius:5px}
+/* interactive demos */
+.demo{background:#fff;border:1px solid var(--rule);border-radius:12px;padding:18px;margin:18px 0}
+.demo .lbl{font-family:var(--mono);font-size:.7rem;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-3)}
+.demo input[type=text]{width:100%;font:inherit;font-size:1.05rem;padding:9px 12px;border:1px solid var(--rule);border-radius:8px;background:var(--paper);color:var(--ink);margin:6px 0 10px}
+.demo .row{display:flex;flex-wrap:wrap;gap:8px 18px;align-items:center;font-size:.92rem;color:var(--ink-2)}
+.demo .out{font-family:var(--mono);font-size:.9rem;background:var(--teal-bg);color:#14594B;padding:10px 12px;border-radius:8px;margin-top:10px;word-break:break-all}
+.demo .presets{display:flex;flex-wrap:wrap;gap:6px}
+button.chip{font:inherit;font-size:.82rem;font-family:var(--mono);padding:3px 10px;border-radius:999px;border:1px solid var(--rule);background:var(--paper);color:var(--ink-2);cursor:pointer}
+button.chip:hover{border-color:var(--blue-l);color:var(--blue)}
+.stepper{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin:12px 0}
+.cell{border:1px solid var(--rule);border-radius:8px;padding:8px 10px;min-width:0;transition:background .25s,border-color .25s}
+.cell .k{font-family:var(--mono);font-size:.7rem;color:var(--ink-3)}
+.cell .v{font-family:var(--mono);font-size:.95rem;word-break:break-all}
+.cell.hot{background:var(--gold-bg);border-color:var(--gold-l)}
+.ctrl{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.ctrl button{font:inherit;font-size:.9rem;padding:6px 14px;border-radius:8px;border:1px solid var(--rule);background:var(--paper);color:var(--ink);cursor:pointer}
+.ctrl button:hover:not(:disabled){border-color:var(--blue-l)}
+.ctrl button:disabled{opacity:.4;cursor:default}
+.ctrl .cap{flex:1 1 260px;font-size:.95rem;color:var(--ink-2)}
+.timeline{display:grid;gap:0;margin:16px 0;counter-reset:m}
+.ms{display:grid;grid-template-columns:44px minmax(0,1fr);gap:14px;padding-bottom:16px;position:relative}
+.ms::before{counter-increment:m;content:counter(m);width:36px;height:36px;border-radius:50%;background:var(--blue);color:#fff;display:grid;place-items:center;font-family:var(--mono);font-size:.9rem;z-index:1}
+.ms::after{content:"";position:absolute;left:18px;top:36px;bottom:0;border-left:2px solid var(--blue-bg)}
+.ms:last-child::after{display:none}
+.ms b{font-weight:600}
+.mobile-nav{display:none}
+footer{margin-top:64px;padding-top:20px;border-top:1px solid var(--rule);color:var(--ink-3);font-size:.88rem}
+@media (max-width:960px){
+  .shell{grid-template-columns:minmax(0,1fr);gap:0;padding-inline:16px}
+  nav.toc{display:none}
+  .mobile-nav{display:flex;gap:6px;overflow-x:auto;padding-block:10px;position:sticky;top:env(safe-area-inset-top,0px);background:var(--paper);z-index:5;border-bottom:1px solid var(--rule);margin-inline:-16px;padding-inline:16px}
+  .mobile-nav a{flex:none;font-size:.82rem;padding:4px 10px;border-radius:999px;background:var(--panel);color:var(--ink-2);text-decoration:none}
+}
+@media (max-width:640px){
+  :root{--step-4:2.3rem;--step-3:1.75rem;--step-2:1.35rem}
+  .thesis,.grid2,.grid3{grid-template-columns:minmax(0,1fr)}
+  .req{grid-template-columns:minmax(0,1fr);gap:6px}
+  .stepper{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+/* v2: diagram-first. Spec wording lives in collapsed panels. */
+details.spec{margin:16px 0;border:1px solid var(--rule);border-radius:10px;background:#fff}
+details.spec>summary{cursor:pointer;padding:10px 16px;font-family:var(--mono);font-size:.76rem;letter-spacing:.04em;color:var(--ink-2);list-style:none;display:flex;gap:10px;align-items:center}
+details.spec>summary::-webkit-details-marker{display:none}
+details.spec>summary::before{content:"▸";color:var(--blue);transition:transform .2s}
+details.spec[open]>summary::before{transform:rotate(90deg)}
+details.spec>summary:hover{color:var(--blue)}
+details.spec .inner{padding:0 16px 10px;border-top:1px solid var(--rule)}
+.toggle-all{font:inherit;font-family:var(--mono);font-size:.78rem;padding:6px 12px;border-radius:999px;border:1px solid var(--rule);background:#fff;color:var(--ink-2);cursor:pointer;margin-top:16px}
+.toggle-all:hover{border-color:var(--blue-l);color:var(--blue)}
+svg text{font-size:13px}
+svg .mid{text-anchor:middle} svg .end{text-anchor:end} svg .w6{font-weight:600}
+svg .b0{fill:#fff;stroke:var(--ink-3)} svg .bn{fill:var(--panel);stroke:var(--ink-3)}
+svg .bb{fill:var(--blue-bg);stroke:var(--blue)} svg .bt{fill:var(--teal-bg);stroke:var(--teal)}
+svg .bg{fill:var(--gold-bg);stroke:var(--gold)} svg .br{fill:var(--red-bg);stroke:var(--red)}
+svg .bp{fill:var(--purple-bg);stroke:var(--purple)} svg .bgr{fill:var(--green-bg);stroke:var(--green)}
+svg .s-k{fill:none;stroke:var(--ink-2);stroke-width:1.3} svg .s-b{fill:none;stroke:var(--blue);stroke-width:1.4}
+svg .s-g{fill:none;stroke:var(--gold);stroke-width:1.4} svg .s-t{fill:none;stroke:var(--teal);stroke-width:1.4}
+svg .s-r{fill:none;stroke:var(--red);stroke-width:1.4} svg .s-gr{fill:none;stroke:var(--green);stroke-width:1.4}
+svg .s-p{fill:none;stroke:var(--purple);stroke-width:1.4} svg .s-m{fill:none;stroke:var(--rule);stroke-width:1.2}
+svg .dsh{stroke-dasharray:4 3}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0}
+.chip2{font-family:var(--mono);font-size:.78rem;padding:3px 10px;border-radius:999px;background:#fff;border:1px solid var(--rule);color:var(--ink-2)}
+.chip2.ok{background:var(--green-bg);border-color:transparent;color:#3B6E22}
+.chip2.no{background:var(--red-bg);border-color:transparent;color:#A3362A}
+.chip2.t{background:var(--teal-bg);border-color:transparent;color:#17705E}
+.bignum{font-family:var(--mono);font-size:1.6rem;color:var(--brown);margin:0;line-height:1.2}
+.cap{font-size:.92rem;color:var(--ink-2);margin:4px 0 0}
+/* long URLs and API paths wrap instead of widening the page */
+code{overflow-wrap:anywhere}
+.req .b,.card,.note,.cap,figcaption,.meta{overflow-wrap:anywhere;min-width:0}
+</style>
+</head>
+<body>
+
+<div class="shell">
+<nav class="toc" aria-label="Contents">
+  <div class="lbl">Contents</div>
+  <ol>
+    <li><a href="#changes"><span class="n">·</span>Changes since v0.1</a></li>
+    <li><a href="#scope"><span class="n">1</span>Scope</a></li>
+    <li><a href="#arch"><span class="n">2</span>Architecture</a></li>
+    <li><a href="#data"><span class="n">3</span>Repository data format</a></li>
+    <li><a href="#store"><span class="n">4</span>Device storage</a></li>
+    <li><a href="#sync"><span class="n">5</span>Sync</a></li>
+    <li><a href="#setup"><span class="n">6</span>Setup &amp; linking</a></li>
+    <li><a href="#ui"><span class="n">7</span>Screens &amp; behaviour</a></li>
+    <li><a href="#sec"><span class="n">8</span>Security</a></li>
+    <li><a href="#nfr"><span class="n">9</span>Non-functional</a></li>
+    <li><a href="#test"><span class="n">10</span>Testing</a></li>
+    <li><a href="#milestones"><span class="n">11</span>Milestones</a></li>
+    <li><a href="#defaults"><span class="n">12</span>Defaults chosen</a></li>
+  </ol>
+</nav>
+
+<main>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false"><defs>
+<marker id="mk" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--ink-2)"/></marker>
+<marker id="mb" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--blue)"/></marker>
+<marker id="mg" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--gold)"/></marker>
+<marker id="mt" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--teal)"/></marker>
+<marker id="mr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--red)"/></marker>
+<marker id="mgr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--green)"/></marker>
+<marker id="mp" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--purple)"/></marker>
+</defs></svg>
+
+<div class="mobile-nav" aria-label="Sections">
+  <a href="#changes">v0.1→v0.2</a><a href="#scope">1 Scope</a><a href="#arch">2 Arch</a><a href="#data">3 Data</a><a href="#store">4 Storage</a><a href="#sync">5 Sync</a><a href="#setup">6 Setup</a><a href="#ui">7 UI</a><a href="#sec">8 Security</a><a href="#nfr">9 NFR</a><a href="#test">10 Tests</a><a href="#milestones">11 Milestones</a><a href="#defaults">12 Defaults</a>
+</div>
+
+<header class="hero">
+  <div class="eyebrow">Spec v0.2 · SPEC.md</div>
+  <h1>GitHub Notes: <em>your repo is the database</em></h1>
+  <p class="lede">A Notion-like PWA that stores every page as Markdown in your own private GitHub repo. No server.</p>
+  <div class="meta">
+    <span><a href="https://github.com/TingGeorge/ideas/blob/claude/bold-sagan-uthv65/github-notes/README.md">Plan &amp; decision log (zh-TW)</a></span>
+    <span><a href="https://www.figma.com/design/N3TDXtJeqjUd6wiUBHPzNu/Untitled">Figma</a> · <code>D01</code>–<code>D15</code> desktop, <code>M01</code>–<code>M22</code> iPhone</span>
+    <span>Links point at branch <code>claude/bold-sagan-uthv65</code> until merged</span>
+  </div>
+  <div class="legend">
+    <span class="id" data-a="arch">ARCH</span><span class="id" data-a="data">DATA</span><span class="id" data-a="store">STORE</span><span class="id" data-a="sync">SYNC</span><span class="id" data-a="setup">SETUP · LINK</span><span class="id" data-a="ui">UI</span><span class="id" data-a="sec">SEC</span><span class="id" data-a="nfr">NFR</span><span class="id" data-a="test">TEST</span>
+    <span class="must" style="align-self:center;margin-left:6px">MUST</span><span style="font-size:.85rem;color:var(--ink-2);align-self:center">= required for v1</span>
+  </div>
+  <button type="button" class="toggle-all" id="toggle-all">Expand all spec text</button>
+</header>
+
+<!-- CHANGES -->
+<section id="changes">
+  <h2>Changes since v0.1</h2>
+  <figure><div class="fig"><svg viewBox="0 0 780 200" role="img" aria-label="What changed in v0.2">
+    <rect x="10" y="80" width="110" height="44" rx="10" class="bn"/><text x="65" y="107" class="mid w6">v0.1</text>
+    <rect x="660" y="80" width="110" height="44" rx="10" class="bb"/><text x="715" y="107" class="mid w6 fb">v0.2</text>
+    <g class="sm">
+      <rect x="170" y="8" width="210" height="34" rx="8" class="bg"/><text x="182" y="30">Token expiry asked at setup</text>
+      <rect x="170" y="50" width="210" height="34" rx="8" class="bg"/><text x="182" y="72">Write access: real probe</text>
+      <rect x="170" y="92" width="210" height="34" rx="8" class="bg"/><text x="182" y="114">Rate limits: GraphQL + spacing</text>
+      <rect x="170" y="134" width="210" height="34" rx="8" class="bg"/><text x="182" y="156">Root-relative links</text>
+      <rect x="400" y="8" width="230" height="34" rx="8" class="bg"/><text x="412" y="30">Push: delete only existing paths</text>
+      <rect x="400" y="50" width="230" height="34" rx="8" class="bg"/><text x="412" y="72">Push: snapshot + local blob SHA</text>
+      <rect x="400" y="92" width="230" height="34" rx="8" class="bg"/><text x="412" y="114">QR linking + pairing code</text>
+      <rect x="400" y="134" width="230" height="34" rx="8" class="bg"/><text x="412" y="156">New page = ⌘⌥N (browser-safe)</text>
+    </g>
+    <text x="400" y="192" class="xs mid">+ rules for moves, deletes, identical new paths, open editors, IME input · iPhone screens M17–M22</text>
+    <path d="M120,102 L166,102" class="s-k" marker-end="url(#mk)"/><path d="M632,102 L656,102" class="s-k" marker-end="url(#mk)"/>
+  </svg></div><figcaption>From a review against GitHub's documentation and live API responses.</figcaption></figure>
+</section>
+
+<!-- 1 SCOPE -->
+<section id="scope">
+  <h2><span class="sn">§1</span>Scope</h2>
+  <figure><div class="fig"><svg viewBox="0 0 780 250" role="img" aria-label="In and out of scope">
+    <rect x="10" y="10" width="370" height="230" rx="14" class="bgr"/>
+    <text x="30" y="40" class="lg" style="fill:var(--green)">In scope · v1</text>
+    <g class="sm"><text x="30" y="72">✓ One user, many devices, one repo per device</text>
+    <text x="30" y="100">✓ Safari 17+, Chrome/Edge 120+, Firefox 125+</text>
+    <text x="30" y="128">✓ iPhone iOS 17+ home-screen web app</text>
+    <text x="30" y="156">✓ Offline read &amp; write, automatic sync</text>
+    <text x="30" y="184">✓ Notion-style editing, shortcuts, colours, search</text>
+    <text x="30" y="212">✓ Traditional Chinese UI</text></g>
+    <rect x="400" y="10" width="370" height="230" rx="14" class="bn"/>
+    <text x="420" y="40" class="lg mut">Out of scope · v1</text>
+    <g class="sm" style="fill:var(--ink-2)"><text x="420" y="72">✗ Real-time multi-user, sharing, comments, @people</text>
+    <text x="420" y="100">✗ Databases, templates, formulas</text>
+    <text x="420" y="128">✗ Notion export import (format kept compatible)</text>
+    <text x="420" y="156">✗ Android polish (should work, untested)</text>
+    <text x="420" y="184">✗ Encrypting notes inside the repo</text>
+    <text x="420" y="212">✗ Other UI languages (strings in one file)</text></g>
+  </svg></div></figure>
+</section>
+
+<!-- 2 ARCH -->
+<section id="arch">
+  <h2><span class="sn">§2</span>Architecture</h2>
+  <figure>
+    <div class="fig">
+      <svg viewBox="0 0 780 430" role="img" aria-label="Architecture diagram">
+        <defs>
+          <marker id="o1ab" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--blue)"/></marker>
+          <marker id="o1ag" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--gold)"/></marker>
+          <marker id="o1at" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--teal)"/></marker>
+          <marker id="o1ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--red)"/></marker>
+        </defs>
+        <!-- device -->
+        <rect x="16" y="16" width="430" height="330" rx="16" style="fill:var(--blue-bg);stroke:var(--blue);stroke-width:1.5"/>
+        <text x="36" y="44" class="lg fb">Device · iPhone / PC</text>
+        <!-- UI / editor -->
+        <rect x="36" y="62" width="180" height="44" rx="8" style="fill:#fff;stroke:var(--blue-l)"/>
+        <text x="126" y="89" text-anchor="middle" class="sm">UI · React</text>
+        <rect x="246" y="62" width="180" height="44" rx="8" style="fill:#fff;stroke:var(--blue-l)"/>
+        <text x="336" y="89" text-anchor="middle" class="sm">Editor · ProseMirror</text>
+        <line x1="216" y1="84" x2="244" y2="84" style="stroke:var(--blue);stroke-width:1.3"/>
+        <!-- store -->
+        <line x1="126" y1="106" x2="126" y2="128" style="stroke:var(--purple);stroke-width:1.3"/>
+        <rect x="36" y="130" width="390" height="56" rx="8" style="fill:var(--purple-bg);stroke:var(--purple)"/>
+        <text x="52" y="153" class="sm" style="font-weight:600;fill:var(--purple)">Store · IndexedDB / Dexie</text>
+        <text x="52" y="174" class="xs">config · files · pages · uploads · assets · sync · search</text>
+        <text x="360" y="160" text-anchor="middle" class="xs" style="fill:var(--purple)">works offline</text>
+        <!-- sync -->
+        <line x1="126" y1="186" x2="126" y2="208" style="stroke:var(--gold);stroke-width:1.3"/>
+        <rect x="36" y="210" width="180" height="44" rx="8" style="fill:var(--gold-bg);stroke:var(--gold)"/>
+        <text x="126" y="237" text-anchor="middle" class="sm">Sync engine</text>
+        <rect x="246" y="210" width="180" height="44" rx="8" style="fill:#fff;stroke:var(--gold)"/>
+        <text x="336" y="230" text-anchor="middle" class="sm">GitHub client</text>
+        <text x="336" y="246" text-anchor="middle" class="xs">REST + GraphQL</text>
+        <line x1="216" y1="232" x2="244" y2="232" style="stroke:var(--gold);stroke-width:1.3"/>
+        <!-- search & SW -->
+        <rect x="36" y="272" width="180" height="56" rx="8" style="fill:#fff;stroke:var(--teal)"/>
+        <text x="126" y="295" text-anchor="middle" class="sm">Search index</text>
+        <text x="126" y="313" text-anchor="middle" class="xs">MiniSearch + Intl.Segmenter</text>
+        <rect x="246" y="272" width="180" height="56" rx="8" style="fill:#fff;stroke:var(--ink-3)"/>
+        <text x="336" y="295" text-anchor="middle" class="sm">Service worker</text>
+        <text x="336" y="313" text-anchor="middle" class="xs">app shell cache</text>
+        <!-- right side -->
+        <rect x="560" y="40" width="200" height="64" rx="10" style="fill:#fff;stroke:var(--ink-2)"/>
+        <text x="660" y="66" text-anchor="middle" class="sm" style="font-weight:600">GitHub Pages</text>
+        <text x="660" y="86" text-anchor="middle" class="mono" style="fill:var(--ink-3);font-size:7.6px">tinggeorge.github.io/notion-like-web-app/</text>
+        <rect x="560" y="200" width="200" height="64" rx="10" style="fill:#fff;stroke:var(--gold)"/>
+        <text x="660" y="228" text-anchor="middle" class="sm" style="font-weight:600">api.github.com</text>
+        <text x="660" y="248" text-anchor="middle" class="xs">REST · /graphql</text>
+        <rect x="560" y="330" width="200" height="64" rx="10" style="fill:var(--teal-bg);stroke:var(--teal)"/>
+        <text x="660" y="356" text-anchor="middle" class="sm" style="font-weight:600">User's private repo</text>
+        <text x="660" y="376" text-anchor="middle" class="xs">*.md pages · _assets/ · .notes/</text>
+        <!-- arrows -->
+        <path d="M558,72 C500,72 480,300 428,300" class="flow" style="fill:none;stroke:var(--ink-3);stroke-width:1.5" marker-end="url(#o1ab)"/>
+        <text x="476" y="150" class="xs" text-anchor="middle">app code only</text>
+        <path d="M428,232 L556,232" class="flow" style="fill:none;stroke:var(--gold);stroke-width:1.8" marker-end="url(#o1ag)" marker-start="url(#o1ag)"/>
+        <text x="492" y="222" class="xs" text-anchor="middle" style="fill:var(--gold)">token · HTTPS</text>
+        <path d="M660,266 L660,326" class="flow" style="fill:none;stroke:var(--teal);stroke-width:1.8" marker-end="url(#o1at)" marker-start="url(#o1at)"/>
+        <!-- second device -->
+        <rect x="16" y="370" width="200" height="44" rx="10" style="fill:#fff;stroke:var(--blue);stroke-dasharray:4 3"/>
+        <text x="116" y="397" text-anchor="middle" class="sm">Second device</text>
+        <path d="M218,392 C300,392 320,350 330,348" style="fill:none;stroke:var(--red);stroke-width:1.4;stroke-dasharray:3 3" marker-start="url(#o1ar)"/>
+        <text x="320" y="404" class="xs" style="fill:var(--red)">QR code + pairing code</text>
+      </svg>
+    </div>
+    <figcaption>Editable source: <code>docs/architecture.excalidraw</code> (export again to <code>docs/architecture.svg</code>). Dashed arrows are network traffic; everything inside the blue frame works offline.</figcaption>
+  </figure>
+  <figure><div class="fig"><svg viewBox="0 0 760 160" role="img" aria-label="Hash routes">
+    <rect x="10" y="58" width="190" height="44" rx="8" class="bb"/>
+    <text x="105" y="78" class="sm mid w6 fb">index.html  #…</text><text x="105" y="94" class="xs mid">always served · never 404</text>
+    <g class="s-b">
+      <path d="M200,80 C230,80 230,15 258,15"/><path d="M200,80 C230,80 230,41 258,41"/><path d="M200,80 C230,80 230,67 258,67"/>
+      <path d="M200,80 C230,80 230,93 258,93"/><path d="M200,80 C230,80 230,119 258,119"/><path d="M200,80 C230,80 230,145 258,145"/>
+    </g>
+    <g><rect x="260" y="4" width="220" height="22" rx="5" class="b0"/><rect x="260" y="30" width="220" height="22" rx="5" class="b0"/><rect x="260" y="56" width="220" height="22" rx="5" class="b0"/>
+    <rect x="260" y="82" width="220" height="22" rx="5" class="b0"/><rect x="260" y="108" width="220" height="22" rx="5" class="b0"/><rect x="260" y="134" width="220" height="22" rx="5" class="b0"/></g>
+    <g class="mono"><text x="270" y="19">#/</text><text x="270" y="45">#/p/&lt;pageKey&gt;</text><text x="270" y="71">#/search?q=</text><text x="270" y="97">#/settings/&lt;section&gt;</text><text x="270" y="123">#/setup/&lt;step&gt;</text><text x="270" y="149">#/link</text></g>
+    <g class="sm"><text x="500" y="19">home</text><text x="500" y="45">page</text><text x="500" y="71">search</text><text x="500" y="97">settings</text><text x="500" y="123">setup</text><text x="500" y="149">link a device</text></g>
+  </svg></div><figcaption>ARCH-2 · built with <code>base: "./"</code>, so the same build runs at any path (ARCH-1).</figcaption></figure>
+  <details class="spec"><summary>Spec text · ARCH-1 – ARCH-5</summary><div class="inner"><div class="req"><span class="id" data-a="arch">ARCH-1</span><div class="b">
+    <p>The app is static files served from GitHub Pages.</p>
+    <ul class="clean"><li>Built with a relative base (<code>base: "./"</code>), so the same build works under <code>/notion-like-web-app/</code> or at the root of a custom domain (<span class="id" data-a="sec">SEC-6</span>).</li>
+    <li><span class="must">MUST</span> not depend on any server other than <code>api.github.com</code>.</li></ul></div></div>
+<div class="req"><span class="id" data-a="arch">ARCH-2</span><div class="b">
+    <p>Routing uses the URL hash (<code>#/…</code>), so GitHub Pages never returns 404 for deep links.</p>
+    <div class="tw"><table><thead><tr><th>Route</th><th>Screen</th></tr></thead><tbody>
+      <tr><td><code>#/</code></td><td>home</td></tr>
+      <tr><td><code>#/p/&lt;pageKey&gt;</code></td><td>page</td></tr>
+      <tr><td><code>#/search?q=</code></td><td>search</td></tr>
+      <tr><td><code>#/settings/&lt;section&gt;</code></td><td>settings</td></tr>
+      <tr><td><code>#/setup/&lt;step&gt;</code></td><td>setup</td></tr>
+      <tr><td><code>#/link</code></td><td>link a device</td></tr>
+    </tbody></table></div></div></div>
+<div class="req"><span class="id" data-a="arch">ARCH-3</span><div class="b"><p>All network calls go to <code>https://api.github.com</code>: the REST API and <code>/graphql</code>. The token <span class="must">MUST NOT</span> be sent anywhere else.</p></div></div>
+<div class="req"><span class="id" data-a="arch">ARCH-4</span><div class="b"><p>No third-party scripts, fonts or analytics are loaded at runtime. Libraries are bundled at build time.</p></div></div>
+<div class="req"><span class="id" data-a="arch">ARCH-5</span><div class="b"><p>Fonts and colours:</p>
+    <ul class="clean"><li>UI text: <code>-apple-system, BlinkMacSystemFont, "PingFang TC", "Microsoft JhengHei", "Noto Sans TC", "Segoe UI", sans-serif</code></li>
+    <li>Code: <code>ui-monospace, SFMono-Regular, Menlo, Consolas, monospace</code></li>
+    <li>Figma uses Noto Sans TC and JetBrains Mono as stand-ins.</li>
+    <li>Colours come from the Figma variables, exported as CSS custom properties (<code>--bg-default</code>, <code>--text-primary</code>, …) with light and dark values.</li></ul></div></div></div></details>
+</section>
+
+<!-- 3 DATA -->
+<section id="data">
+  <h2><span class="sn">§3</span>Repository data format</h2>
+  <p class="sub">The repo is the source of truth, readable on github.com and by any Markdown tool.</p>
+
+  <h3><span class="sn">3.1–3.2</span>Pages, folders and names</h3>
+  <figure>
+    <div class="fig narrow"><svg viewBox="0 0 640 300" role="img" aria-label="Repository layout" style="min-width:480px">
+      <g class="mono" style="font-size:13px">
+        <text x="20" y="34">README.md</text><text x="300" y="34" class="xs">← an ordinary page if present</text>
+        <text x="20" y="64" style="fill:var(--teal)">工作.md</text><text x="300" y="64" class="xs">← page 「工作」</text>
+        <text x="20" y="94" style="fill:var(--teal)">工作/</text><text x="300" y="94" class="xs">← children of 「工作」</text>
+        <text x="48" y="122">會議記錄.md</text>
+        <text x="48" y="150">專案 A.md</text>
+        <text x="20" y="180">讀書筆記.md</text>
+        <text x="20" y="210" style="fill:var(--gold)">_assets/2026/10/3f9a2c1b.png</text><text x="300" y="210" class="xs">← attachments (reserved)</text>
+        <text x="20" y="240" style="fill:var(--purple)">.notes/settings.json</text><text x="300" y="240" class="xs">← favourites, sidebar order (reserved)</text>
+        <text x="20" y="270" style="fill:var(--purple)">.notes/trash/…</text><text x="300" y="270" class="xs">← deleted pages and replaced versions</text>
+      </g>
+      <path d="M30,100 L30,146 M30,118 L42,118 M30,146 L42,146" style="fill:none;stroke:var(--teal);stroke-width:1.2"/>
+      <path d="M100,56 C150,56 150,86 80,90" style="fill:none;stroke:var(--teal);stroke-dasharray:3 3"/>
+      <text x="158" y="76" class="xs" style="fill:var(--teal)">page ↔ sibling folder</text>
+    </svg></div>
+    <figcaption>Teal: pages and their child folder. Gold and purple: reserved paths the editor never treats as pages.</figcaption>
+  </figure>
+  <figure><div class="fig"><svg viewBox="0 0 780 195" role="img" aria-label="Title to file name pipeline">
+    <g class="xs mid"><text x="77" y="28">title</text><text x="231" y="28">① full-width / \ : * ? " &lt; &gt; |</text><text x="385" y="28">② drop control chars</text><text x="539" y="28">③ trim spaces &amp; dots</text><text x="693" y="28">④ ≤ 150 UTF-8 bytes</text></g>
+    <rect x="8" y="38" width="138" height="50" rx="8" class="bb"/><rect x="162" y="38" width="138" height="50" rx="8" class="b0"/><rect x="316" y="38" width="138" height="50" rx="8" class="b0"/><rect x="470" y="38" width="138" height="50" rx="8" class="b0"/><rect x="624" y="38" width="138" height="50" rx="8" class="b0"/>
+    <g class="mono mid" style="font-size:12px"><text x="77" y="68">會議: Q3/Q4?.</text><text x="231" y="68">會議： Q3／Q4？.</text><text x="385" y="68">會議： Q3／Q4？.</text><text x="539" y="68">會議： Q3／Q4？</text><text x="693" y="68">會議： Q3／Q4？</text></g>
+    <text x="539" y="102" class="xs mid">empty → 未命名</text><text x="693" y="102" class="xs mid">20 bytes ✓</text>
+    <g class="s-k"><path d="M146,63 L160,63" marker-end="url(#mk)"/><path d="M300,63 L314,63" marker-end="url(#mk)"/><path d="M454,63 L468,63" marker-end="url(#mk)"/><path d="M608,63 L622,63" marker-end="url(#mk)"/><path d="M693,108 L693,126" marker-end="url(#mk)"/></g>
+    <rect x="470" y="128" width="302" height="58" rx="8" class="bt"/>
+    <text x="482" y="148" class="xs">⑤ unique in folder (NFC, case-insensitive) — DATA-6</text>
+    <text x="482" y="172" class="mono" style="font-size:12px">會議： Q3／Q4？ (2).md  <tspan class="xs" style="font-family:var(--serif)">if taken</tspan></text>
+    <rect x="8" y="128" width="420" height="58" rx="8" class="bg"/>
+    <text x="20" y="148" class="xs">name ≠ title ⇒ exact title kept in frontmatter — DATA-5</text>
+    <text x="20" y="172" class="mono" style="font-size:12px;fill:var(--gold)">title: "會議: Q3/Q4?."</text>
+    <path d="M470,157 L432,157" class="s-g" marker-end="url(#mg)"/>
+  </svg></div><figcaption>DATA-4 → DATA-6. A root page named exactly <code>_assets</code> becomes <code>＿assets</code> (DATA-2).</figcaption></figure>
+  <div class="demo" id="namer">
+    <div class="lbl">Try it · title → file name (DATA-4, DATA-5)</div>
+    <label for="title-in" class="sr" style="position:absolute;left:-9999px">Page title</label>
+    <input type="text" id="title-in" value="會議: Q3/Q4 預算?" autocomplete="off">
+    <div class="row">
+      <label><input type="checkbox" id="root-in"> page is at the repo root</label>
+      <div class="presets">
+        <button class="chip" data-t="會議: Q3/Q4 預算?">punctuation</button>
+        <button class="chip" data-t="  ...  ">only dots</button>
+        <button class="chip" data-t="_assets">_assets</button>
+        <button class="chip" data-t=".github">leading dot</button>
+        <button class="chip" data-t="長標題長標題長標題長標題長標題長標題長標題長標題長標題長標題長標題長標題長標題長標題長標題長標題長標題長標題長標題長標題長標題長標題長標題長標題長標題長標題長標題">60 chars</button>
+      </div>
+    </div>
+    <div class="out" id="name-out" aria-live="polite"></div>
+  </div>
+  <figure><div class="fig"><svg viewBox="0 0 780 165" role="img" aria-label="Virtual page and one-commit rename">
+    <text x="10" y="20" class="sm w6">Virtual page · DATA-3</text>
+    <g class="mono" style="font-size:12px"><text x="20" y="52" style="fill:var(--teal)">docs/</text><text x="40" y="74">setup.md</text><text x="40" y="96">api.md</text></g>
+    <text x="20" y="122" class="xs fr">no docs.md</text>
+    <path d="M110,74 L190,74" class="s-k" marker-end="url(#mk)"/>
+    <rect x="200" y="34" width="170" height="88" rx="8" class="bn"/>
+    <rect x="210" y="44" width="110" height="22" rx="5" class="b0 dsh"/><text x="218" y="60" class="sm">▾ docs</text>
+    <text x="236" y="86" class="sm">setup</text><text x="236" y="108" class="sm">api</text>
+    <text x="200" y="142" class="xs">title = folder name · no body</text><text x="200" y="157" class="xs">file created on first edit</text>
+    <line x1="398" y1="10" x2="398" y2="160" class="s-m"/>
+    <text x="420" y="20" class="sm w6">Rename / move = one commit · DATA-7</text>
+    <rect x="414" y="32" width="356" height="84" rx="8" class="b0 dsh"/>
+    <g class="mono" style="font-size:11.5px"><text x="424" y="56">工作.md</text><text x="424" y="78">工作/會議記錄.md</text><text x="424" y="100">工作/專案 A.md</text>
+    <text x="630" y="56" style="fill:var(--teal)">Work.md</text><text x="630" y="78" style="fill:var(--teal)">Work/會議記錄.md</text><text x="630" y="100" style="fill:var(--teal)">Work/專案 A.md</text></g>
+    <path d="M560,78 L620,78" class="s-t" marker-end="url(#mt)"/>
+    <text x="420" y="140" class="xs">+ inbound links rewritten + settings.json updated, same commit (SYNC-10)</text>
+  </svg></div></figure>
+  <details class="spec"><summary>Spec text · DATA-1 – DATA-7</summary><div class="inner"><div class="req"><span class="id" data-a="data">DATA-1</span><div class="b"><p>A workspace is <code>(owner, repo, branch)</code>. The branch is the repo's default branch at setup time.</p></div></div>
+<div class="req"><span class="id" data-a="data">DATA-2</span><div class="b"><p>Every <code>.md</code> file is a page, except files under reserved folders. Non-<code>.md</code> files are ignored and never modified.</p>
+    <ul class="clean"><li>Reserved: any folder whose name starts with <code>.</code> (e.g. <code>.notes/</code>, <code>.github/</code>), and <code>_assets/</code> at the root.</li>
+    <li>Because DATA-4 removes leading dots, a title can never produce a <code>.</code> name. A root page whose name would be exactly <code>_assets</code> is written as <code>＿assets</code> (full-width low line).</li></ul></div></div>
+<div class="req"><span class="id" data-a="data">DATA-3</span><div class="b"><p>A page lives at <code>&lt;dir&gt;/&lt;name&gt;.md</code>. Its children live in the sibling folder <code>&lt;dir&gt;/&lt;name&gt;/</code>. A page with no children has no folder.</p>
+    <p>A non-reserved folder with no matching <code>&lt;name&gt;.md</code> (common in existing repos, e.g. <code>docs/</code>) is shown as a <b>virtual page</b>: its title is the folder name and it has no body. The file is created only when the user edits that page.</p></div></div>
+<div class="req"><span class="id" data-a="data">DATA-4</span><div class="b"><p>The file name comes from the title:</p>
+    <ul class="clean"><li><code>/ \ : * ? " &lt; &gt; |</code> are replaced by full-width forms <code>／ ＼ ： ＊ ？ ＂ ＜ ＞ ｜</code>.</li>
+    <li>Control characters are removed.</li>
+    <li>Leading and trailing spaces and dots are trimmed; an empty result becomes <code>未命名</code>.</li>
+    <li>Truncated at a character boundary to 150 UTF-8 bytes.</li></ul></div></div>
+<div class="req"><span class="id" data-a="data">DATA-5</span><div class="b"><p>If the file name cannot hold the exact title (DATA-4, DATA-6), the exact title is stored in frontmatter <code>title</code>. Reading: title = <code>frontmatter.title</code>, else the file name without <code>.md</code>.</p></div></div>
+<div class="req"><span class="id" data-a="data">DATA-6</span><div class="b"><p>Names are unique within a folder, compared case-insensitively after Unicode NFC normalisation. On a clash the new name gets <code> (2)</code>, <code> (3)</code>, … The title itself is unchanged.</p></div></div>
+<div class="req"><span class="id" data-a="data">DATA-7</span><div class="b"><p>Renaming or moving a page renames or moves its <code>.md</code> file and its whole child folder in one commit (<span class="id" data-a="sync">SYNC-10</span>).</p></div></div></div></details>
+
+  <h3><span class="sn">3.3</span>Page file and identity</h3>
+  <pre><span class="c">---</span>
+<span class="k">id</span>: <span class="s">01JA8Z3K5N6P7Q8R9S0T1V2W3X</span>
+<span class="k">icon</span>: <span class="s">"📝"</span>
+<span class="k">cover</span>: <span class="s">"/_assets/2026/10/ab12cd34.jpg"</span>
+<span class="k">created</span>: <span class="s">2026-10-11T10:00:00+08:00</span>
+<span class="c">---</span>
+Body Markdown…</pre>
+  <figure><div class="fig"><svg viewBox="0 0 780 200" role="img" aria-label="Page identity">
+    <rect x="10" y="30" width="180" height="74" rx="8" class="bn"/>
+    <text x="100" y="54" class="mono mid" style="font-size:12px">筆記.md</text><text x="100" y="72" class="xs mid">no frontmatter</text><text x="100" y="92" class="mono mid" style="fill:var(--ink-3)">key = path:筆記.md</text>
+    <path d="M192,67 L318,67" class="s-t" marker-end="url(#mt)"/>
+    <text x="255" y="44" class="xs mid">first save · ★ · reorder</text><text x="255" y="58" class="xs mid">copy link · trash</text>
+    <rect x="320" y="30" width="180" height="74" rx="8" class="bt"/>
+    <text x="410" y="54" class="mono mid" style="font-size:11px">id: 01JA8Z… created: …</text><text x="410" y="92" class="mono mid" style="fill:var(--teal)">key = id (ULID)</text><text x="410" y="72" class="xs mid">written once</text>
+    <text x="100" y="128" class="xs mid fr">opening or syncing alone never rewrites it</text>
+    <line x1="530" y1="14" x2="530" y2="186" class="s-m"/>
+    <text x="550" y="24" class="sm w6">Duplicate ids · DATA-9a</text>
+    <rect x="550" y="36" width="220" height="30" rx="6" class="bt"/><text x="560" y="56" class="mono">a/x.md · id 01JA…  ✓ keeps it</text>
+    <rect x="550" y="76" width="220" height="30" rx="6" class="bn"/><text x="560" y="96" class="mono">b/x.md · id 01JA…  ✗</text>
+    <text x="550" y="124" class="xs">smaller path keeps the id; the other gets</text><text x="550" y="139" class="xs">a new ULID on its next save</text>
+    <text x="550" y="160" class="xs">move detection ignores duplicated ids</text>
+    <text x="10" y="176" class="xs">App copies (複製頁面, conflict copies) always get a new ULID.</text>
+    <text x="10" y="192" class="xs">Files: UTF-8 · LF · one trailing newline · title not repeated as a heading (DATA-10).</text>
+  </svg></div></figure>
+  <details class="spec"><summary>Spec text · DATA-8 – DATA-10</summary><div class="inner"><div class="req"><span class="id" data-a="data">DATA-8</span><div class="b"><p>Frontmatter is YAML. Unknown keys <span class="must">MUST</span> be kept verbatim and in order. Keys the app uses:</p>
+    <div class="tw"><table><thead><tr><th>Key</th><th>Meaning</th></tr></thead><tbody>
+      <tr><td><code>id</code></td><td>ULID; stable identity across renames (DATA-9)</td></tr>
+      <tr><td><code>title</code></td><td>exact title, only when needed (DATA-5)</td></tr>
+      <tr><td><code>icon</code></td><td>one emoji</td></tr>
+      <tr><td><code>cover</code></td><td>root-relative image path, or <code>gradient:&lt;1-8&gt;</code></td></tr>
+      <tr><td><code>created</code></td><td>ISO 8601</td></tr>
+    </tbody></table></div></div></div>
+<div class="req"><span class="id" data-a="data">DATA-9</span><div class="b"><p>Page key:</p>
+    <ul class="clean"><li>In the app, a page's key is its <code>id</code>, or <code>path:&lt;repo path&gt;</code> while it has none.</li>
+    <li>Files without frontmatter (e.g. created on github.com) are valid. Opening or syncing such a file <span class="must">MUST NOT</span> rewrite it.</li>
+    <li>The app writes <code>id</code> (and <code>created</code>) the first time it saves the page, and also when an action needs a stable id: favouriting, reordering, copying a link, or trashing. This is the only exception to the no-rewrite rule.</li></ul></div></div>
+<div class="req"><span class="id" data-a="data">DATA-9a</span><div class="b"><p>Duplicate ids (a file copied on github.com, 複製頁面, conflict copies):</p>
+    <ul class="clean"><li>Copies made by the app always get a new ULID.</li>
+    <li>If a pull finds two files with the same <code>id</code>, the file with the lexicographically smaller path keeps it. The other is treated as having no id until next saved, when it gets a new one.</li>
+    <li>Move detection (SYNC-5) ignores ids that appear more than once.</li></ul></div></div>
+<div class="req"><span class="id" data-a="data">DATA-10</span><div class="b"><p>Files are UTF-8 with LF line endings and one trailing newline. The page title is not repeated as a heading in the body.</p></div></div></div></details>
+
+  <h3><span class="sn">3.4</span>Blocks ↔ Markdown</h3>
+  <div class="tw"><table><thead><tr><th>Block (Notion name)</th><th>Markdown written</th></tr></thead><tbody>
+    <tr><td>Text</td><td>the paragraph</td></tr>
+    <tr><td>Heading 1 / 2 / 3</td><td><code># </code> / <code>## </code> / <code>### </code></td></tr>
+    <tr><td>Bulleted list</td><td><code>- item</code></td></tr>
+    <tr><td>Numbered list</td><td><code>1. item</code>, <code>2. item</code>, …</td></tr>
+    <tr><td>To-do</td><td><code>- [ ] item</code> / <code>- [x] item</code></td></tr>
+    <tr><td>Toggle</td><td class="wrap"><code>&lt;details&gt;</code> / <code>&lt;summary&gt;Title&lt;/summary&gt;</code>, blank line, children, blank line, <code>&lt;/details&gt;</code></td></tr>
+    <tr><td>Quote</td><td><code>&gt; text</code></td></tr>
+    <tr><td>Callout</td><td class="wrap">GitHub alert <code>&gt; [!NOTE]</code> / <code>[!TIP]</code> / <code>[!IMPORTANT]</code> / <code>[!WARNING]</code> / <code>[!CAUTION]</code> + content (DATA-12)</td></tr>
+    <tr><td>Divider</td><td><code>---</code></td></tr>
+    <tr><td>Code</td><td>fenced block with a language: <code>```js</code></td></tr>
+    <tr><td>Simple table</td><td>GFM pipe table; the first row is the header</td></tr>
+    <tr><td>Image</td><td><code>![caption](/_assets/…)</code> alone in a paragraph</td></tr>
+    <tr><td>File</td><td><code>[file name.pdf](/_assets/…)</code> alone in a paragraph</td></tr>
+    <tr><td>Link to page</td><td><code>[Title](/path/Title.md)</code> alone in a paragraph</td></tr>
+    <tr><td>Line break inside a block</td><td>backslash at the end of the line</td></tr>
+  </tbody></table></div>
+  <div class="tw"><table><thead><tr><th>Inline (Notion)</th><th>Markdown written</th></tr></thead><tbody>
+    <tr><td>Bold / italic / strikethrough / code</td><td><code>**x**</code> / <code>*x*</code> / <code>~~x~~</code> / <code>`x`</code></td></tr>
+    <tr><td>Underline</td><td><code>&lt;u&gt;x&lt;/u&gt;</code></td></tr>
+    <tr><td>Link</td><td><code>[x](https://…)</code>; to a page: <code>[x](/path/Page.md)</code></td></tr>
+    <tr><td>Text colour / background colour</td><td class="wrap"><code>&lt;span data-color="red"&gt;x&lt;/span&gt;</code> / <code>&lt;span data-bg="yellow"&gt;x&lt;/span&gt;</code></td></tr>
+  </tbody></table></div>
+  <div class="chips" aria-label="Callout icon to alert type">
+    <span class="chip2 t">💡 → TIP</span><span class="chip2 t">⚠️ → WARNING</span><span class="chip2 t">❗ → IMPORTANT</span><span class="chip2 t">🛑 → CAUTION</span><span class="chip2">anything else → NOTE ℹ️ + <code>&lt;!-- icon: 🧠 --&gt;</code></span>
+  </div>
+  <div class="swatches">
+    <span class="sw" style="background:#EBECED;color:#787774">gray</span><span class="sw" style="background:#F4EEEE;color:#9F6B53">brown</span><span class="sw" style="background:#FBECDD;color:#D9730D">orange</span><span class="sw" style="background:#FBF3DB;color:#CB912F">yellow</span><span class="sw" style="background:#EDF3EC;color:#448361">green</span><span class="sw" style="background:#E7F3F8;color:#337EA9">blue</span><span class="sw" style="background:#F4F0F7;color:#9065B0">purple</span><span class="sw" style="background:#F9EEF3;color:#C14C8A">pink</span><span class="sw" style="background:#FDEBEC;color:#D44C47">red</span>
+  </div>
+  <div class="grid2" style="align-items:start">
+    <div style="min-width:0">
+<pre><span class="y">- </span>bullet          <span class="c">← marker width 2</span>
+<span class="y">··</span>child
+<span class="y">1. </span>numbered       <span class="c">← len("1. ") = 3 for 1.–9.</span>
+<span class="y">···</span>child
+<span class="y">10. </span>numbered      <span class="c">← len("10. ") = 4 for 10.–99.</span>
+<span class="y">····</span>child</pre>
+      <p class="cap">DATA-13 · indent = marker width. Callouts only at top level; <kbd>Tab</kbd> on a paragraph does nothing.</p>
+    </div>
+    <figure style="margin:14px 0"><div class="fig narrow"><svg viewBox="0 0 380 170" role="img" aria-label="Round trip">
+      <rect x="10" y="55" width="110" height="50" rx="8" class="bb"/><text x="65" y="85" class="mid w6 fb">editor doc</text>
+      <rect x="250" y="55" width="120" height="50" rx="8" class="bt"/><text x="310" y="78" class="mid w6 ft">Markdown</text><text x="310" y="95" class="xs mid">CM 0.31 + GFM</text>
+      <path d="M120,62 C160,20 210,20 250,62" class="s-t" marker-end="url(#mt)"/><text x="185" y="26" class="xs mid ft">serialize</text>
+      <path d="M250,98 C210,140 160,140 120,98" class="s-b" marker-end="url(#mb)"/><text x="185" y="148" class="xs mid fb">parse</text>
+      <text x="190" y="166" class="xs mid">unknown syntax kept byte-for-byte</text>
+    </svg></div><figcaption>DATA-16 · lossless both ways.</figcaption></figure>
+  </div>
+  <figure style="margin:12px 0 4px"><div class="fig"><svg viewBox="0 0 760 210" role="img" aria-label="Nested mark order from background span to inline code">
+      <rect x="6" y="10" width="748" height="190" rx="12" style="fill:var(--gold-bg);stroke:var(--gold)"/>
+      <rect x="40" y="38" width="680" height="152" rx="11" style="fill:var(--red-bg);stroke:var(--red)"/>
+      <rect x="74" y="64" width="612" height="118" rx="10" style="fill:var(--blue-bg);stroke:var(--blue)"/>
+      <rect x="108" y="88" width="544" height="88" rx="9" style="fill:#fff;stroke:var(--ink)"/>
+      <rect x="142" y="110" width="476" height="60" rx="8" style="fill:var(--purple-bg);stroke:var(--purple)"/>
+      <rect x="176" y="128" width="408" height="38" rx="7" style="fill:var(--teal-bg);stroke:var(--teal)"/>
+      <rect x="210" y="138" width="340" height="24" rx="6" style="fill:#fff;stroke:var(--green)"/>
+      <rect x="320" y="142" width="120" height="16" rx="4" style="fill:var(--panel-2);stroke:var(--ink-3)"/>
+      <text x="22" y="30" class="xs">1 · background span</text>
+      <text x="56" y="56" class="xs">2 · colour span</text>
+      <text x="90" y="82" class="xs">3 · link</text>
+      <text x="124" y="104" class="xs">4 · bold</text>
+      <text x="158" y="124" class="xs">5 · italic</text>
+      <text x="190" y="136" class="xs" style="font-size:9px">6 · strikethrough</text>
+      <text x="222" y="154" class="xs" style="font-size:9px">7 · underline</text>
+      <text x="380" y="154" class="mono" text-anchor="middle" style="font-size:9.5px">8 · inline code</text>
+    </svg></div><figcaption>Outer to inner, always in this order, so one document has exactly one serialisation.</figcaption></figure>
+  <figure><div class="fig"><svg viewBox="0 0 780 160" role="img" aria-label="Link rewrite on move">
+    <rect x="10" y="30" width="300" height="80" rx="8" class="bn"/>
+    <text x="24" y="52" class="sm w6">讀書筆記.md</text><text x="24" y="86" class="mono" style="font-size:12px">[專案 A](<tspan style="fill:var(--red)">/專案%20A.md</tspan>)</text>
+    <path d="M312,70 L436,70" class="s-t" marker-end="url(#mt)"/><text x="374" y="60" class="xs mid">move 專案 A</text><text x="374" y="88" class="xs mid">into 工作</text>
+    <rect x="440" y="30" width="330" height="80" rx="8" class="bt"/>
+    <text x="454" y="52" class="sm w6">讀書筆記.md</text><text x="454" y="86" class="mono" style="font-size:12px">[專案 A](<tspan style="fill:var(--teal)">/工作/專案%20A.md</tspan>)</text>
+    <text x="390" y="135" class="xs mid">root-relative (starts with /), rewritten in the same commit as the move · DATA-17</text>
+    <text x="390" y="152" class="xs mid">percent-encoded: space % ( ) &lt; &gt; # ? [ ] — Chinese stays as is</text>
+  </svg></div></figure>
+  <details class="spec"><summary>Spec text · DATA-11 – DATA-17</summary><div class="inner"><div class="req"><span class="id" data-a="data">DATA-11</span><div class="b"><p>Colours use Notion's names. On github.com the spans show as plain text.</p>
+    <div class="swatches">
+      <span class="sw" style="background:#EBECED;color:#787774">gray</span><span class="sw" style="background:#F4EEEE;color:#9F6B53">brown</span><span class="sw" style="background:#FBECDD;color:#D9730D">orange</span><span class="sw" style="background:#FBF3DB;color:#CB912F">yellow</span><span class="sw" style="background:#EDF3EC;color:#448361">green</span><span class="sw" style="background:#E7F3F8;color:#337EA9">blue</span><span class="sw" style="background:#F4F0F7;color:#9065B0">purple</span><span class="sw" style="background:#F9EEF3;color:#C14C8A">pink</span><span class="sw" style="background:#FDEBEC;color:#D44C47">red</span>
+    </div></div></div>
+<div class="req"><span class="id" data-a="data">DATA-12</span><div class="b"><p>Callout icons map to alert types. A non-default icon is kept on the line <code>&lt;!-- icon: 🧠 --&gt;</code> right after the marker.</p>
+    <div class="tw"><table><thead><tr><th>Icon</th><th>Alert type</th></tr></thead><tbody>
+      <tr><td>💡</td><td><code>TIP</code></td></tr><tr><td>⚠️</td><td><code>WARNING</code></td></tr><tr><td>❗</td><td><code>IMPORTANT</code></td></tr><tr><td>🛑</td><td><code>CAUTION</code></td></tr><tr><td>anything else</td><td><code>NOTE</code> (default icon ℹ️)</td></tr>
+    </tbody></table></div></div></div>
+<div class="req"><span class="id" data-a="data">DATA-13</span><div class="b"><p>Nesting:</p>
+    <ul class="clean"><li>Children are allowed under list items, to-dos and toggles.</li>
+    <li>Child lines are indented by the width of the parent's marker:</li></ul>
+<pre><span class="y">- </span>bullet          <span class="c">← marker width 2</span>
+<span class="y">··</span>child
+<span class="y">1. </span>numbered       <span class="c">← len("1. ") = 3 for 1.–9.</span>
+<span class="y">···</span>child
+<span class="y">10. </span>numbered      <span class="c">← len("10. ") = 4 for 10.–99.</span>
+<span class="y">····</span>child</pre>
+    <ul class="clean"><li>Callouts can only be top-level blocks, because GitHub cannot render alerts inside other elements. Pasting a callout into a list turns it into a quote.</li>
+    <li><kbd>Tab</kbd> on a paragraph or heading does nothing. Markdown cannot express that, so this is a documented deviation from Notion.</li></ul></div></div>
+<div class="req"><span class="id" data-a="data">DATA-14</span><div class="b"><p>Editor schema limits: headings and table cells hold inline content only, with no line breaks; code blocks hold plain text; marks are written in a fixed outer-to-inner order.</p>
+    </div></div>
+<div class="req"><span class="id" data-a="data">DATA-15</span><div class="b"><p>Markdown the editor does not understand <span class="must">MUST</span> be kept byte-for-byte: raw HTML blocks, footnotes, math, HTML comments other than DATA-12. It is shown as an editable "Markdown" block.</p></div></div>
+<div class="req"><span class="id" data-a="data">DATA-16</span><div class="b"><p>Round trip:</p>
+    <div class="math">parse<span class="op">(</span>serialize<span class="op">(</span>doc<span class="op">))</span> <span class="op">=</span> doc &nbsp;&nbsp;for every doc the editor can produce<br>serialize<span class="op">(</span>parse<span class="op">(</span>md<span class="op">))</span> <span class="op">=</span> md &nbsp;&nbsp;for Markdown written by the app</div>
+    <p>Other styles (such as <code>*</code> bullets) are normalised only when the user edits that page.</p></div></div>
+<div class="req"><span class="id" data-a="data">DATA-17</span><div class="b"><p>Internal links and attachment paths are <b>root-relative</b> (start with <code>/</code>). github.com resolves those from the repo root, and they keep working when the linking page moves.</p>
+    <ul class="clean"><li>Percent-encoded in paths: space, <code>%</code>, <code>(</code>, <code>)</code>, <code>&lt;</code>, <code>&gt;</code>, <code>#</code>, <code>?</code>, <code>[</code>, <code>]</code>. Everything else, including Chinese, stays as is. Example: <code>/工作/專案%20A.md</code></li>
+    <li>When a page or folder moves, every link to it or to any page inside it is rewritten in the same commit.</li>
+    <li>Backlinks come from the local index (<span class="id" data-a="store">STORE-4</span>).</li></ul></div></div></div></details>
+
+  <h3><span class="sn">3.5</span>Attachments</h3>
+  <figure><div class="fig"><svg viewBox="0 0 760 120" role="img" aria-label="Attachment path anatomy">
+    <text x="30" y="56" class="mono" style="font-size:22px"><tspan style="fill:var(--ink-3)">_assets/</tspan><tspan style="fill:var(--blue)">2026</tspan><tspan style="fill:var(--ink-3)">/</tspan><tspan style="fill:var(--teal)">10</tspan><tspan style="fill:var(--ink-3)">/</tspan><tspan style="fill:var(--gold)">3f9a2c1b</tspan><tspan style="fill:var(--ink-3)">.</tspan><tspan style="fill:var(--purple)">png</tspan></text>
+    <path d="M143,68 v8 h52 v-8" style="fill:none;stroke:var(--blue)"/><text x="169" y="96" text-anchor="middle" class="xs" style="fill:var(--blue)">YYYY</text>
+    <path d="M213,68 v8 h26 v-8" style="fill:none;stroke:var(--teal)"/><text x="226" y="96" text-anchor="middle" class="xs" style="fill:var(--teal)">MM</text>
+    <path d="M257,68 v8 h106 v-8" style="fill:none;stroke:var(--gold)"/><text x="310" y="96" text-anchor="middle" class="xs" style="fill:var(--gold)">first 8 hex of SHA-256</text><text x="310" y="110" text-anchor="middle" class="xs">+4 chars until unique</text>
+    <path d="M380,68 v8 h40 v-8" style="fill:none;stroke:var(--purple)"/><text x="400" y="96" text-anchor="middle" class="xs" style="fill:var(--purple)">ext</text>
+    <text x="470" y="40" class="xs">An existing file is never overwritten.</text>
+    <text x="470" y="58" class="xs">Images: long edge &gt; 2560 px → scaled down.</text>
+    <text x="470" y="76" class="xs">Re-encoded JPEG q 0.85, or PNG if transparent.</text>
+    <text x="470" y="94" class="xs">Any file &gt; 25 MB → rejected with a reason.</text>
+  </svg></div></figure>
+  <details class="spec"><summary>Spec text · DATA-18 – DATA-20</summary><div class="inner"><div class="req"><span class="id" data-a="data">DATA-18</span><div class="b"><p>An uploaded file is stored at <code>_assets/&lt;YYYY&gt;/&lt;MM&gt;/&lt;SHA-256 hex prefix&gt;.&lt;ext&gt;</code>, using the first 8 hex characters. If that path already holds different content, the prefix is lengthened by 4 characters until it is unique. An existing file is never overwritten.</p></div></div>
+<div class="req"><span class="id" data-a="data">DATA-19</span><div class="b"><p>Images longer than 2560 px on the long edge are scaled down before upload, and re-encoded as JPEG quality 0.85 unless they have transparency (then PNG). Any file over 25 MB is rejected with an explanation.</p></div></div>
+<div class="req"><span class="id" data-a="data">DATA-20</span><div class="b"><p>Deleting a page does not delete its attachments. Cleaning up orphans is out of scope for v1.</p></div></div></div></details>
+
+  <h3><span class="sn">3.6</span>Settings and trash</h3>
+  <figure><div class="fig"><svg viewBox="0 0 780 215" role="img" aria-label="Trash lifecycle">
+    <rect x="10" y="30" width="180" height="56" rx="8" class="bb"/><text x="100" y="54" class="mono mid" style="font-size:11.5px">工作/專案 A.md</text><text x="100" y="72" class="xs mid">+ 專案 A/ children</text>
+    <rect x="10" y="128" width="180" height="56" rx="8" class="bg"/><text x="100" y="152" class="sm mid">losing conflict version</text><text x="100" y="170" class="xs mid">SYNC-6</text>
+    <path d="M190,58 L288,96" class="s-b" marker-end="url(#mb)"/><text x="232" y="62" class="xs fb">delete</text>
+    <path d="M190,156 L288,128" class="s-g" marker-end="url(#mg)"/><text x="228" y="166" class="xs fg">replaced</text>
+    <rect x="290" y="56" width="220" height="110" rx="10" class="bp"/>
+    <text x="400" y="80" class="mono mid w6" style="fill:var(--purple)">.notes/trash/&lt;id&gt;/</text>
+    <text x="400" y="104" class="mono mid" style="font-size:9px">index.json: { id, title, originalPath,</text>
+    <text x="400" y="118" class="mono mid" style="font-size:9px">deletedAt, reason }</text>
+    <text x="400" y="146" class="xs mid">reason = deleted | replaced</text>
+    <rect x="580" y="14" width="190" height="50" rx="8" class="bt"/><text x="675" y="35" class="sm mid">還原 → originalPath</text><text x="675" y="52" class="xs mid">(2) if the name is taken</text>
+    <rect x="580" y="84" width="190" height="50" rx="8" class="bn"/><text x="675" y="105" class="sm mid">永久刪除</text><text x="675" y="122" class="xs mid">only git history keeps it</text>
+    <rect x="580" y="154" width="190" height="50" rx="8" class="bn"/><text x="675" y="175" class="sm mid">older than 30 days</text><text x="675" y="192" class="xs mid">removed on sync</text>
+    <g class="s-k"><path d="M510,100 L578,40" marker-end="url(#mk)"/><path d="M510,111 L578,109" marker-end="url(#mk)"/><path d="M510,122 L578,178" marker-end="url(#mk)"/></g>
+  </svg></div><figcaption>DATA-22. Attachments are never deleted with a page (DATA-20).</figcaption></figure>
+  <pre>{ <span class="k">"version"</span>: <span class="y">1</span>,
+  <span class="k">"favorites"</span>: [<span class="s">"&lt;pageKey&gt;"</span>, <span class="s">"…"</span>],
+  <span class="k">"order"</span>: { <span class="k">"root"</span>: [<span class="s">"&lt;pageKey&gt;"</span>, <span class="s">"…"</span>], <span class="k">"&lt;parentKey&gt;"</span>: [<span class="s">"&lt;pageKey&gt;"</span>, <span class="s">"…"</span>] },
+  <span class="k">"trashRetentionDays"</span>: <span class="y">30</span> }</pre>
+  <p class="cap">DATA-21 · children in <code>order</code> come first; the rest sort by title with <code>Intl.Collator("zh-TW")</code>.</p>
+  <details class="spec"><summary>Spec text · DATA-21 – DATA-22</summary><div class="inner"><div class="req"><span class="id" data-a="data">DATA-21</span><div class="b"><p><code>.notes/settings.json</code>:</p>
+<pre>{ <span class="k">"version"</span>: <span class="y">1</span>,
+  <span class="k">"favorites"</span>: [<span class="s">"&lt;pageKey&gt;"</span>, <span class="s">"…"</span>],
+  <span class="k">"order"</span>: { <span class="k">"root"</span>: [<span class="s">"&lt;pageKey&gt;"</span>, <span class="s">"…"</span>], <span class="k">"&lt;parentKey&gt;"</span>: [<span class="s">"&lt;pageKey&gt;"</span>, <span class="s">"…"</span>] },
+  <span class="k">"trashRetentionDays"</span>: <span class="y">30</span> }</pre>
+    <p>Children listed in <code>order</code> come first, in that order. The rest follow by title (<code>Intl.Collator("zh-TW")</code>).</p></div></div>
+<div class="req"><span class="id" data-a="data">DATA-22</span><div class="b"><p>Trash. <code>.notes/trash/index.json</code> has entries <code>{ id, title, originalPath, deletedAt, reason }</code>, where <code>reason</code> is <code>deleted</code> or <code>replaced</code>.</p>
+    <div class="grid2" style="margin-top:8px">
+      <div class="card"><h5>Delete</h5><p>Moves the file and its child folder to <code>.notes/trash/&lt;id&gt;/</code> with <code>reason: "deleted"</code>.</p></div>
+      <div class="card"><h5>Conflict loser</h5><p>A version discarded in a conflict (SYNC-6) is saved the same way with <code>reason: "replaced"</code>.</p></div>
+      <div class="card"><h5>Restore</h5><p>Moves the files back (DATA-6 if the name is taken).</p></div>
+      <div class="card"><h5>永久刪除 · retention</h5><p>Removes them from <code>.notes/trash/</code>; they stay in git history. On sync, entries older than <code>trashRetentionDays</code> are removed permanently.</p></div>
+    </div></div></div></div></details>
+</section>
+
+<!-- 4 STORE -->
+<section id="store">
+  <h2><span class="sn">§4</span>Device storage</h2>
+  <figure><div class="fig"><svg viewBox="0 0 780 290" role="img" aria-label="IndexedDB tables">
+    <rect x="192" y="6" width="582" height="250" rx="14" class="b0 dsh" style="fill:none"/>
+    <rect x="10" y="40" width="130" height="44" rx="8" class="bb"/><text x="75" y="67" class="mid w6 fb">Editor</text>
+    <path d="M140,62 L206,62" class="s-b" marker-end="url(#mb)"/><text x="173" y="54" class="xs mid fb">≤ 300 ms</text>
+    <rect x="208" y="20" width="300" height="124" rx="10" class="bp"/>
+    <text x="222" y="42" class="w6" style="fill:var(--purple)">files</text><text x="496" y="42" class="xs end">key: path</text>
+    <g class="mono" style="font-size:11px"><text x="222" y="66">baseText · baseSha</text><text x="222" y="86">text</text><text x="222" y="106">pushing</text><text x="222" y="126">dirty · deleted · conflict</text></g>
+    <g class="xs"><text x="378" y="66">← last seen on GitHub</text><text x="378" y="86">← local version</text><text x="378" y="106">← snapshot in flight</text></g>
+    <rect x="548" y="20" width="130" height="50" rx="8" class="bn dsh"/><text x="613" y="42" class="sm mid w6">pages</text><text x="613" y="59" class="xs mid">derived index</text>
+    <rect x="548" y="90" width="130" height="50" rx="8" class="bn dsh"/><text x="613" y="112" class="sm mid w6">search</text><text x="613" y="129" class="xs mid">MiniSearch</text>
+    <path d="M508,60 L546,46" class="s-p dsh" marker-end="url(#mp)"/><path d="M508,104 L546,114" class="s-p dsh" marker-end="url(#mp)"/>
+    <text x="690" y="72" class="xs">rebuilt from</text><text x="690" y="86" class="xs">files on every</text><text x="690" y="100" class="xs">write &amp; pull</text>
+    <rect x="208" y="176" width="150" height="62" rx="8" class="bg"/><text x="283" y="198" class="sm mid w6">uploads</text><text x="283" y="214" class="xs mid">unpushed attachments</text><text x="283" y="228" class="xs mid">never evicted</text>
+    <rect x="372" y="176" width="140" height="62" rx="8" class="bn"/><text x="442" y="198" class="sm mid w6">assets</text><text x="442" y="214" class="xs mid">downloaded files</text><text x="442" y="228" class="xs mid">≤ 200 MB · LRU</text>
+    <rect x="526" y="176" width="114" height="62" rx="8" class="bn"/><text x="583" y="198" class="sm mid w6">sync</text><text x="583" y="214" class="xs mid">headSha · treeSha</text><text x="583" y="228" class="xs mid">etag · lastError</text>
+    <rect x="654" y="176" width="110" height="62" rx="8" class="bn"/><text x="709" y="198" class="sm mid w6">config</text><text x="709" y="214" class="xs mid">workspace (token)</text><text x="709" y="228" class="xs mid">device · ui</text>
+    <text x="483" y="278" class="xs mid">IndexedDB "github-notes" (Dexie, versioned) · navigator.storage.persist() after setup</text>
+  </svg></div></figure>
+  <div class="math">dirty <span class="op">=</span> <span class="op">(</span>text <span class="op">≠</span> baseText<span class="op">)</span> <span class="op">∨</span> deleted</div>
+  <figure><div class="fig"><svg viewBox="0 0 760 170" role="img" aria-label="Several tabs">
+    <rect x="40" y="16" width="180" height="50" rx="8" class="b0"/><text x="130" y="38" class="sm mid">Tab 1</text><text x="130" y="55" class="xs mid">waits</text>
+    <rect x="290" y="16" width="180" height="50" rx="8" class="bg" style="stroke-width:2"/><text x="380" y="38" class="sm mid w6">Tab 2 · syncing</text><text x="380" y="55" class="xs mid fg">holds lock "sync"</text>
+    <rect x="540" y="16" width="180" height="50" rx="8" class="b0"/><text x="630" y="38" class="sm mid">Tab 3</text><text x="630" y="55" class="xs mid">waits</text>
+    <line x1="30" y1="96" x2="730" y2="96" class="s-b dsh"/><text x="730" y="88" class="xs end fb">BroadcastChannel</text>
+    <g class="s-b"><line x1="130" y1="66" x2="130" y2="96"/><line x1="380" y1="66" x2="380" y2="96"/><line x1="630" y1="66" x2="630" y2="96"/></g>
+    <rect x="200" y="124" width="360" height="36" rx="8" class="bp"/><text x="380" y="147" class="sm mid">one shared IndexedDB</text>
+    <path d="M380,96 L380,122" class="s-p" marker-end="url(#mp)"/>
+  </svg></div><figcaption>STORE-6 · Web Locks <code>navigator.locks.request("sync")</code>. The token is plain text in IndexedDB but never in logs, URLs, errors or exports (STORE-7).</figcaption></figure>
+  <details class="spec"><summary>Spec text · STORE-1 – STORE-7</summary><div class="inner"><div class="req"><span class="id" data-a="store">STORE-1</span><div class="b"><p>One IndexedDB database <code>github-notes</code> (Dexie), with schema versions and migrations:</p>
+    <div class="tw"><table><thead><tr><th>Table</th><th>Key</th><th>Contents</th></tr></thead><tbody>
+      <tr><td><code>config</code></td><td>key</td><td class="wrap"><code>workspace</code> <code>{owner, repo, branch, token, tokenExpiresOn, login, linkedAt}</code>, <code>device</code> <code>{id, name}</code>, <code>ui</code> <code>{theme, sidebarWidth, collapsed, recent[], lastColor}</code></td></tr>
+      <tr><td><code>files</code></td><td>path</td><td class="wrap"><code>kind</code> (<code>page</code> / <code>meta</code>), <code>baseSha</code>, <code>baseText</code>, <code>text</code>, <code>pushing</code> (snapshot text or null), <code>dirty</code>, <code>deleted</code>, <code>conflict</code>, <code>updatedAt</code></td></tr>
+      <tr><td><code>uploads</code></td><td>path</td><td class="wrap">attachments not yet pushed: <code>blob</code>, <code>sha256</code>, <code>createdAt</code>. Never evicted</td></tr>
+      <tr><td><code>pages</code></td><td>pageKey</td><td class="wrap">derived: <code>path</code>, <code>title</code>, <code>icon</code>, <code>parentKey</code>, <code>links[]</code>, <code>excerpt</code>, <code>updatedAt</code>. Can always be rebuilt from <code>files</code></td></tr>
+      <tr><td><code>assets</code></td><td>path</td><td class="wrap">downloaded attachments: <code>blob</code>, <code>size</code>, <code>lastUsed</code>. Cache of at most 200 MB, LRU eviction</td></tr>
+      <tr><td><code>sync</code></td><td>key</td><td class="wrap"><code>headSha</code>, <code>treeSha</code>, <code>etag</code>, <code>lastPullAt</code>, <code>lastPushAt</code>, <code>lastPushStartedAt</code>, <code>lastError</code></td></tr>
+      <tr><td><code>search</code></td><td>key</td><td>the serialised MiniSearch index</td></tr>
+    </tbody></table></div></div></div>
+<div class="req"><span class="id" data-a="store">STORE-2</span><div class="b"><p><code>baseText</code> / <code>baseSha</code> are the file as last seen on GitHub. <code>text</code> is the local version.</p>
+    <div class="math">dirty <span class="op">=</span> <span class="op">(</span>text <span class="op">≠</span> baseText<span class="op">)</span> <span class="op">∨</span> deleted</div></div></div>
+<div class="req"><span class="id" data-a="store">STORE-3</span><div class="b"><p>Every edit is written to <code>files.text</code> within 300 ms of the last keystroke and before the page is left. Network state and app closure never lose an edit.</p></div></div>
+<div class="req"><span class="id" data-a="store">STORE-4</span><div class="b"><p>The <code>pages</code> index and the search index are updated from <code>files</code> on every local write and every pull.</p></div></div>
+<div class="req"><span class="id" data-a="store">STORE-5</span><div class="b"><p>After setup the app calls <code>navigator.storage.persist()</code>.</p></div></div>
+<div class="req"><span class="id" data-a="store">STORE-6</span><div class="b"><p>Several tabs share the database. They exchange changes through <code>BroadcastChannel</code>; only one tab syncs at a time, using the Web Locks API (<code>navigator.locks.request("sync")</code>).</p></div></div>
+<div class="req"><span class="id" data-a="store">STORE-7</span><div class="b"><p>The token is stored in plain text in IndexedDB (see §8). It never appears in logs, URLs, error messages or exports.</p></div></div></div></details>
+</section>
+
+<!-- 5 SYNC -->
+<section id="sync">
+  <h2><span class="sn">§5</span>Sync</h2>
+  <h3><span class="sn">5.1</span>Principles</h3>
+  <figure><div class="fig"><svg viewBox="0 0 760 150" role="img" aria-label="Remote head is the truth">
+    <text x="10" y="22" class="xs mut">GitHub branch</text>
+    <line x1="60" y1="50" x2="380" y2="50" class="s-k"/>
+    <circle cx="60" cy="50" r="11" class="bn"/><circle cx="160" cy="50" r="11" class="bb"/><circle cx="270" cy="50" r="11" class="bn"/><circle cx="380" cy="50" r="13" class="bg" style="stroke-width:2"/>
+    <text x="380" y="26" class="xs mid fg w6">head = truth</text>
+    <text x="10" y="128" class="xs mut">this device</text>
+    <rect x="110" y="100" width="100" height="28" rx="6" class="bb"/><text x="160" y="119" class="mono mid" style="fill:var(--blue)">headSha</text>
+    <path d="M160,100 L160,64" class="s-b" marker-end="url(#mb)"/>
+    <rect x="222" y="100" width="130" height="28" rx="6" class="bp"/><text x="287" y="119" class="sm mid">+ dirty files</text>
+    <line x1="420" y1="10" x2="420" y2="140" class="s-m"/>
+    <g class="sm"><text x="440" y="36">• one pull or push at a time (Web Lock)</text><text x="440" y="62">• editor flushed into files.text first</text>
+    <text x="440" y="96" class="w6">No text is ever lost — it survives in</text><text x="440" y="118" class="xs">the page · a conflict copy · the trash · git history</text></g>
+  </svg></div><figcaption>SYNC-1 – SYNC-3.</figcaption></figure>
+  <details class="spec"><summary>Spec text · SYNC-1 – SYNC-3</summary><div class="inner"><div class="req"><span class="id" data-a="sync">SYNC-1</span><div class="b"><p>The remote branch head is the truth. The device keeps the commit it last synced (<code>headSha</code>) plus local changes.</p></div></div>
+<div class="req"><span class="id" data-a="sync">SYNC-2</span><div class="b"><p><b>No text is ever lost.</b> Every version that existed on a device or on GitHub survives somewhere: in the page, in a conflict copy, in the trash (DATA-22) or in git history.</p></div></div>
+<div class="req"><span class="id" data-a="sync">SYNC-3</span><div class="b"><p>Only one pull or push runs at a time per device (STORE-6). Before each one, the open editor is flushed into <code>files.text</code> while the sync lock is held.</p></div></div></div></details>
+
+  <h3><span class="sn">5.2</span>Pull</h3>
+  <figure><div class="fig"><svg viewBox="0 0 780 300" role="img" aria-label="Pull flow">
+    <g class="xs"><rect x="8" y="14" width="132" height="22" rx="11" class="b0"/><text x="74" y="29" class="mid">app start</text>
+    <rect x="8" y="42" width="132" height="22" rx="11" class="b0"/><text x="74" y="57" class="mid">window visible</text>
+    <rect x="8" y="70" width="132" height="22" rx="11" class="b0"/><text x="74" y="85" class="mid">every 60 s visible</text>
+    <rect x="8" y="98" width="132" height="22" rx="11" class="b0"/><text x="74" y="113" class="mid">before every push</text>
+    <rect x="8" y="126" width="132" height="22" rx="11" class="b0"/><text x="74" y="141" class="mid">「立即同步」</text></g>
+    <g class="s-k"><path d="M140,25 C160,25 158,80 172,82"/><path d="M140,53 C155,53 158,80 172,82"/><path d="M140,81 L172,82"/><path d="M140,109 C155,109 158,84 172,82"/><path d="M140,137 C160,137 158,84 172,82"/></g>
+    <circle cx="190" cy="82" r="18" class="bg"/><text x="190" y="87" class="sm mid w6">pull</text>
+    <path d="M208,82 L226,82" class="s-k" marker-end="url(#mk)"/>
+    <rect x="228" y="58" width="150" height="48" rx="8" class="b0"/><text x="303" y="78" class="mono mid">GET git/ref/heads/{b}</text><text x="303" y="96" class="xs mid">If-None-Match: etag</text>
+    <path d="M378,82 L400,82" class="s-k" marker-end="url(#mk)"/>
+    <polygon points="402,82 432,62 462,82 432,102" class="b0"/><text x="432" y="86" class="xs mid">same?</text>
+    <path d="M432,62 L432,36" class="s-k" marker-end="url(#mk)"/><text x="432" y="28" class="xs mid">304 / = headSha → stop</text>
+    <path d="M462,82 L484,82" class="s-k" marker-end="url(#mk)"/>
+    <rect x="486" y="58" width="150" height="48" rx="8" class="b0"/><text x="561" y="78" class="mono mid">GET git/trees/{sha}</text><text x="561" y="96" class="xs mid">?recursive=1</text>
+    <path d="M636,82 L658,82" class="s-k" marker-end="url(#mk)"/>
+    <polygon points="660,82 692,62 724,82 692,102" class="b0"/><text x="692" y="86" class="xs mid">truncated?</text>
+    <path d="M692,62 L692,36" class="s-r" marker-end="url(#mr)"/><text x="692" y="28" class="xs mid fr">"repo too large"</text>
+    <path d="M692,102 L692,150" class="s-k" marker-end="url(#mk)"/>
+    <rect x="600" y="152" width="172" height="48" rx="8" class="b0"/><text x="686" y="172" class="sm mid">download blobs</text><text x="686" y="190" class="xs mid">where sha ≠ baseSha</text>
+    <rect x="380" y="140" width="190" height="34" rx="8" class="bb"/><text x="475" y="155" class="xs mid">≤ 20 files · REST /git/blobs</text><text x="475" y="168" class="xs mid">2 at a time · base64</text>
+    <rect x="380" y="184" width="190" height="34" rx="8" class="bt"/><text x="475" y="199" class="xs mid">&gt; 20 files · GraphQL</text><text x="475" y="212" class="xs mid">~100 blobs per query</text>
+    <path d="M600,170 L572,158" class="s-b" marker-end="url(#mb)"/><path d="M600,184 L572,200" class="s-t" marker-end="url(#mt)"/>
+    <rect x="160" y="150" width="190" height="60" rx="8" class="bg"/><text x="255" y="174" class="sm mid w6">apply in rule order</text><text x="255" y="194" class="xs mid">moves → deletes → edits → adds</text>
+    <path d="M380,157 L352,170" class="s-k" marker-end="url(#mk)"/><path d="M380,201 L352,190" class="s-k" marker-end="url(#mk)"/>
+    <rect x="8" y="156" width="124" height="48" rx="8" class="bgr"/><text x="70" y="176" class="xs mid">set headSha</text><text x="70" y="192" class="xs mid">treeSha · etag</text>
+    <path d="M160,180 L134,180" class="s-k" marker-end="url(#mk)"/>
+    <rect x="8" y="232" width="764" height="54" rx="8" class="bn"/>
+    <text x="22" y="254" class="sm w6">Open editors update right away (this tab and others via BroadcastChannel)</text>
+    <text x="22" y="274" class="xs">clean page → content replaced · dirty page → merge result applied · cursor stays at the same block and offset</text>
+  </svg></div><figcaption>SYNC-4 triggers (left) and SYNC-5 steps.</figcaption></figure>
+
+  <figure><div class="fig"><svg viewBox="0 -14 780 304" role="img" aria-label="Pull apply order">
+    <g class="s-m"><line x1="8" y1="50" x2="772" y2="50"/><line x1="8" y1="96" x2="772" y2="96"/><line x1="8" y1="142" x2="772" y2="142"/><line x1="8" y1="188" x2="772" y2="188"/><line x1="8" y1="234" x2="772" y2="234"/></g>
+    <g class="xs mut"><text x="50" y="4">CHANGE</text><text x="210" y="4">WHEN</text><text x="470" y="4">RESULT</text></g>
+    <g><circle cx="24" cy="73" r="12" class="bg"/><circle cx="24" cy="119" r="12" class="bg"/><circle cx="24" cy="165" r="12" class="bg"/><circle cx="24" cy="211" r="12" class="bg"/><circle cx="24" cy="257" r="12" class="bg"/><circle cx="24" cy="30" r="12" class="bg"/></g>
+    <g class="mono mid" style="fill:var(--gold)"><text x="24" y="34">1</text><text x="24" y="77">2</text><text x="24" y="123">3</text><text x="24" y="169">4</text><text x="24" y="215">5</text><text x="24" y="261">6</text></g>
+    <g class="sm w6"><text x="50" y="34">Moves</text><text x="50" y="77">Moves into trash</text><text x="50" y="123">Deletes</text><text x="50" y="169">Edits</text><text x="50" y="215">Adds</text><text x="50" y="254">Local move / delete</text><text x="50" y="270" class="xs" style="font-weight:400">vs remote edit</text></g>
+    <g class="xs"><text x="210" y="34">same id at a new path</text><text x="210" y="77">path into .notes/trash/</text><text x="210" y="123">path removed remotely</text><text x="210" y="169">blob changed</text><text x="210" y="215">new remote path</text><text x="210" y="261">remote edited the old path</text></g>
+    <g class="s-k"><path d="M410,30 L456,30" marker-end="url(#mk)"/><path d="M410,73 L456,73" marker-end="url(#mk)"/><path d="M410,119 L456,119" marker-end="url(#mk)"/><path d="M410,165 L456,165" marker-end="url(#mk)"/><path d="M410,211 L456,211" marker-end="url(#mk)"/><path d="M410,257 L456,257" marker-end="url(#mk)"/></g>
+    <rect x="460" y="20" width="310" height="20" rx="10" class="bt"/><text x="472" y="34" class="xs">move locally; local edits merged in (diff3)</text>
+    <rect x="460" y="63" width="310" height="20" rx="10" class="bn"/><text x="472" y="77" class="xs">treated as a delete (rule 3)</text>
+    <rect x="460" y="99" width="150" height="20" rx="10" class="bgr"/><text x="470" y="113" class="xs">clean → delete</text>
+    <rect x="460" y="121" width="310" height="20" rx="10" class="bg"/><text x="470" y="135" class="xs">dirty → keep, re-create on push + notice</text>
+    <rect x="460" y="145" width="150" height="20" rx="10" class="bgr"/><text x="470" y="159" class="xs">clean → take remote</text>
+    <rect x="460" y="167" width="310" height="20" rx="10" class="bg"/><text x="470" y="181" class="xs">dirty → three-way merge (below)</text>
+    <rect x="460" y="201" width="310" height="20" rx="10" class="bt"/><text x="470" y="215" class="xs">add; a local unpushed page there is renamed (2) first</text>
+    <rect x="460" y="237" width="310" height="20" rx="10" class="bt"/><text x="470" y="251" class="xs">moved → remote edit merged into it, matched by id</text>
+    <rect x="460" y="259" width="310" height="20" rx="10" class="bg"/><text x="470" y="273" class="xs">deleted → remote text kept in the trash entry + notice</text>
+  </svg></div><figcaption>SYNC-5 step 4, applied top to bottom. Moves must not be duplicated ids or trash paths (DATA-9a).</figcaption></figure>
+  <figure><div class="fig"><svg viewBox="0 0 760 250" role="img" aria-label="Three-way merge diagram">
+    <defs><marker id="o5m3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--ink-3)"/></marker></defs>
+    <rect x="20" y="96" width="150" height="60" rx="10" style="fill:var(--panel);stroke:var(--ink-3)"/>
+    <text x="95" y="122" text-anchor="middle" class="lg">base</text><text x="95" y="142" text-anchor="middle" class="mono" style="fill:var(--ink-3)">baseText</text>
+    <rect x="250" y="24" width="150" height="60" rx="10" style="fill:var(--blue-bg);stroke:var(--blue)"/>
+    <text x="325" y="50" text-anchor="middle" class="lg fb">ours</text><text x="325" y="70" text-anchor="middle" class="mono" style="fill:var(--blue)">text (local)</text>
+    <rect x="250" y="168" width="150" height="60" rx="10" style="fill:var(--gold-bg);stroke:var(--gold)"/>
+    <text x="325" y="194" text-anchor="middle" class="lg fg">theirs</text><text x="325" y="214" text-anchor="middle" class="mono" style="fill:var(--gold)">remote blob</text>
+    <path d="M170,116 L248,60" style="stroke:var(--ink-3);fill:none" marker-end="url(#o5m3)"/>
+    <path d="M170,136 L248,192" style="stroke:var(--ink-3);fill:none" marker-end="url(#o5m3)"/>
+    <polygon points="500,126 540,96 580,126 540,156" style="fill:#fff;stroke:var(--ink)"/>
+    <text x="540" y="130" text-anchor="middle" class="xs">diff3</text>
+    <path d="M400,54 L506,118" style="stroke:var(--blue);fill:none" marker-end="url(#o5m3)"/>
+    <path d="M400,198 L506,134" style="stroke:var(--gold);fill:none" marker-end="url(#o5m3)"/>
+    <path d="M580,120 L640,70" style="stroke:var(--teal);fill:none;stroke-width:1.5" marker-end="url(#o5m3)"/>
+    <path d="M580,132 L640,182" style="stroke:var(--red);fill:none;stroke-width:1.5" marker-end="url(#o5m3)"/>
+    <text x="646" y="56" class="sm ft" style="font-weight:600">clean</text>
+    <text x="646" y="74" class="xs">text = merged</text><text x="646" y="90" class="xs">baseText = remote</text>
+    <text x="646" y="190" class="sm fr" style="font-weight:600">overlap</text>
+    <text x="646" y="208" class="xs">mark conflict</text><text x="646" y="224" class="xs">→ SYNC-6 dialog</text>
+  </svg></div><figcaption>Frontmatter merges key by key; the body merges line by line.</figcaption></figure>
+  <details class="spec"><summary>Spec text · SYNC-4 – SYNC-5</summary><div class="inner"><div class="req"><span class="id" data-a="sync">SYNC-4</span><div class="b"><p>A pull runs:</p>
+    <div class="swatches"><span class="pill">at app start</span><span class="pill">window becomes visible</span><span class="pill">every 60 s while visible</span><span class="pill">before every push</span><span class="pill">on 「立即同步」</span></div></div></div>
+<div class="req"><span class="id" data-a="sync">SYNC-5</span><div class="b"><p>Steps:</p>
+    <ol class="steps gold">
+      <li><div><code>GET /repos/{o}/{r}/git/ref/heads/{b}</code> with <code>If-None-Match: &lt;etag&gt;</code>. Stop if the response is <code>304</code> or the ref equals <code>headSha</code>.</div></li>
+      <li><div><code>GET /repos/{o}/{r}/git/trees/{treeSha}?recursive=1</code>. If it is <code>truncated</code>, report "repo too large" (out of scope).</div></li>
+      <li><div>Download every page or meta file whose blob SHA differs from <code>baseSha</code>:
+        <ul class="clean"><li><b>≤ 20 files</b>: <code>GET /git/blobs/{sha}</code>, at most 2 at a time; content is base64, decoded with <code>TextDecoder</code>;</li>
+        <li><b>&gt; 20 files</b>: GraphQL, about 100 blobs per query: <code>object(oid:"…") { ... on Blob { text byteSize isBinary } }</code>.</li></ul></div></li>
+      <li><div>Apply the changes <b>in this order</b> (below).</div></li>
+      <li><div>Set <code>headSha</code>, <code>treeSha</code> and <code>etag</code>.</div></li>
+    </ol>
+    <h4>Apply order</h4>
+    <div class="tw"><table><thead><tr><th>#</th><th>Change</th><th>Rule</th></tr></thead><tbody>
+      <tr><td>1</td><td><b>Moves</b></td><td>The same <code>id</code> at a new path, outside <code>.notes/trash/</code> and not duplicated (DATA-9a), is a move. Local edits are applied to the new path by three-way merge.</td></tr>
+      <tr><td>2</td><td><b>Moves into trash</b></td><td>Moves into <code>.notes/trash/</code> count as deletes (rule 3).</td></tr>
+      <tr><td>3</td><td><b>Deletes</b></td><td>A remote delete of a clean local file deletes it locally. If the local file is dirty, the local version is kept and re-created by the next push, with the notice 「這一頁在另一台裝置被刪除，但這台裝置有修改，所以保留了。」</td></tr>
+      <tr><td>4</td><td><b>Edits</b></td><td>Clean locally: take the remote text. Dirty locally: three-way merge by line (node-diff3), base = <code>baseText</code>, ours = <code>text</code>, theirs = remote. Frontmatter merges key by key, the body by line. A clean merge sets <code>text = merged</code> and <code>baseText = remote</code>. Overlaps go to SYNC-6.</td></tr>
+      <tr><td>5</td><td><b>Adds</b></td><td>A new remote path is added locally. If an unpushed local page already uses that path, the local page is renamed per DATA-6 first.</td></tr>
+      <tr><td>6</td><td><b>Local move/delete vs remote edit</b></td><td>Local move + remote edit at the old path: the remote edit is merged into the moved file, matched by id. Local delete + remote edit: the remote text goes into the local trash entry, with the notice 「你刪除的頁面在另一台裝置有新的修改，已一起放進垃圾桶。」</td></tr>
+    </tbody></table></div>
+    <h4>Open editors</h4>
+    <p>Pages open in this or another tab (BroadcastChannel) show the new content right away. A clean page has its editor content replaced; a dirty page gets the merge result applied the same way. In both cases the cursor stays at the same block and offset.</p></div></div></div></details>
+
+  <h3><span class="sn">5.3</span>Conflicts</h3>
+  <figure><div class="fig"><svg viewBox="0 0 780 250" role="img" aria-label="Conflict choices">
+    <rect x="210" y="8" width="360" height="50" rx="10" class="br"/><text x="390" y="30" class="mid w6 fr">同步衝突 · D10 / M20</text><text x="390" y="48" class="xs mid">changes highlighted · other side named by its Device: trailer</text>
+    <g class="s-k"><path d="M300,58 L130,86" marker-end="url(#mk)"/><path d="M390,58 L390,86" marker-end="url(#mk)"/><path d="M480,58 L650,86" marker-end="url(#mk)"/></g>
+    <g class="sm w6 mid"><text x="130" y="104">兩個都保留 (default)</text><text x="390" y="104">使用這台裝置的版本</text><text x="650" y="104">使用 &lt;other device&gt; 的版本</text></g>
+    <g class="xs mut"><text x="20" y="124">in place</text><text x="280" y="124">in place</text><text x="540" y="124">in place</text><text x="20" y="182">sibling page</text><text x="280" y="182">.notes/trash/ (replaced)</text><text x="540" y="182">.notes/trash/ (replaced)</text></g>
+    <rect x="20" y="130" width="220" height="36" rx="8" class="bg"/><text x="130" y="153" class="sm mid">remote version</text>
+    <rect x="20" y="188" width="220" height="50" rx="8" class="bb"/><text x="130" y="208" class="sm mid">local version</text><text x="130" y="226" class="mono mid" style="font-size:9.5px">&lt;title&gt;（衝突副本 iPhone 14:05）</text>
+    <rect x="280" y="130" width="220" height="36" rx="8" class="bb"/><text x="390" y="153" class="sm mid">local version</text>
+    <rect x="280" y="188" width="220" height="50" rx="8" class="bg"/><text x="390" y="217" class="sm mid">remote version</text>
+    <rect x="540" y="130" width="220" height="36" rx="8" class="bg"/><text x="650" y="153" class="sm mid">remote version</text>
+    <rect x="540" y="188" width="220" height="50" rx="8" class="bb"/><text x="650" y="217" class="sm mid">local version</text>
+  </svg></div><figcaption>SYNC-6. Blue = this device, gold = GitHub. Only that page's pushes are held; a new remote change re-runs the merge while the dialog is open.</figcaption></figure>
+  <div class="tw"><table><thead><tr><th>Key</th><th>Merge rule</th></tr></thead><tbody>
+      <tr><td><code>favorites</code></td><td>union, minus entries removed on either side since base</td></tr>
+      <tr><td><code>order</code></td><td>local wins for each parent key</td></tr>
+      <tr><td>trash entries</td><td>union by <code>id</code>, minus entries removed on either side since base</td></tr>
+      <tr><td><code>trashRetentionDays</code>, <code>version</code></td><td>local wins</td></tr>
+    </tbody></table></div>
+  <p class="cap">SYNC-6a · <code>.notes/settings.json</code> and <code>trash/index.json</code> merge key by key and never conflict. Unparseable remote JSON is ignored with a notice.</p>
+  <details class="spec"><summary>Spec text · SYNC-6 – SYNC-6a</summary><div class="inner"><div class="req"><span class="id" data-a="sync">SYNC-6</span><div class="b"><p>An overlapping edit marks the page <code>conflict</code> and shows a banner. The rest of the workspace keeps syncing; pushes for that page are held until the user chooses (D10 / M20).</p>
+    <p>The dialog shows both versions with the changed text highlighted, and names the other side from the <code>Device:</code> trailer of the latest remote commit that touched the file (SYNC-9). Without a trailer (e.g. an edit on github.com) it says 「GitHub 上的版本」.</p>
+    <div class="grid3">
+      <div class="card tint-t"><h5>兩個都保留 <span class="mono" style="font-size:.7rem;color:var(--teal)">DEFAULT</span></h5><p>Remote version stays in place. Local version becomes a sibling page <code>&lt;title&gt;（衝突副本 &lt;this device&gt; &lt;HH:mm&gt;）</code>, using the time of the local edit.</p></div>
+      <div class="card tint-b"><h5>使用這台裝置的版本</h5><p>Local version wins. Remote version goes to the trash with <code>reason: "replaced"</code>.</p></div>
+      <div class="card tint-g"><h5>使用 &lt;other device&gt; 的版本</h5><p>Remote version wins. Local version goes to the trash with <code>reason: "replaced"</code>.</p></div>
+    </div>
+    <p>If another remote change arrives while the dialog is open, the merge runs again against it. The dialog updates, or closes if the conflict is gone.</p></div></div>
+<div class="req"><span class="id" data-a="sync">SYNC-6a</span><div class="b"><p><code>.notes/settings.json</code> and <code>.notes/trash/index.json</code> never raise a conflict. They are merged key by key against base:</p>
+    <div class="tw"><table><thead><tr><th>Key</th><th>Merge rule</th></tr></thead><tbody>
+      <tr><td><code>favorites</code></td><td>union, minus entries removed on either side since base</td></tr>
+      <tr><td><code>order</code></td><td>local wins for each parent key</td></tr>
+      <tr><td>trash entries</td><td>union by <code>id</code>, minus entries removed on either side since base</td></tr>
+      <tr><td><code>trashRetentionDays</code>, <code>version</code></td><td>local wins</td></tr>
+    </tbody></table></div>
+    <p>Remote JSON that does not parse is ignored and the local file is kept, with a notice.</p></div></div></div></details>
+
+  <h3><span class="sn">5.4</span>Push</h3>
+  <figure style="margin:10px 0"><div class="fig"><svg viewBox="0 0 760 130" role="img" aria-label="Push throttle timeline">
+      <line x1="30" y1="70" x2="740" y2="70" style="stroke:var(--ink-3)"/>
+      <g class="xs"><text x="30" y="118">0 s</text><text x="210" y="118">30 s</text><text x="390" y="118">60 s</text><text x="570" y="118">90 s</text></g>
+      <g style="stroke:var(--ink-3)"><line x1="30" y1="66" x2="30" y2="74"/><line x1="210" y1="66" x2="210" y2="74"/><line x1="390" y1="66" x2="390" y2="74"/><line x1="570" y1="66" x2="570" y2="74"/></g>
+      <g style="fill:var(--blue)"><circle cx="40" cy="70" r="3"/><circle cx="52" cy="70" r="3"/><circle cx="64" cy="70" r="3"/><circle cx="130" cy="70" r="3"/><circle cx="150" cy="70" r="3"/><circle cx="170" cy="70" r="3"/><circle cx="182" cy="70" r="3"/></g>
+      <text x="40" y="52" class="xs" style="fill:var(--blue)">keystrokes</text>
+      <rect x="94" y="60" width="4" height="20" style="fill:var(--gold)"/><text x="96" y="40" text-anchor="middle" class="xs fg">push</text><text x="96" y="94" text-anchor="middle" class="xs">last edit + 5 s</text>
+      <rect x="98" y="64" width="180" height="12" rx="3" style="fill:var(--gold-bg);stroke:var(--gold);stroke-dasharray:3 2"/>
+      <text x="188" y="58" text-anchor="middle" class="xs fg">30 s spacing</text>
+      <rect x="276" y="60" width="4" height="20" style="fill:var(--gold)"/><text x="278" y="40" text-anchor="middle" class="xs fg">push</text><text x="278" y="94" text-anchor="middle" class="xs">held until 30 s</text>
+      <rect x="480" y="56" width="4" height="28" style="fill:var(--red)"/><text x="482" y="40" text-anchor="middle" class="xs fr">leave page / hide / 立即同步</text><text x="482" y="98" text-anchor="middle" class="xs">ignores spacing</text>
+    </svg></div></figure>
+  <figure><div class="fig"><svg viewBox="0 0 780 345" role="img" aria-label="Push sequence">
+    <rect x="70" y="8" width="160" height="32" rx="8" class="bb"/><text x="150" y="29" class="mid w6 fb">Device</text>
+    <rect x="540" y="8" width="180" height="32" rx="8" class="bg"/><text x="630" y="29" class="mid w6 fg">api.github.com</text>
+    <line x1="150" y1="40" x2="150" y2="300" class="s-m dsh"/><line x1="630" y1="40" x2="630" y2="335" class="s-m dsh"/>
+    <rect x="90" y="54" width="120" height="26" rx="6" class="bn"/><text x="150" y="71" class="xs mid">① pull (SYNC-5)</text>
+    <rect x="90" y="88" width="120" height="26" rx="6" class="bn"/><text x="150" y="105" class="xs mid">② pushing = text</text>
+    <path d="M150,132 L626,132" class="s-g" marker-end="url(#mg)"/><text x="390" y="126" class="mono mid">③ POST /git/blobs  · new attachments</text>
+    <path d="M630,152 L154,152" class="s-k dsh" marker-end="url(#mk)"/><text x="390" y="147" class="xs mid">blob sha</text>
+    <path d="M150,182 L626,182" class="s-g" marker-end="url(#mg)"/><text x="390" y="176" class="mono mid">④ POST /git/trees  base_tree = head</text>
+    <text x="390" y="198" class="xs mid">content · blob sha · sha:null only for paths in the head tree</text>
+    <path d="M150,226 L626,226" class="s-g" marker-end="url(#mg)"/><text x="390" y="220" class="mono mid">⑤ POST /git/commits  parents:[headSha]</text>
+    <path d="M150,262 L626,262" class="s-g" marker-end="url(#mg)"/><text x="390" y="256" class="mono mid">⑥ PATCH /git/refs/heads/{b}  force:false</text>
+    <path d="M630,286 L154,286" class="s-gr" marker-end="url(#mgr)"/><text x="390" y="281" class="xs mid" style="fill:var(--green)">200 → ⑦</text>
+    <path d="M88,262 C36,262 36,67 88,67" class="s-r dsh" marker-end="url(#mr)"/>
+    <text x="30" y="170" class="xs fr" transform="rotate(-90 30 170)" text-anchor="middle">422 / 409 → retry · 3 fails = Error</text>
+    <rect x="60" y="302" width="420" height="38" rx="8" class="bgr"/>
+    <text x="72" y="318" class="xs">⑦ baseText = pushing · baseSha = local git SHA-1 · pushing = null</text>
+    <text x="72" y="333" class="xs">headSha set · pushed uploads rows deleted · still dirty if text ≠ pushing</text>
+  </svg></div><figcaption>SYNC-8 · one commit per push via the Git Data API.</figcaption></figure>
+  <div class="math">baseSha <span class="op">=</span> <span class="fn">SHA-1</span><span class="op">(</span> <span class="str">"blob "</span> <span class="op">‖</span> len <span class="op">‖</span> <span class="str">"\0"</span> <span class="op">‖</span> bytes <span class="op">)</span></div>
+  <div class="demo" id="snap">
+      <div class="lbl">Step through · typing during a push (SYNC-8 step 7)</div>
+      <div class="stepper">
+        <div class="cell" id="c-base"><div class="k">baseText</div><div class="v"></div></div>
+        <div class="cell" id="c-text"><div class="k">text</div><div class="v"></div></div>
+        <div class="cell" id="c-push"><div class="k">pushing</div><div class="v"></div></div>
+        <div class="cell" id="c-dirty"><div class="k">dirty</div><div class="v"></div></div>
+      </div>
+      <div class="ctrl">
+        <button id="s-prev" type="button">← Back</button>
+        <button id="s-next" type="button">Next →</button>
+        <span class="cap" id="s-cap" aria-live="polite"></span>
+      </div>
+    </div>
+  <div class="grid2" style="align-items:start">
+    <div style="min-width:0"><pre><span class="k">更新「會議記錄」</span>          <span class="c">← or 更新 3 頁 / 新增「x」 / 移動「x」 / 刪除「x」 / 上傳圖片</span>
+                          <span class="c">← blank line</span>
+<span class="y">Device:</span> iPhone · Safari
+<span class="y">App:</span> GitHub Notes 0.1.0</pre><p class="cap">SYNC-9 · commit message; the <code>Device:</code> trailer names the other side in conflicts.</p></div>
+    <div class="card tint-b" style="margin-top:14px"><h5>Rename or move · SYNC-10</h5><p>One local operation, one push: 「移動「專案 A」到「工作」」. Covers the page file, every file in its folder, inbound links and <code>settings.json</code>.</p></div>
+  </div>
+  <details class="spec"><summary>Spec text · SYNC-7 – SYNC-10</summary><div class="inner"><div class="req"><span class="id" data-a="sync">SYNC-7</span><div class="b"><p>Triggers and throttling:</p>
+    
+    <ul class="clean"><li>A push runs 5 s after the last edit, but at most once every 30 s.</li>
+    <li>It also runs when leaving a page, when the app is hidden (best effort) and on 「立即同步」. These ignore the 30 s spacing.</li>
+    <li>A page whose title and body are both empty is never pushed.</li>
+    <li>When 「自動同步」 is off, there are no automatic pushes at all (timer, leave, hide). Only 「立即同步」 pushes. Pulls keep running.</li></ul></div></div>
+<div class="req"><span class="id" data-a="sync">SYNC-8</span><div class="b"><p>Steps (Git Data API, one commit per push):</p>
+    <ol class="steps gold">
+      <li><div>Pull (SYNC-5), so the base is the current head.</div></li>
+      <li><div>For each dirty file, record the exact text being pushed in <code>pushing</code>.</div></li>
+      <li><div>Upload each new attachment from <code>uploads</code>: <code>POST /git/blobs</code> (base64).</div></li>
+      <li><div><code>POST /git/trees</code> with <code>base_tree</code> = the head tree:
+        <ul class="clean"><li>an entry with inline <code>content</code> for each changed text file;</li>
+        <li>an entry with the blob SHA for each attachment;</li>
+        <li>an entry with <code>sha: null</code> for each deletion, <b>only for paths that exist in the head tree from step 1</b>. A deleted local file whose path is not in that tree is marked clean without a tree entry.</li></ul></div></li>
+      <li><div><code>POST /git/commits</code> with <code>parents: [headSha]</code>.</div></li>
+      <li><div><code>PATCH /git/refs/heads/{b}</code> with <code>force: false</code>. On <code>422</code> or <code>409</code>, go back to step 1. After 3 failed attempts, show the Error state.</div></li>
+      <li><div>On success, for each pushed file: set <code>baseText = pushing</code>; compute <code>baseSha</code> locally; clear <code>pushing</code> (the file stays dirty if <code>text ≠ pushing</code>). Then set <code>headSha</code> and delete the pushed <code>uploads</code> rows.</div></li>
+    </ol>
+    <div class="math">baseSha <span class="op">=</span> <span class="fn">SHA-1</span><span class="op">(</span> <span class="str">"blob "</span> <span class="op">‖</span> len <span class="op">‖</span> <span class="str">"\0"</span> <span class="op">‖</span> bytes <span class="op">)</span> &nbsp;&nbsp;<span style="font-style:normal;font-size:.8em;color:var(--ink-3)">via WebCrypto</span></div>
+
+    </div></div>
+<div class="req"><span class="id" data-a="sync">SYNC-9</span><div class="b"><p>Commit message, in the UI language:</p>
+<pre><span class="k">更新「會議記錄」</span>          <span class="c">← or 更新 3 頁 / 新增「x」 / 移動「x」 / 刪除「x」 / 上傳圖片</span>
+                          <span class="c">← blank line</span>
+<span class="y">Device:</span> iPhone · Safari
+<span class="y">App:</span> GitHub Notes 0.1.0</pre>
+    <p>The device name comes from the user agent (<code>iPhone</code>, <code>iPad</code>, <code>Mac</code>, <code>Windows 電腦</code>, <code>Linux 電腦</code>, <code>Android</code>) plus the browser.</p></div></div>
+<div class="req"><span class="id" data-a="sync">SYNC-10</span><div class="b"><p>A rename or move is one local operation and goes out in one push, with a message such as 「移動「專案 A」到「工作」」. It covers deleting and adding the page file and every file in its folder; rewriting inbound links (DATA-17); and updating <code>.notes/settings.json</code>.</p></div></div></div></details>
+
+  <h3><span class="sn">5.5</span>Status, errors and limits</h3>
+  <figure><div class="fig"><svg viewBox="0 0 780 210" role="img" aria-label="Sync status states">
+    <rect x="20" y="85" width="150" height="40" rx="20" class="bgr"/><text x="95" y="110" class="mid w6" style="fill:var(--green)">已同步</text>
+    <rect x="300" y="85" width="150" height="40" rx="20" class="bb"/><text x="375" y="110" class="mid w6 fb">同步中…</text>
+    <rect x="590" y="18" width="180" height="40" rx="20" class="bn"/><text x="680" y="43" class="mid w6">離線 · N 頁待同步</text>
+    <rect x="590" y="152" width="180" height="40" rx="20" class="br"/><text x="680" y="177" class="mid w6 fr">同步失敗 · 點此重試</text>
+    <path d="M160,92 C210,62 260,62 304,90" class="s-k" marker-end="url(#mk)"/><text x="232" y="60" class="xs mid">edit · timer · pull</text>
+    <path d="M304,120 C260,148 210,148 162,120" class="s-gr" marker-end="url(#mgr)"/><text x="232" y="158" class="xs mid" style="fill:var(--green)">success</text>
+    <path d="M440,88 L588,46" class="s-k" marker-end="url(#mk)"/><text x="500" y="52" class="xs mid">no network</text>
+    <path d="M594,60 L452,100" class="s-b dsh" marker-end="url(#mb)"/><text x="560" y="92" class="xs mid fb">online · backoff</text>
+    <path d="M440,122 L588,164" class="s-r" marker-end="url(#mr)"/><text x="490" y="168" class="xs mid fr">other error</text>
+    <path d="M594,152 L452,112" class="s-k dsh" marker-end="url(#mk)"/><text x="565" y="128" class="xs mid">tap to retry</text>
+  </svg></div><figcaption>SYNC-11. Error reasons include 「token 無效或已過期」, 「token 沒有寫入權限」, 「GitHub 暫時無法使用」, 「找不到 repo」, 「GitHub 要求暫停一下」.</figcaption></figure>
+  <figure><div class="fig"><svg viewBox="0 0 780 210" role="img" aria-label="Backoff and rate limits">
+    <text x="20" y="18" class="xs mut">network retry wait (s)</text>
+    <line x1="40" y1="170" x2="400" y2="170" class="s-k"/>
+    <g style="fill:var(--blue-l)">
+      <rect x="55" y="167.7" width="30" height="2.3"/><rect x="105" y="165.3" width="30" height="4.7"/><rect x="155" y="160.7" width="30" height="9.3"/>
+      <rect x="205" y="151.3" width="30" height="18.7"/><rect x="255" y="132.7" width="30" height="37.3"/><rect x="305" y="95.3" width="30" height="74.7"/><rect x="355" y="30" width="30" height="140" style="fill:var(--blue)"/>
+    </g>
+    <g class="xs mid"><text x="70" y="162">5</text><text x="120" y="160">10</text><text x="170" y="155">20</text><text x="220" y="146">40</text><text x="270" y="127">80</text><text x="320" y="90">160</text><text x="370" y="25">300 cap</text>
+    <text x="70" y="186">1</text><text x="120" y="186">2</text><text x="170" y="186">3</text><text x="220" y="186">4</text><text x="270" y="186">5</text><text x="320" y="186">6</text><text x="370" y="186">7+</text></g>
+    <text x="220" y="203" class="xs mid">attempt · retries at once on the "online" event</text>
+    <rect x="440" y="14" width="330" height="54" rx="8" class="bg"/><text x="454" y="36" class="mono">x-ratelimit-remaining &lt; 200</text><text x="454" y="56" class="xs">polling paused until x-ratelimit-reset</text>
+    <rect x="440" y="78" width="330" height="54" rx="8" class="br"/><text x="454" y="100" class="mono">403 / 429 secondary limit</text><text x="454" y="120" class="xs">wait retry-after, else 60 s, then back off</text>
+    <rect x="440" y="142" width="330" height="54" rx="8" class="bn"/><text x="454" y="164" class="sm">requests in series</text><text x="454" y="184" class="xs">except 2 parallel blob downloads · ≤ 3 writes per push</text>
+  </svg></div><figcaption>SYNC-12 (doubling shown as an illustration of 5 s → 5 min) and SYNC-13. 30 s spacing keeps content-creating requests under GitHub's 500 per hour.</figcaption></figure>
+  <div class="grid3">
+    <div class="card"><p class="bignum">5,000</p><p class="cap">pages</p></div>
+    <div class="card"><p class="bignum">1 MB</p><p class="cap">per page</p></div>
+    <div class="card"><p class="bignum">25 MB</p><p class="cap">per attachment</p></div>
+  </div>
+  <p class="cap">SYNC-14 · v1 limits; above them the app warns and keeps working where it can.</p>
+  <details class="spec"><summary>Spec text · SYNC-11 – SYNC-14</summary><div class="inner"><div class="req"><span class="id" data-a="sync">SYNC-11</span><div class="b"><p>Sync/Status shows one of these states:</p>
+    <div class="grid2">
+      <div class="card"><h5><span class="dot" style="--c:var(--green)"></span>已同步</h5><p>Nothing dirty and the last pull succeeded.</p></div>
+      <div class="card"><h5><span class="dot" style="--c:var(--blue-l)"></span>同步中…</h5><p>A pull or push is running.</p></div>
+      <div class="card"><h5><span class="dot" style="--c:var(--ink-3)"></span>離線 · N 頁待同步</h5><p>No network; N dirty pages.</p></div>
+      <div class="card"><h5><span class="dot" style="--c:var(--red)"></span>同步失敗 · 點此重試</h5><p>Any other error. Tapping shows the reason: 「token 無效或已過期」, 「token 沒有寫入權限」, 「GitHub 暫時無法使用」, 「找不到 repo」, 「GitHub 要求暫停一下」, …</p></div>
+    </div></div></div>
+<div class="req"><span class="id" data-a="sync">SYNC-12</span><div class="b"><p>Network failures retry with exponential backoff (5 s → 5 min), and immediately on the browser <code>online</code> event.</p></div></div>
+<div class="req"><span class="id" data-a="sync">SYNC-13</span><div class="b"><p>Rate limits (GitHub REST best practices):</p>
+    <ul class="clean"><li>The app reads <code>x-ratelimit-remaining</code>. Below 200, polling (SYNC-4) stops until <code>x-ratelimit-reset</code>.</li>
+    <li>Secondary limit (<code>403</code> or <code>429</code>): wait for <code>retry-after</code> if present; otherwise wait 60 s, then back off exponentially.</li>
+    <li>Requests are made serially, except the 2-way blob downloads in SYNC-5.</li>
+    <li>SYNC-7's spacing keeps content-creating requests (three per push) under GitHub's 500 per hour: timed pushes come at most 120 times an hour, so at most 360 such requests.</li></ul></div></div>
+<div class="req"><span class="id" data-a="sync">SYNC-14</span><div class="b"><p>Limits for v1: up to <b>5,000 pages</b>, <b>1 MB per page</b>, <b>25 MB per attachment</b>. Above these the app warns and keeps working where it can.</p></div></div></div></details>
+
+  <h3><span class="sn">5.6</span>Page history (D06 / M18)</h3>
+  <figure><div class="fig"><svg viewBox="0 0 760 132" role="img" aria-label="Page history">
+    <line x1="40" y1="60" x2="720" y2="60" class="s-k"/>
+    <g class="bn"><circle cx="90" cy="60" r="7"/><circle cx="180" cy="60" r="7"/><circle cx="270" cy="60" r="7"/></g>
+    <text x="180" y="40" class="xs mid mut">older commits not followed</text>
+    <line x1="350" y1="24" x2="350" y2="96" class="s-r dsh"/><text x="345" y="112" class="xs end fr">latest rename / move</text>
+    <g class="bb"><circle cx="430" cy="60" r="8"/><circle cx="520" cy="60" r="8"/><circle cx="610" cy="60" r="8"/><circle cx="700" cy="60" r="8"/></g>
+    <g class="xs mid"><text x="430" y="40">10/02 · Mac</text><text x="520" y="40">10/05 · iPhone</text><text x="610" y="40">10/09 · Mac</text><text x="700" y="40">10/11 · iPhone</text></g>
+    <g class="xs"><text x="400" y="90">GET commits?path=…&amp;per_page=30</text><text x="400" y="105">preview: contents?ref=sha (raw)</text><text x="400" y="120">「還原這個版本」 = a normal edit</text></g>
+  </svg></div><figcaption>SYNC-15 – SYNC-16.</figcaption></figure>
+  <details class="spec"><summary>Spec text · SYNC-15 – SYNC-16</summary><div class="inner"><div class="req"><span class="id" data-a="sync">SYNC-15</span><div class="b"><p>Versions come from <code>GET /repos/{o}/{r}/commits?path=&lt;path&gt;&amp;per_page=30</code>, paged. Each row shows date, time and the <code>Device:</code> trailer.</p>
+    <ul class="clean"><li>The preview loads <code>GET /repos/{o}/{r}/contents/&lt;path&gt;?ref=&lt;sha&gt;</code> with <code>Accept: application/vnd.github.raw</code>, which also works for files over 1 MB.</li>
+    <li>「還原這個版本」 replaces the local text with that version as a normal edit.</li></ul></div></div>
+<div class="req"><span class="id" data-a="sync">SYNC-16</span><div class="b"><p>History starts at the page's latest move or rename. The REST API does not follow renames; this is a known limitation.</p></div></div></div></details>
+</section>
+
+<!-- 6 SETUP -->
+<section id="setup">
+  <h2><span class="sn">§6</span>Setup and device linking</h2>
+  <figure><div class="fig"><svg viewBox="0 0 780 200" role="img" aria-label="Setup flow">
+    <defs><marker id="o7mg" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--green)"/></marker></defs>
+    <g>
+      <rect x="10" y="20" width="130" height="62" rx="10" style="fill:var(--panel);stroke:var(--ink-3);stroke-dasharray:4 3"/>
+      <text x="75" y="46" text-anchor="middle" class="sm">M16 加入主畫面</text><text x="75" y="66" text-anchor="middle" class="xs">iOS, not standalone</text>
+      <rect x="170" y="20" width="130" height="62" rx="10" style="fill:#fff;stroke:var(--green)"/>
+      <text x="235" y="46" text-anchor="middle" class="sm">D01 / M01</text><text x="235" y="66" text-anchor="middle" class="xs">歡迎</text>
+      <rect x="330" y="20" width="130" height="62" rx="10" style="fill:#fff;stroke:var(--green)"/>
+      <text x="395" y="46" text-anchor="middle" class="sm">D12 / M12</text><text x="395" y="66" text-anchor="middle" class="xs">Connect GitHub</text>
+      <rect x="490" y="20" width="130" height="62" rx="10" style="fill:#fff;stroke:var(--green)"/>
+      <text x="555" y="46" text-anchor="middle" class="sm">D13 / M13</text><text x="555" y="66" text-anchor="middle" class="xs">Choose repo + probe</text>
+      <rect x="650" y="20" width="120" height="62" rx="10" style="fill:var(--green-bg);stroke:var(--green)"/>
+      <text x="710" y="46" text-anchor="middle" class="sm">D14 / M14</text><text x="710" y="66" text-anchor="middle" class="xs">First sync</text>
+      <path d="M140,51 L168,51" style="stroke:var(--green)" marker-end="url(#o7mg)"/>
+      <path d="M300,51 L328,51" style="stroke:var(--green)" marker-end="url(#o7mg)"/>
+      <path d="M460,51 L488,51" style="stroke:var(--green)" marker-end="url(#o7mg)"/>
+      <path d="M620,51 L648,51" style="stroke:var(--green)" marker-end="url(#o7mg)"/>
+      <rect x="170" y="122" width="130" height="62" rx="10" style="fill:#fff;stroke:var(--red)"/>
+      <text x="235" y="148" text-anchor="middle" class="sm">M15 掃描 QR</text><text x="235" y="168" text-anchor="middle" class="xs">or 改用設定碼</text>
+      <rect x="330" y="122" width="130" height="62" rx="10" style="fill:#fff;stroke:var(--red)"/>
+      <text x="395" y="148" text-anchor="middle" class="sm">M22 配對碼</text><text x="395" y="168" text-anchor="middle" class="xs">decrypt + confirm</text>
+      <path d="M235,84 L235,120" style="stroke:var(--red)" marker-end="url(#o7mg)"/>
+      <path d="M300,153 L328,153" style="stroke:var(--red)" marker-end="url(#o7mg)"/>
+      <path d="M460,153 C520,153 540,110 552,86" style="stroke:var(--red);fill:none" marker-end="url(#o7mg)"/>
+      <text x="520" y="150" class="xs fr">write probe</text>
+      <text x="40" y="160" class="xs fr">Link from</text><text x="40" y="176" class="xs fr">another device →</text>
+    </g>
+  </svg></div><figcaption>Green: first-run setup with a token. Red: linking from a device that is already set up.</figcaption></figure>
+  <details class="spec"><summary>Spec text · SETUP-1 – SETUP-2</summary><div class="inner"><div class="req"><span class="id" data-a="setup">SETUP-1</span><div class="b"><p>With no <code>workspace</code> in config, the app shows D01/M01 (歡迎) and the main UI is not reachable.</p></div></div>
+<div class="req"><span class="id" data-a="setup">SETUP-2</span><div class="b"><p>On iOS, when not running as a home-screen app (<code>navigator.standalone !== true</code>), the app shows M16 (加入主畫面) first, because Safari and home-screen apps have separate storage. 「仍要在 Safari 使用」 continues anyway (see SETUP-13).</p></div></div></div></details>
+
+  <h3><span class="sn">6.2–6.4</span>Connect, choose repo, first sync</h3>
+  <figure><div class="fig"><svg viewBox="0 0 780 200" role="img" aria-label="Token check">
+    <rect x="10" y="80" width="120" height="40" rx="8" class="bn"/><text x="70" y="98" class="sm mid">paste token</text><text x="70" y="113" class="xs mid">whitespace trimmed</text>
+    <g class="s-k"><path d="M130,92 L198,36" marker-end="url(#mk)"/><path d="M130,100 L198,100" marker-end="url(#mk)"/><path d="M130,108 L198,164" marker-end="url(#mk)"/></g>
+    <rect x="200" y="16" width="170" height="40" rx="8" class="b0"/><text x="285" y="41" class="mono mid">github_pat_…</text>
+    <rect x="200" y="80" width="170" height="40" rx="8" class="b0"/><text x="285" y="105" class="mono mid">ghp_… (classic)</text>
+    <rect x="200" y="144" width="170" height="40" rx="8" class="b0"/><text x="285" y="169" class="sm mid">anything else</text>
+    <g class="s-k"><path d="M370,36 L398,36" marker-end="url(#mk)"/><path d="M370,100 L398,100" marker-end="url(#mk)"/><path d="M370,164 L398,164" marker-end="url(#mk)"/></g>
+    <rect x="400" y="16" width="190" height="40" rx="8" class="bgr"/><text x="495" y="41" class="sm mid">accepted</text>
+    <rect x="400" y="80" width="190" height="40" rx="8" class="bg"/><text x="495" y="98" class="sm mid">warning, then accepted</text><text x="495" y="113" class="xs mid">reaches all your repos</text>
+    <rect x="400" y="144" width="190" height="40" rx="8" class="br"/><text x="495" y="169" class="sm mid">「這看起來不是 GitHub token」</text>
+    <g class="s-gr"><path d="M590,36 C615,36 615,70 628,74" marker-end="url(#mgr)"/><path d="M590,100 C615,100 615,84 628,82" marker-end="url(#mgr)"/></g>
+    <rect x="630" y="50" width="140" height="64" rx="8" class="b0"/><text x="700" y="70" class="mono mid">GET /user</text><text x="700" y="88" class="xs mid">then /user/repos</text><text x="700" y="104" class="xs mid fr">401 → 無效或已過期</text>
+  </svg></div><figcaption>SETUP-4 and SETUP-6. The pre-filled token form asks for <code>contents=write</code> and 90-day expiry (SETUP-3).</figcaption></figure>
+  <figure><div class="fig"><svg viewBox="0 0 780 170" role="img" aria-label="Write probe">
+    <rect x="10" y="58" width="210" height="54" rx="8" class="bb"/><text x="115" y="80" class="mono mid" style="fill:var(--blue)">POST /git/blobs</text><text x="115" y="99" class="xs mid">"github-notes write check"</text>
+    <g class="s-k"><path d="M220,78 L288,30" marker-end="url(#mk)"/><path d="M220,85 L288,85" marker-end="url(#mk)"/><path d="M220,92 L288,140" marker-end="url(#mk)"/></g>
+    <rect x="290" y="10" width="110" height="40" rx="8" class="bgr"/><text x="345" y="35" class="mono mid">201</text>
+    <rect x="290" y="65" width="110" height="40" rx="8" class="br"/><text x="345" y="90" class="mono mid">403 / 404</text>
+    <rect x="290" y="120" width="110" height="40" rx="8" class="bg"/><text x="345" y="145" class="mono mid">409</text>
+    <g class="s-k"><path d="M400,30 L428,30" marker-end="url(#mk)"/><path d="M400,85 L428,85" marker-end="url(#mk)"/><path d="M400,140 L428,140" marker-end="url(#mk)"/></g>
+    <text x="436" y="27" class="sm">OK — the blob is unreferenced, harmless</text><text x="436" y="43" class="xs">→ first sync with progress bar (D14 / M14)</text>
+    <text x="436" y="82" class="sm">「這把 token 沒有這個 repo 的寫入權限」</text><text x="436" y="98" class="xs">needs Contents: Read and write</text>
+    <text x="436" y="137" class="sm">empty repo → PUT 歡迎使用.md</text><text x="436" y="153" class="xs">that first commit is itself the probe</text>
+  </svg></div><figcaption>SETUP-8 / SETUP-9. Repo <code>permissions</code> describe the user, not the token, so the app writes for real. Public repos need a confirmation (SETUP-7).</figcaption></figure>
+  <figure><div class="fig"><svg viewBox="0 0 780 140" role="img" aria-label="Token expiry timeline">
+    <line x1="30" y1="62" x2="750" y2="62" class="s-k"/>
+    <circle cx="40" cy="62" r="7" class="bb"/><text x="40" y="40" class="xs">setup: 到期日 = today + 90 d</text><text x="40" y="90" class="xs mut">editable in settings</text>
+    <rect x="530" y="52" width="160" height="20" class="bg" style="stroke:none"/><text x="610" y="40" class="xs mid fg">banner 「token 將在 N 天後到期」</text><text x="610" y="90" class="xs mid">last 14 days</text>
+    <line x1="690" y1="40" x2="690" y2="84" class="s-r"/><text x="690" y="104" class="xs mid fr">tokenExpiresOn</text>
+    <rect x="690" y="52" width="60" height="20" class="br" style="stroke:none"/>
+    <text x="400" y="128" class="xs mid">any 401 → read-only + banner; local edits kept · 更換 token (write probe) → pushes resume</text>
+  </svg></div><figcaption>SETUP-5, SETUP-11, SETUP-13. Browsers can't read GitHub's expiry header, so the app asks.</figcaption></figure>
+  <details class="spec"><summary>Spec text · SETUP-3 – SETUP-10</summary><div class="inner"><div class="req"><span class="id" data-a="setup">SETUP-3</span><div class="b"><p>Links on this screen:</p>
+    <ul class="clean"><li>「在 GitHub 新建 repo ↗」 opens <code>https://github.com/new</code>.</li>
+    <li>「在 GitHub 建立 token ↗」 opens a pre-filled form: <code>https://github.com/settings/personal-access-tokens/new?name=GitHub+Notes&amp;description=GitHub+Notes+app&amp;contents=write&amp;expires_in=90</code></li>
+    <li>URL parameters cannot pick the repository, so the steps on screen still say: Repository access → 「Only select repositories」 → the notes repo.</li></ul></div></div>
+<div class="req"><span class="id" data-a="setup">SETUP-4</span><div class="b"><p>Accepted token formats (leading and trailing whitespace removed):</p>
+    <div class="tw"><table><thead><tr><th>Input</th><th>Result</th></tr></thead><tbody>
+      <tr><td><code>github_pat_…</code> (fine-grained)</td><td><span style="color:var(--green)">accepted</span></td></tr>
+      <tr><td><code>ghp_…</code> (classic)</td><td><span style="color:var(--gold)">accepted after a warning</span> that it can reach all of the user's repos</td></tr>
+      <tr><td>anything else</td><td><span style="color:var(--red)">rejected inline</span>: 「這看起來不是 GitHub token」</td></tr>
+    </tbody></table></div></div></div>
+<div class="req"><span class="id" data-a="setup">SETUP-5</span><div class="b"><p>Expiry date. Browsers cannot read GitHub's token-expiry response header (it is not CORS-exposed), so the screen asks for 「到期日」. Default: today + 90 days, matching the pre-filled form. Stored as <code>tokenExpiresOn</code>; editable in settings.</p></div></div>
+<div class="req"><span class="id" data-a="setup">SETUP-6</span><div class="b"><p>On 「連結」:</p>
+    <ol class="steps green">
+      <li><div><code>GET /user</code> gives the login. A <code>401</code> shows 「token 無效或已過期」.</div></li>
+      <li><div><code>GET /user/repos?per_page=100&amp;sort=updated</code>, paged, lists candidate repos.</div></li>
+      <li><div>Go to D13.</div></li>
+    </ol></div></div>
+<div class="req"><span class="id" data-a="setup">SETUP-7</span><div class="b"><p>The list shows candidate repos with Private and Public badges. Choosing a public repo needs a confirmation: 「公開的 repo 任何人都看得到你的筆記」.</p></div></div>
+<div class="req"><span class="id" data-a="setup">SETUP-8</span><div class="b"><p>After a repo is chosen, write access is probed with <code>POST /repos/{o}/{r}/git/blobs {"content":"github-notes write check","encoding":"utf-8"}</code>. The repo list's <code>permissions</code> field is not used: it describes the user, not the token.</p>
+    <div class="tw"><table><thead><tr><th>Response</th><th>Meaning</th></tr></thead><tbody>
+      <tr><td><code>201</code></td><td>OK. The blob is unreferenced and harmless.</td></tr>
+      <tr><td><code>403</code> / <code>404</code></td><td>「這把 token 沒有這個 repo 的寫入權限（Contents: Read and write）」</td></tr>
+      <tr><td><code>409</code></td><td>The repo is empty. SETUP-9 initialises it, and that write is itself the probe.</td></tr>
+    </tbody></table></div></div></div>
+<div class="req"><span class="id" data-a="setup">SETUP-9</span><div class="b"><p>An empty repo is initialised with one commit, <code>PUT /repos/{o}/{r}/contents/歡迎使用.md</code>, a page explaining the basics. A non-empty repo is used as it is: its <code>.md</code> files become pages, and folders without a page become virtual pages (DATA-3).</p></div></div>
+<div class="req"><span class="id" data-a="setup">SETUP-10</span><div class="b"><p>The app downloads every page (SYNC-5) with a progress bar showing files done out of the total, then builds the search index. 「開始使用」 is enabled when both are done. Attachments download lazily when first shown.</p></div></div></div></details>
+
+  <h3><span class="sn">6.5</span>Link a new device</h3>
+  <figure><div class="fig"><svg viewBox="0 0 780 250" role="img" aria-label="QR payload encryption">
+    <defs><marker id="o8mr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--ink-2)"/></marker></defs>
+    <rect x="16" y="20" width="170" height="54" rx="10" style="fill:var(--red-bg);stroke:var(--red)"/>
+    <text x="101" y="42" text-anchor="middle" class="sm fr" style="font-weight:600">pairing code</text>
+    <text x="101" y="62" text-anchor="middle" class="mono" style="fill:var(--red)">7KQM-3XWP</text>
+    <rect x="16" y="96" width="170" height="54" rx="10" style="fill:var(--panel);stroke:var(--ink-3)"/>
+    <text x="101" y="118" text-anchor="middle" class="sm">salt</text><text x="101" y="138" text-anchor="middle" class="xs">16 random bytes</text>
+    <rect x="240" y="56" width="180" height="60" rx="10" style="fill:#fff;stroke:var(--ink)"/>
+    <text x="330" y="80" text-anchor="middle" class="sm" style="font-weight:600">PBKDF2-SHA-256</text>
+    <text x="330" y="100" text-anchor="middle" class="xs">600,000 iterations</text>
+    <path d="M186,47 L238,78" style="stroke:var(--ink-2);fill:none" marker-end="url(#o8mr)"/>
+    <path d="M186,123 L238,96" style="stroke:var(--ink-2);fill:none" marker-end="url(#o8mr)"/>
+    <rect x="16" y="176" width="300" height="54" rx="10" style="fill:var(--gold-bg);stroke:var(--gold)"/>
+    <text x="166" y="198" text-anchor="middle" class="sm fg" style="font-weight:600">UTF-8 JSON</text>
+    <text x="166" y="218" text-anchor="middle" class="mono" style="fill:var(--gold)">{"o","r","b","t","e"}</text>
+    <rect x="474" y="110" width="140" height="60" rx="10" style="fill:#fff;stroke:var(--ink)"/>
+    <text x="544" y="136" text-anchor="middle" class="sm" style="font-weight:600">AES-GCM</text>
+    <text x="544" y="156" text-anchor="middle" class="xs">key + iv</text>
+    <path d="M420,90 L472,126" style="stroke:var(--ink-2);fill:none" marker-end="url(#o8mr)"/><text x="452" y="96" class="xs">key</text>
+    <path d="M316,203 L472,154" style="stroke:var(--ink-2);fill:none" marker-end="url(#o8mr)"/>
+    <rect x="440" y="196" width="330" height="40" rx="8" style="fill:var(--blue-bg);stroke:var(--blue)"/>
+    <text x="605" y="221" text-anchor="middle" class="mono" style="fill:var(--blue);font-size:12px">ghnotes:1:&lt;salt&gt;.&lt;iv&gt;.&lt;ciphertext&gt;</text>
+    <path d="M580,170 L590,194" style="stroke:var(--ink-2);fill:none" marker-end="url(#o8mr)"/>
+    <text x="650" y="40" class="xs">o owner · r repo · b branch</text>
+    <text x="650" y="56" class="xs">t token · e tokenExpiresOn</text>
+    <text x="650" y="80" class="xs">all base64url</text>
+    <text x="650" y="96" class="xs">QR error correction: M</text>
+  </svg></div><figcaption>The QR code (or copied setup code) alone does not reveal the token; the pairing code is shown only on the source screen.</figcaption></figure>
+  <figure><div class="fig"><svg viewBox="0 0 780 120" role="img" aria-label="Pairing safeguards">
+    <text x="10" y="20" class="sm w6">Source device · LINK-2</text>
+    <rect x="10" y="34" width="300" height="22" rx="4" class="bb"/><rect x="10" y="34" width="300" height="22" rx="4" style="fill:var(--blue-l);opacity:.35"/>
+    <text x="160" y="50" class="xs mid">QR + pairing code visible · 60 s</text>
+    <text x="10" y="78" class="xs">hidden after 60 s or when the window hides</text><text x="10" y="94" class="xs">「重新產生」 = new salt + code · 「複製設定碼」 warns about clipboard history</text>
+    <line x1="400" y1="10" x2="400" y2="110" class="s-m"/>
+    <text x="420" y="20" class="sm w6">New device · LINK-3</text>
+    <g><circle cx="436" cy="48" r="12" class="br"/><circle cx="470" cy="48" r="12" class="br"/><circle cx="504" cy="48" r="12" class="br"/></g>
+    <g class="mid fr"><text x="436" y="52">✗</text><text x="470" y="52">✗</text><text x="504" y="52">✗</text></g>
+    <path d="M520,48 L548,48" class="s-r" marker-end="url(#mr)"/><text x="554" y="52" class="xs fr">scanned payload discarded</text>
+    <circle cx="436" cy="88" r="12" class="bgr"/><text x="436" y="92" class="mid" style="fill:var(--green)">✓</text>
+    <path d="M452,88 L478,88" class="s-gr" marker-end="url(#mgr)"/><text x="484" y="92" class="xs">M22 shows owner · repo · login · expiry → confirm → probe</text>
+  </svg></div><figcaption>No camera? 「改用設定碼」 accepts the pasted payload (LINK-4). Non-GitHub-Notes QR codes are rejected.</figcaption></figure>
+  <details class="spec"><summary>Spec text · LINK-1 – LINK-4</summary><div class="inner"><div class="req"><span class="id" data-a="setup">LINK-1</span><div class="b"><p>Payload and encryption:</p>
+    <ul class="clean"><li>An 8-character <b>pairing code</b> from the alphabet <code>23456789ABCDEFGHJKMNPQRSTUVWXYZ</code>, shown as <code>XXXX-XXXX</code>.</li>
+    <li>Payload <code>ghnotes:1:&lt;salt&gt;.&lt;iv&gt;.&lt;ciphertext&gt;</code>, all base64url.</li>
+    <li>Ciphertext: AES-GCM of the UTF-8 JSON <code>{"o","r","b","t","e"}</code> (owner, repo, branch, token, <code>tokenExpiresOn</code>).</li>
+    <li>Key: PBKDF2-SHA-256 of the pairing code, 600,000 iterations, 16-byte salt.</li>
+    <li>QR error correction is level M.</li></ul></div></div>
+<div class="req"><span class="id" data-a="setup">LINK-2</span><div class="b"><p>Source device: 設定 → 連結新裝置 → 「顯示 QR code」.</p>
+    <ul class="clean"><li>The QR code and pairing code appear only after that click.</li>
+    <li>Both hide after 60 s and when the window is hidden. 「重新產生」 makes a new salt and code.</li>
+    <li>「複製設定碼」 copies the same encrypted payload as text, with a warning that clipboard history and Universal Clipboard can keep it.</li></ul></div></div>
+<div class="req"><span class="id" data-a="setup">LINK-3</span><div class="b"><p>New device: 「用 QR code 從另一台裝置連結」 opens the camera (<code>getUserMedia</code>, rear camera, M15). Frames are decoded with jsQR.</p>
+    <ol class="steps green">
+      <li><div>A <code>ghnotes:1:</code> payload leads to M22, where the user enters the pairing code.</div></li>
+      <li><div>After decryption, M22 shows the owner, repo, GitHub login (<code>GET /user</code>) and expiry date, and asks for confirmation.</div></li>
+      <li><div>SETUP-8's write probe runs, then the app goes to D14/M14.</div></li>
+    </ol>
+    <p>Any other QR content shows 「這不是 GitHub Notes 的 QR code」. Three wrong pairing codes in a row discard the scanned payload.</p></div></div>
+<div class="req"><span class="id" data-a="setup">LINK-4</span><div class="b"><p>If the camera is denied or unavailable, 「改用設定碼」 (M15) accepts the pasted payload, and the flow continues at M22.</p></div></div></div></details>
+
+  <h3><span class="sn">6.6</span>Changing the setup (D08 / M17)</h3>
+  <div class="tw"><table><thead><tr><th>Action</th><th>Clears</th><th>Then</th></tr></thead><tbody>
+      <tr><td><b>更換 repo</b></td><td><code>files</code>, <code>pages</code>, <code>uploads</code>, <code>assets</code>, <code>sync</code>, <code>search</code></td><td>go to D13</td></tr>
+      <tr><td><b>中斷連結</b></td><td>the whole database and the cache</td><td>return to D01/M01</td></tr>
+      <tr><td><b>清除這台裝置的資料</b></td><td>the caches; token and repo stay</td><td>re-download everything</td></tr>
+    </tbody></table></div>
+  <p class="cap">SETUP-12 · each needs zero dirty files: sync first, or confirm 「放棄 N 個未同步的修改」.</p>
+  <details class="spec"><summary>Spec text · SETUP-11 – SETUP-13</summary><div class="inner"><div class="req"><span class="id" data-a="setup">SETUP-11</span><div class="b"><p>更換 token: the new token is checked as in SETUP-4 and SETUP-6, plus the write probe (SETUP-8) on the current repo. It asks for the new expiry date. Only the token and the date are replaced.</p></div></div>
+<div class="req"><span class="id" data-a="setup">SETUP-12</span><div class="b"><p>These actions need zero dirty files. If any exist, the user must first sync, or confirm 「放棄 N 個未同步的修改」:</p>
+    <div class="tw"><table><thead><tr><th>Action</th><th>Clears</th><th>Then</th></tr></thead><tbody>
+      <tr><td><b>更換 repo</b></td><td><code>files</code>, <code>pages</code>, <code>uploads</code>, <code>assets</code>, <code>sync</code>, <code>search</code></td><td>go to D13</td></tr>
+      <tr><td><b>中斷連結</b></td><td>the whole database and the cache</td><td>return to D01/M01</td></tr>
+      <tr><td><b>清除這台裝置的資料</b></td><td>the caches; token and repo stay</td><td>re-download everything</td></tr>
+    </tbody></table></div></div></div>
+<div class="req"><span class="id" data-a="setup">SETUP-13</span><div class="b"><p>Expiry and Safari tab mode:</p>
+    <ul class="clean"><li><b>Expiry</b>: from 14 days before <code>tokenExpiresOn</code>, a banner says 「token 將在 N 天後到期」 with 「更換 token」.</li>
+    <li><b>Expired or revoked</b>: any <code>401</code> makes the app read-only, with a banner. Local edits are kept and pushed after the token is replaced.</li>
+    <li><b>Safari tab mode</b>: Safari deletes script-written data of sites unused for 7 days. When the app runs as a normal Safari tab (iOS after 「仍要在 Safari 使用」, or Safari on Mac), a permanent hint suggests 「加入主畫面」 or 「加入 Dock」, and pushes ignore the 30 s spacing.</li></ul></div></div></div></details>
+</section>
+
+<!-- 7 UI -->
+<section id="ui">
+  <h2><span class="sn">§7</span>Screens and behaviour</h2>
+  <figure><div class="fig"><svg viewBox="0 0 780 300" role="img" aria-label="Desktop page layout">
+    <rect x="10" y="10" width="760" height="280" rx="12" style="fill:#fff;stroke:var(--rule)"/>
+    <rect x="10" y="10" width="170" height="280" rx="12" style="fill:var(--panel)"/>
+    <text x="24" y="36" class="xs mut">SIDEBAR · 240 px (200–480)</text>
+    <text x="24" y="62" class="sm">★ 我的最愛</text><text x="24" y="88" class="sm">▾ 工作</text><text x="40" y="110" class="sm">會議記錄</text>
+    <rect x="34" y="120" width="140" height="22" rx="5" style="fill:var(--blue-bg)"/><text x="40" y="136" class="sm fb">專案 A</text><text x="148" y="136" class="sm fb">… +</text>
+    <text x="24" y="166" class="sm">讀書筆記</text>
+    <text x="24" y="270" class="xs mut">⌘\ toggles</text>
+    <rect x="180" y="10" width="590" height="40" style="fill:#fff;stroke:var(--rule)"/>
+    <text x="196" y="35" class="xs">工作 / 專案 A</text>
+    <circle cx="372" cy="31" r="4" style="fill:var(--green)"/><text x="382" y="35" class="xs">已同步</text>
+    <text x="450" y="35" class="xs mut">已編輯 3 分鐘前</text>
+    <text x="580" y="35" class="xs">歷史</text><text x="620" y="35" class="xs">☆</text><text x="650" y="35" class="xs">…</text>
+    <text x="230" y="98" style="font-size:24px;font-weight:600">專案 A</text>
+    <text x="230" y="76" class="xs mut">加入圖示 · 加入封面 (hover)</text>
+    <text x="214" y="140" class="sm mut">+ ⋮⋮</text>
+    <rect x="252" y="124" width="420" height="24" rx="4" style="fill:var(--blue-bg)"/>
+    <text x="260" y="141" class="sm">Text block with a <tspan style="font-weight:700">selection</tspan></text>
+    <rect x="330" y="96" width="250" height="24" rx="6" style="fill:var(--ink)"/>
+    <text x="340" y="113" class="xs" style="fill:#fff">文字 ▾  B  I  U  S  ‹›  🔗  A  …</text>
+    <text x="260" y="176" class="sm">/h1</text>
+    <rect x="260" y="184" width="200" height="66" rx="8" style="fill:#fff;stroke:var(--rule)"/>
+    <rect x="266" y="190" width="188" height="20" rx="4" style="fill:var(--blue-bg)"/>
+    <text x="274" y="204" class="xs">標題 1 · h1</text><text x="274" y="226" class="xs">標題 2 · h2</text><text x="274" y="244" class="xs">標題 3 · h3</text>
+    <line x1="230" y1="266" x2="740" y2="266" style="stroke:var(--rule)"/>
+    <text x="230" y="282" class="xs mut">反向連結 · pages that link here</text>
+    <g class="xs fr"><text x="600" y="72">UI-4 top bar</text><text x="480" y="114">UI-8</text><text x="470" y="210">UI-7 / menu</text><text x="196" y="160">UI-3</text><text x="560" y="282">UI-6</text></g>
+  </svg></div><figcaption>A sketch of D02 with the requirement that governs each part. Figma is the visual spec.</figcaption></figure>
+  <figure><div class="fig"><svg viewBox="0 0 780 160" role="img" aria-label="Slash menu states">
+    <rect x="10" y="60" width="110" height="40" rx="20" class="bn"/><text x="65" y="85" class="mid">closed</text>
+    <path d="M120,72 L268,72" class="s-b" marker-end="url(#mb)"/><text x="194" y="52" class="xs mid">type / or ／</text><text x="194" y="65" class="xs mid">outside code · after IME</text>
+    <rect x="270" y="56" width="160" height="48" rx="10" class="bb"/><text x="350" y="78" class="mid w6 fb">/ menu</text><text x="350" y="95" class="xs mid">↑ ↓ move</text>
+    <text x="350" y="124" class="xs mid">filter: 中文 name or alias</text><text x="350" y="138" class="xs mid">case- &amp; width-insensitive</text>
+    <path d="M430,70 L540,40" class="s-gr" marker-end="url(#mgr)"/><text x="470" y="44" class="xs" style="fill:var(--green)">Enter</text>
+    <rect x="542" y="14" width="230" height="48" rx="8" class="bgr"/><text x="556" y="34" class="sm">insert block</text><text x="556" y="52" class="xs">page → child page + link to it</text>
+    <path d="M270,92 C210,140 140,130 104,102" class="s-k dsh" marker-end="url(#mk)"/><text x="170" y="150" class="xs mid">Esc · space · 3 chars, no match</text>
+    <text x="460" y="96" class="mono" style="font-size:9.5px;fill:var(--ink-3)">text h1 h2 h3 bullet number todo toggle</text>
+    <text x="460" y="112" class="mono" style="font-size:9.5px;fill:var(--ink-3)">quote callout divider code table image file link page</text>
+  </svg></div><figcaption>UI-7 · on iPhone the same list is the M06 sheet.</figcaption></figure>
+  <figure><div class="fig"><svg viewBox="0 0 780 150" role="img" aria-label="Search ranking">
+    <rect x="20" y="16" width="360" height="32" rx="6" style="fill:var(--blue)"/><text x="32" y="37" style="fill:#fff" class="sm">① title matches</text>
+    <rect x="20" y="56" width="260" height="32" rx="6" style="fill:var(--blue-l)"/><text x="32" y="77" class="sm">② headings</text>
+    <rect x="20" y="96" width="160" height="32" rx="6" class="bb"/><text x="32" y="117" class="sm">③ body</text>
+    <g class="xs"><text x="420" y="30"><tspan class="mono">⌘K</tspan> (no selection) or <tspan class="mono">⌘P</tspan> opens</text>
+    <text x="420" y="52">Enter opens · ⌘Enter opens in a new tab</text>
+    <text x="420" y="74">filters: 只搜尋標題 · 最相關 / 最近編輯 · any / 7 / 30 days</text>
+    <text x="420" y="96">Intl.Segmenter("zh-TW") words + single-char prefix</text>
+    <text x="420" y="118">result: path + snippet, match in medium weight</text></g>
+  </svg></div><figcaption>UI-9.</figcaption></figure>
+  <figure><div class="fig"><svg viewBox="0 0 780 190" role="img" aria-label="IME and new page">
+    <text x="10" y="20" class="sm w6">IME · UI-17</text>
+    <line x1="20" y1="56" x2="760" y2="56" class="s-m"/>
+    <rect x="110" y="42" width="340" height="28" rx="6" class="bp"/><text x="280" y="61" class="xs mid">ㄏ ㄨ ㄟ ˋ · isComposing = true → shortcuts, /, Enter, debounce ignore</text>
+    <line x1="110" y1="34" x2="110" y2="78" class="s-p"/><text x="110" y="92" class="xs mid">compositionstart</text>
+    <line x1="450" y1="34" x2="450" y2="78" class="s-t" style="stroke-width:2"/><text x="450" y="92" class="xs mid ft">compositionend</text>
+    <rect x="460" y="42" width="300" height="28" rx="6" class="bt"/><text x="610" y="61" class="xs mid">now they act</text>
+    <text x="10" y="122" class="sm w6">New page · UI-10</text>
+    <rect x="10" y="134" width="170" height="40" rx="8" class="bn"/><text x="95" y="152" class="mono mid">⌘⌥N · 新增頁面 · +</text><text x="95" y="167" class="xs mid">caret in title (D11)</text>
+    <path d="M180,154 L238,154" class="s-k" marker-end="url(#mk)"/>
+    <rect x="240" y="134" width="150" height="40" rx="8" class="bb"/><text x="315" y="159" class="sm mid">未命名 · local</text>
+    <path d="M390,146 L478,140" class="s-gr" marker-end="url(#mgr)"/><text x="432" y="134" class="xs mid">typed</text>
+    <path d="M390,164 L478,170" class="s-r" marker-end="url(#mr)"/><text x="432" y="184" class="xs mid">left empty</text>
+    <text x="484" y="144" class="sm" style="fill:var(--green)">pushed normally</text><text x="484" y="174" class="sm fr">discarded, never pushed</text>
+    <text x="640" y="152" class="xs">starters: 空白頁面 ·</text><text x="640" y="166" class="xs">待辦清單 · 會議記錄範本</text>
+  </svg></div></figure>
+  <figure style="margin:8px 0"><div class="fig"><svg viewBox="0 0 760 70" role="img" aria-label="Greeting by hour">
+      <rect x="20" y="20" width="149" height="22" style="fill:var(--panel-2)"/>
+      <rect x="169" y="20" width="187" height="22" style="fill:var(--gold-bg)"/>
+      <rect x="356" y="20" width="219" height="22" style="fill:var(--blue-bg)"/>
+      <rect x="575" y="20" width="165" height="22" style="fill:var(--panel-2)"/>
+      <text x="262" y="36" text-anchor="middle" class="sm fg">早安 05:00–10:59</text>
+      <text x="465" y="36" text-anchor="middle" class="sm fb">午安 11:00–17:59</text>
+      <text x="94" y="36" text-anchor="middle" class="sm">晚安</text><text x="657" y="36" text-anchor="middle" class="sm">晚安</text>
+      <g class="xs"><text x="20" y="60">00</text><text x="164" y="60">05</text><text x="350" y="60">11</text><text x="569" y="60">18</text><text x="724" y="60">24</text></g>
+    </svg></div></figure>
+  <p class="cap">UI-11 · home shows the greeting, 最近造訪 (last 8 pages), 我的最愛, then top-level pages.</p>
+  <div class="tw"><table><thead><tr><th>Code</th><th>Screen</th><th>Behaviour</th></tr></thead><tbody>
+    <tr><td><code>D01 M01</code></td><td>歡迎</td><td>SETUP-1, SETUP-2</td></tr>
+    <tr><td><code>D02 M03</code></td><td>頁面</td><td>UI-1 to UI-6</td></tr>
+    <tr><td><code>D03 M06</code></td><td>插入區塊</td><td>UI-7</td></tr>
+    <tr><td><code>D04 M09</code></td><td>文字格式</td><td>UI-8</td></tr>
+    <tr><td><code>D05 M07</code></td><td>搜尋</td><td>UI-9</td></tr>
+    <tr><td><code>D06 M18</code></td><td>頁面歷史</td><td>SYNC-15, SYNC-16</td></tr>
+    <tr><td><code>D07 M19</code></td><td>垃圾桶</td><td>DATA-22; a search box filters by title; 還原 and 永久刪除 (with confirmation)</td></tr>
+    <tr><td><code>D08 M17</code></td><td>設定</td><td>§6.6 and UI-15</td></tr>
+    <tr><td><code>D09 M10 M11</code></td><td>深色模式</td><td>Follows <code>prefers-color-scheme</code> unless overridden in settings</td></tr>
+    <tr><td><code>D10 M20</code></td><td>同步衝突</td><td>SYNC-6</td></tr>
+    <tr><td><code>D11</code></td><td>新頁面</td><td>UI-10</td></tr>
+    <tr><td><code>D12–D14 M12–M14</code></td><td>首次設定</td><td>§6.2–§6.4</td></tr>
+    <tr><td><code>D15 M21</code></td><td>連結新裝置 (show)</td><td>LINK-1, LINK-2</td></tr>
+    <tr><td><code>M15 M22</code></td><td>掃描 QR code, 輸入配對碼</td><td>LINK-3, LINK-4</td></tr>
+    <tr><td><code>M02</code></td><td>首頁</td><td>UI-11</td></tr>
+    <tr><td><code>M04</code></td><td>編輯中</td><td>UI-12</td></tr>
+    <tr><td><code>M05</code></td><td>所有頁面</td><td>Same tree as the desktop sidebar; tap opens, long-press opens M08</td></tr>
+    <tr><td><code>M08</code></td><td>頁面選單</td><td>加入我的最愛, 複製連結 (<code>#/p/&lt;pageKey&gt;</code>), 複製頁面, 移動到…, 頁面歷史, 匯出 Markdown, 列印／存成 PDF, 刪除頁面</td></tr>
+    <tr><td><code>M16</code></td><td>加入主畫面</td><td>SETUP-2</td></tr>
+  </tbody></table></div>
+  <details class="spec"><summary>Spec text · UI-1 – UI-18</summary><div class="inner"><div class="req"><span class="id" data-a="ui">UI-1</span><div class="b"><p>Desktop sidebar: 240 px wide, resizable from 200 to 480, toggled with <kbd>⌘\</kbd>. Rows drag to reorder; dropping onto the middle of a row makes the page its child. Hovering a row shows <code>…</code> (page menu) and <code>+</code> (new child page). Favourites come from <code>settings.json</code>.</p></div></div>
+<div class="req"><span class="id" data-a="ui">UI-2</span><div class="b"><p>Page header: 「加入圖示」 (emoji picker) and 「加入封面」 appear on hover. The title is plain text; <kbd>Enter</kbd> moves into the body.</p></div></div>
+<div class="req"><span class="id" data-a="ui">UI-3</span><div class="b"><p>Block handle. Hovering a block shows <code>+</code> and <code>⋮⋮</code>: <code>+</code> inserts a block below and opens the <code>/</code> menu; dragging <code>⋮⋮</code> moves the block; clicking it opens the block menu: 刪除, 複製, 轉換成…, 顏色, 移到頁面….</p></div></div>
+<div class="req"><span class="id" data-a="ui">UI-4</span><div class="b"><p>Top bar, left to right: breadcrumb → Sync/Status (SYNC-11; clicking runs 立即同步) → 「已編輯 N 分鐘前」 → 頁面歷史 → 我的最愛 toggle → <code>…</code> page menu (same items as M08).</p></div></div>
+<div class="req"><span class="id" data-a="ui">UI-5</span><div class="b"><p>Links to pages open inside the app. External links open in a new tab with <code>rel="noopener noreferrer"</code>.</p></div></div>
+<div class="req"><span class="id" data-a="ui">UI-6</span><div class="b"><p>A 「反向連結」 section at the bottom of a page lists the pages that link to it.</p></div></div>
+<div class="req"><span class="id" data-a="ui">UI-7</span><div class="b"><p>The <code>/</code> menu (D03, M06):</p>
+    <ul class="clean"><li><b>Opening</b>: typing <code>/</code> or the full-width <code>／</code> opens it anywhere outside code. On iPhone the same list is the M06 sheet, opened from <code>+</code> on the keyboard toolbar.</li>
+    <li><b>Filtering</b>: by the Chinese name or an English alias, case- and width-insensitively: <code>text h1 h2 h3 bullet number todo toggle quote callout divider code table image file link page</code>.</li>
+    <li><b>Closing</b>: when there is no match after 3 more characters, on a space, or on <kbd>Esc</kbd>.</li>
+    <li><b>Keys</b>: <kbd>↑</kbd>/<kbd>↓</kbd> move and <kbd>Enter</kbd> inserts.</li>
+    <li><b><code>page</code></b>: creates a child page and inserts a link to it.</li></ul></div></div>
+<div class="req"><span class="id" data-a="ui">UI-8</span><div class="b"><p>The format toolbar (D04, M09) appears above a non-empty text selection: 文字 ▾ (turn into), B, I, U, S, code, link, colour, and <code>…</code>. The colour menu has 預設 plus the nine Notion text colours, then 預設 plus the nine background colours. The last colour used is remembered per device.</p></div></div>
+<div class="req"><span class="id" data-a="ui">UI-9</span><div class="b"><p>Search (D05, M07):</p>
+    <ul class="clean"><li><b>Opening</b>: <kbd>⌘K</kbd> with no selection, or <kbd>⌘P</kbd>.</li>
+    <li><b>Ranking</b>: title matches first, then headings, then body. Each result shows its path and a snippet with the match in medium weight.</li>
+    <li><b>Filters</b>: 只搜尋標題; 排序 (最相關 / 最近編輯); 日期 (any / 7 days / 30 days).</li>
+    <li><b>Keys</b>: <kbd>Enter</kbd> opens the result; <kbd>⌘Enter</kbd> opens it in a new browser tab.</li>
+    <li><b>Chinese</b>: segmented with <code>Intl.Segmenter("zh-TW", {granularity: "word"})</code>; single characters also match by prefix.</li></ul></div></div>
+<div class="req"><span class="id" data-a="ui">UI-10</span><div class="b"><p>New page: <kbd>⌘⌥N</kbd>, 「新增頁面」 in the sidebar, or <code>+</code> on a row creates a local page titled 未命名 with the caret in the title (D11). It is not pushed while title and body are empty (SYNC-7); leaving it empty discards it. 「或從這裡開始」 offers built-in starter contents: 空白頁面, 待辦清單, 會議記錄範本.</p></div></div>
+<div class="req"><span class="id" data-a="ui">UI-11</span><div class="b"><p>Home (M02):</p>
+    
+    <ul class="clean"><li><b>最近造訪</b>: the last 8 pages opened on this device.</li><li><b>Below</b>: 我的最愛, then the top-level 頁面.</li></ul></div></div>
+<div class="req"><span class="id" data-a="ui">UI-12</span><div class="b"><p>iPhone keyboard toolbar (M04) sits above the keyboard, following <code>visualViewport</code> resizes. Buttons: <code>+</code> (M06), 轉換成, 待辦, 清單, 拍照/圖片 (<code>&lt;input type="file" accept="image/*"&gt;</code>), 連結, 顏色, 復原, 收起鍵盤.</p></div></div>
+<div class="req"><span class="id" data-a="ui">UI-13</span><div class="b"><p>Toasts confirm actions with no other visible result. For deletes and moves, 復原 is offered for 5 s.</p></div></div>
+<div class="req"><span class="id" data-a="ui">UI-14</span><div class="b"><p>When a new app version is ready, the service worker shows 「有新版本 · 重新整理」. The app never reloads by itself while edits are unsaved.</p></div></div>
+<div class="req"><span class="id" data-a="ui">UI-15</span><div class="b"><p>Settings sections:</p>
+    <div class="tw"><table><thead><tr><th>Section</th><th>Contents</th></tr></thead><tbody>
+      <tr><td>連結</td><td>GitHub 連結, 儲存位置 / 更換 repo, GitHub token / 更換 token and the expiry date, 連結新裝置</td></tr>
+      <tr><td>同步與儲存</td><td>同步狀態 / 立即同步, 自動同步, 離線資料, 中斷連結</td></tr>
+      <tr><td>外觀與語言</td><td>Theme 跟隨系統 / 淺色 / 深色; language 繁體中文 (only option in v1)</td></tr>
+      <tr><td>鍵盤快捷鍵</td><td>The list in §7.1</td></tr>
+      <tr><td>匯出</td><td>Download the whole workspace as <code>.zip</code> (bundled fflate)</td></tr>
+    </tbody></table></div></div></div>
+<div class="req"><span class="id" data-a="ui">UI-16</span><div class="b"><p>Printing: 「列印／存成 PDF」 in the page menu calls <code>window.print()</code>. A print stylesheet hides the app chrome. <kbd>⌘P</kbd> stays bound to search, as in Notion.</p></div></div>
+<div class="req"><span class="id" data-a="ui">UI-17</span><div class="b"><p>Text input and IME (注音, 倉頡, …): Markdown shortcuts, the <code>/</code> trigger, <kbd>Enter</kbd> handling and the save debounce <span class="must">MUST</span> ignore events while <code>isComposing</code> is true. They act on <code>compositionend</code>.</p></div></div>
+<div class="req"><span class="id" data-a="ui">UI-18</span><div class="b"><p>Paste and drop: images are uploaded as attachments (DATA-18); other files become File blocks; pasted Markdown is parsed into blocks; pasted HTML is converted and sanitised (SEC-4); plain text becomes paragraphs.</p></div></div></div></details>
+
+  <h3><span class="sn">7.1</span>Keyboard shortcuts</h3>
+  <p class="cap">⌘ = Ctrl on Windows/Linux; ⌥ shortcuts match <code>event.code</code>; ⌘N/⌘T/⌘W are reserved by browsers.</p>
+  <div class="grid2" style="align-items:start">
+    <div class="tw" style="margin:0"><table><thead><tr><th>Shortcut</th><th>Action</th></tr></thead><tbody>
+      <tr><td><kbd>⌘K</kbd> no selection · <kbd>⌘P</kbd></td><td>Search</td></tr>
+      <tr><td><kbd>⌘K</kbd> text selected</td><td>Add link</td></tr>
+      <tr><td><kbd>⌘⌥N</kbd></td><td>New page</td></tr>
+      <tr><td><kbd>⌘\</kbd></td><td>Toggle sidebar</td></tr>
+      <tr><td><kbd>⌘⇧L</kbd></td><td>Toggle dark mode</td></tr>
+      <tr><td><kbd>⌘[</kbd> / <kbd>⌘]</kbd></td><td>Back / forward</td></tr>
+      <tr><td><kbd>⌘B</kbd> <kbd>⌘I</kbd> <kbd>⌘U</kbd> <kbd>⌘⇧S</kbd> <kbd>⌘E</kbd></td><td>Bold / italic / underline / strike / inline code</td></tr>
+      <tr><td><kbd>⌘⌥0</kbd> … <kbd>⌘⌥8</kbd></td><td>Text, H1, H2, H3, to-do, bullet, numbered, toggle, code</td></tr>
+      <tr><td><kbd>⌘Enter</kbd></td><td>Check a to-do; open or close a toggle</td></tr>
+      <tr><td><kbd>⌘D</kbd></td><td>Duplicate block</td></tr>
+      <tr><td><kbd>⌘⇧↑</kbd> / <kbd>⌘⇧↓</kbd></td><td>Move block up / down</td></tr>
+      <tr><td><kbd>Tab</kbd> / <kbd>⇧Tab</kbd></td><td>Indent / outdent (DATA-13)</td></tr>
+      <tr><td><kbd>Esc</kbd></td><td>Select the current block</td></tr>
+      <tr><td><kbd>⌘Z</kbd> / <kbd>⌘⇧Z</kbd></td><td>Undo / redo</td></tr>
+    </tbody></table></div>
+    <div class="tw" style="margin:0"><table><thead><tr><th>Typed (after composition ends)</th><th>Result</th></tr></thead><tbody>
+      <tr><td><code># </code> <code>## </code> <code>### </code></td><td>Heading 1 / 2 / 3</td></tr>
+      <tr><td><code>- </code> or <code>* </code></td><td>Bulleted list</td></tr>
+      <tr><td><code>1. </code></td><td>Numbered list</td></tr>
+      <tr><td><code>[] </code></td><td>To-do</td></tr>
+      <tr><td><code>&gt; </code></td><td>Toggle (as in Notion)</td></tr>
+      <tr><td><code>" </code></td><td>Quote (as in Notion)</td></tr>
+      <tr><td><code>```</code></td><td>Code block</td></tr>
+      <tr><td><code>---</code></td><td>Divider</td></tr>
+      <tr><td><code>**x**</code> <code>*x*</code> <code>~x~</code> <code>`x`</code></td><td>Bold / italic / strike / inline code</td></tr>
+    </tbody></table></div>
+  </div>
+</section>
+
+<!-- 8 SEC -->
+<section id="sec">
+  <h2><span class="sn">§8</span>Security</h2>
+  <figure><div class="fig"><svg viewBox="0 0 780 200" role="img" aria-label="Where the token may go">
+    <rect x="10" y="50" width="150" height="54" rx="8" class="bp"/><text x="85" y="73" class="mid w6" style="fill:var(--purple)">token</text><text x="85" y="92" class="xs mid">fine-grained · one repo</text>
+    <path d="M160,77 L248,77" class="s-gr" marker-end="url(#mgr)"/>
+    <rect x="250" y="50" width="200" height="54" rx="8" class="b0"/><text x="350" y="82" class="mono mid">Authorization header</text>
+    <path d="M450,77 L538,77" class="s-gr" marker-end="url(#mgr)"/>
+    <rect x="540" y="50" width="230" height="54" rx="8" class="bgr"/><text x="655" y="82" class="mono mid">https://api.github.com ✓</text>
+    <path d="M85,104 L85,140 L700,140" class="s-r dsh"/>
+    <g class="br"><rect x="110" y="150" width="90" height="34" rx="6"/><rect x="210" y="150" width="90" height="34" rx="6"/><rect x="310" y="150" width="110" height="34" rx="6"/><rect x="430" y="150" width="90" height="34" rx="6"/><rect x="530" y="150" width="100" height="34" rx="6"/><rect x="640" y="150" width="120" height="34" rx="6"/></g>
+    <g class="xs mid fr"><text x="155" y="171">✗ URLs</text><text x="255" y="171">✗ logs</text><text x="365" y="171">✗ error reports</text><text x="475" y="171">✗ exports</text><text x="580" y="171">✗ SW cache</text><text x="700" y="171">✗ any other host</text></g>
+    <text x="10" y="30" class="xs">Contents: Read and write · with an expiry date (SEC-1)</text>
+  </svg></div><figcaption>SEC-1, SEC-2, ARCH-3.</figcaption></figure>
+  <pre><span class="k">default-src</span> 'self'; <span class="k">script-src</span> 'self'; <span class="k">style-src</span> 'self' 'unsafe-inline';
+<span class="k">img-src</span> 'self' blob: data: https:; <span class="k">connect-src</span> 'self' <span class="s">https://api.github.com</span>;
+<span class="k">worker-src</span> 'self' blob:; <span class="k">media-src</span> 'self' blob: mediastream:;
+<span class="k">object-src</span> 'none'; <span class="k">base-uri</span> 'self'; <span class="k">form-action</span> 'none'</pre>
+  <p class="cap">SEC-3 · CSP in a <code>&lt;meta&gt;</code> tag (Pages can't set headers); <code>if (top !== self)</code> refuses framing.</p>
+  <div class="grid2">
+    <div class="card"><h5>SEC-4 · DOMPurify allowlist</h5><div class="chips"><span class="chip2 ok">details</span><span class="chip2 ok">summary</span><span class="chip2 ok">span[data-color|data-bg]</span><span class="chip2 ok">u</span><span class="chip2 ok">br</span><span class="chip2 ok">kbd</span><span class="chip2 ok">sub</span><span class="chip2 ok">sup</span></div><p>links: <code>http(s):</code> <code>mailto:</code> <code>/…</code> · images: <code>/_assets/…</code> <code>blob:</code> <code>https:</code></p></div>
+    <div class="card"><h5>SEC-5 · attachments</h5><div class="chips"><span class="chip2 ok">image → &lt;img&gt; from blob:</span><span class="chip2 no">.html .svg … → download only</span><span class="chip2 no">never navigate to blob:</span></div></div>
+  </div>
+  <figure><div class="fig"><svg viewBox="0 0 780 200" role="img" aria-label="Shared origin risk">
+    <rect x="10" y="20" width="360" height="160" rx="12" class="br dsh"/><text x="24" y="42" class="mono w6" style="fill:var(--red)">tinggeorge.github.io</text><text x="356" y="42" class="xs end fr">today · accepted risk</text>
+    <rect x="30" y="56" width="150" height="44" rx="8" class="b0"/><text x="105" y="83" class="mono mid">/notion-like-web-app/</text>
+    <rect x="200" y="56" width="150" height="44" rx="8" class="b0"/><text x="275" y="83" class="mono mid">/other-site/</text>
+    <rect x="30" y="128" width="320" height="34" rx="8" class="bp"/><text x="190" y="150" class="sm mid">shared storage · IndexedDB incl. token</text>
+    <path d="M105,100 L140,126" class="s-k" marker-end="url(#mk)"/><path d="M275,100 L240,126" class="s-r" marker-end="url(#mr)"/>
+    <path d="M378,100 L448,100" class="s-gr" marker-end="url(#mgr)"/><text x="413" y="90" class="xs mid">before</text><text x="413" y="118" class="xs mid">inviting others</text>
+    <rect x="452" y="20" width="318" height="160" rx="12" class="bgr"/><text x="466" y="42" class="mono w6" style="fill:var(--green)">notes.example.com</text>
+    <rect x="472" y="56" width="150" height="44" rx="8" class="b0"/><text x="547" y="83" class="sm mid">this app only</text>
+    <rect x="472" y="128" width="278" height="34" rx="8" class="bp"/><text x="611" y="150" class="sm mid">isolated storage</text>
+    <text x="640" y="74" class="xs">custom domain on</text><text x="640" y="88" class="xs">this repo, not the</text><text x="640" y="102" class="xs">user site</text>
+  </svg></div><figcaption>SEC-6 · keep other Pages sites free of third-party code. Moving origins means sync, then set up again.</figcaption></figure>
+  <details class="spec"><summary>Spec text · SEC-1 – SEC-8</summary><div class="inner"><div class="req"><span class="id" data-a="sec">SEC-1</span><div class="b"><p>Token scope. The UI and docs tell users to create a fine-grained token with only the notes repo, Contents: Read and write, and an expiry date.</p></div></div>
+<div class="req"><span class="id" data-a="sec">SEC-2</span><div class="b"><p>The token is used only in the <code>Authorization</code> header of requests to <code>https://api.github.com</code>. It <span class="must">MUST NOT</span> appear in URLs, logs, error reports, exports or the service-worker cache.</p></div></div>
+<div class="req"><span class="id" data-a="sec">SEC-3</span><div class="b"><p>The Content Security Policy is set with a <code>&lt;meta&gt;</code> tag, because GitHub Pages cannot set headers. <code>&lt;meta&gt;</code> cannot carry <code>frame-ancestors</code>, so the app also refuses to run inside a frame (<code>if (top !== self)</code>).</p>
+<pre><span class="k">default-src</span> 'self'; <span class="k">script-src</span> 'self'; <span class="k">style-src</span> 'self' 'unsafe-inline';
+<span class="k">img-src</span> 'self' blob: data: https:; <span class="k">connect-src</span> 'self' <span class="s">https://api.github.com</span>;
+<span class="k">worker-src</span> 'self' blob:; <span class="k">media-src</span> 'self' blob: mediastream:;
+<span class="k">object-src</span> 'none'; <span class="k">base-uri</span> 'self'; <span class="k">form-action</span> 'none'</pre></div></div>
+<div class="req"><span class="id" data-a="sec">SEC-4</span><div class="b"><p>HTML inside Markdown is sanitised with DOMPurify (bundled) before rendering. Everything else is shown as text. Allowed:</p>
+    <ul class="clean"><li>elements: <code>details</code>, <code>summary</code>, <code>span</code> (<code>data-color</code> and <code>data-bg</code> only), <code>u</code>, <code>br</code>, <code>kbd</code>, <code>sub</code>, <code>sup</code>;</li>
+    <li>link URLs: <code>http(s):</code>, <code>mailto:</code> and root-relative paths;</li>
+    <li>image URLs: <code>/_assets/…</code>, <code>blob:</code> and <code>https:</code>.</li></ul></div></div>
+<div class="req"><span class="id" data-a="sec">SEC-5</span><div class="b"><p>Attachments are fetched into <code>blob:</code> URLs. Images render only through <code>&lt;img&gt;</code>. Any other file, including <code>.html</code> and <code>.svg</code>, is offered only as a download (<code>&lt;a download&gt;</code> with type <code>application/octet-stream</code>). The app never navigates to a <code>blob:</code> URL.</p></div></div>
+<div class="req"><span class="id" data-a="sec">SEC-6</span><div class="b">
+    <div class="note risk" style="margin-top:0"><b>Known risk, accepted by the owner.</b> GitHub Pages serves all of an account's project sites from one origin (<code>tinggeorge.github.io</code>), so another Pages site of that account can read this app's storage.</div>
+    <ul class="clean"><li><b>Mitigation</b>: keep other Pages sites free of third-party code.</li>
+    <li><b>Before inviting other people</b>, give this repo its own custom domain (e.g. <code>notes.example.com</code>). A custom domain on the user site would be inherited by every project site and isolates nothing.</li>
+    <li>Thanks to ARCH-1 the build works at any path. Local data does not move to the new origin, so every device syncs, then sets up again.</li></ul></div></div>
+<div class="req"><span class="id" data-a="sec">SEC-7</span><div class="b"><p>Token sharing:</p>
+    <ul class="clean"><li>QR linking copies the same token to every device, so revoking it on github.com locks all of them. Each device then needs 更換 token, or a fresh QR link from a device that already has the new token.</li>
+    <li>Users who prefer separate tokens per device can skip QR linking and paste a different token on each device.</li>
+    <li>A lost device: revoke the token. The notes remain in the repo.</li></ul></div></div>
+<div class="req"><span class="id" data-a="sec">SEC-8</span><div class="b"><p>The QR code and the setup code are encrypted with the pairing code (LINK-1); neither alone reveals the token. The new device always shows which account and repo it is about to link to (LINK-3), so a planted QR code cannot silently point it at someone else's repo.</p></div></div></div></details>
+</section>
+
+<!-- 9 NFR -->
+<section id="nfr">
+  <h2><span class="sn">§9</span>Non-functional requirements</h2>
+  <p class="cap">NFR-1 · iPhone 12 with 1,000 cached pages</p>
+  <div class="grid2">
+    <div class="card"><p class="bignum">≤ 2 s</p><p class="cap">cold start to an interactive page</p></div>
+    <div class="card"><p class="bignum">≤ 16 ms</p><p class="cap">typing latency per keystroke</p></div>
+    <div class="card"><p class="bignum">≤ 100 ms</p><p class="cap">search over 5,000 pages</p></div>
+    <div class="card"><p class="bignum">≤ 60 s</p><p class="cap">first sync of 1,000 pages (GraphQL)</p></div>
+  </div>
+  <div class="grid2">
+    <div class="card tint-gr"><h5>Works offline · NFR-2</h5><div class="chips"><span class="chip2 ok">open</span><span class="chip2 ok">read</span><span class="chip2 ok">edit</span><span class="chip2 ok">create</span><span class="chip2 ok">move</span><span class="chip2 ok">delete</span><span class="chip2 ok">search</span></div></div>
+    <div class="card"><h5>Needs network, and says so</h5><div class="chips"><span class="chip2">history</span><span class="chip2">uncached attachments</span><span class="chip2">setup</span><span class="chip2">linking</span></div></div>
+  </div>
+  <div class="chips"><span class="chip2 t">keyboard for every action + focus ring</span><span class="chip2 t">WCAG AA light &amp; dark</span><span class="chip2 t">prefers-reduced-motion</span><span class="chip2 t">VoiceOver labels</span><span class="chip2 t">one zh-TW strings file</span></div>
+  <details class="spec"><summary>Spec text · NFR-1 – NFR-4</summary><div class="inner"><div class="req"><span class="id" data-a="nfr">NFR-1</span><div class="b"><p>Performance on an iPhone 12 with 1,000 cached pages:</p>
+    <div class="grid2">
+      <div class="card"><p class="mono" style="font-size:1.6rem;color:var(--brown);margin:0">≤ 2 s</p><p>cold start to an interactive page</p></div>
+      <div class="card"><p class="mono" style="font-size:1.6rem;color:var(--brown);margin:0">≤ 16 ms</p><p>typing latency per keystroke</p></div>
+      <div class="card"><p class="mono" style="font-size:1.6rem;color:var(--brown);margin:0">≤ 100 ms</p><p>search over 5,000 pages</p></div>
+      <div class="card"><p class="mono" style="font-size:1.6rem;color:var(--brown);margin:0">≤ 60 s</p><p>first sync of 1,000 pages (GraphQL batches, SYNC-5)</p></div>
+    </div></div></div>
+<div class="req"><span class="id" data-a="nfr">NFR-2</span><div class="b"><p>After the first sync, everything works offline: open, read, edit, create, move, delete and search. These need the network and say so: history, attachments not yet cached, setup and linking.</p></div></div>
+<div class="req"><span class="id" data-a="nfr">NFR-3</span><div class="b"><p>Accessibility: every action reachable by keyboard, with a visible focus ring; WCAG AA contrast in light and dark; <code>prefers-reduced-motion</code> respected; VoiceOver labels on icon-only buttons.</p></div></div>
+<div class="req"><span class="id" data-a="nfr">NFR-4</span><div class="b"><p>All UI strings live in one <code>zh-TW</code> strings file.</p></div></div></div></details>
+</section>
+
+<!-- 10 TEST -->
+<section id="test">
+  <h2><span class="sn">§10</span>Testing and acceptance</h2>
+  <figure><div class="fig"><svg viewBox="0 0 760 200" role="img" aria-label="Test layers">
+    <rect x="280" y="8" width="200" height="40" rx="6" class="bn"/><text x="380" y="26" class="sm mid w6">manual</text><text x="380" y="41" class="xs mid">Figma compare · a week on iPhone + PC</text>
+    <rect x="200" y="54" width="360" height="40" rx="6" class="bb"/><text x="380" y="72" class="sm mid w6 fb">e2e · Playwright</text><text x="380" y="87" class="xs mid">Chromium · WebKit · Firefox · 1440×900 and 393×852</text>
+    <rect x="120" y="100" width="520" height="40" rx="6" class="bg"/><text x="380" y="118" class="sm mid w6 fg">fake GitHub API · in-memory git</text><text x="380" y="133" class="xs mid">CORS-hidden headers · 422/409 · bad delete · empty-repo 409 · secondary limits</text>
+    <rect x="30" y="146" width="700" height="40" rx="6" class="bt"/><text x="380" y="164" class="sm mid w6 ft">unit · Vitest</text><text x="380" y="179" class="xs mid">Markdown round trip · names · link rewriter · merges · push snapshot · blob SHA · LINK-1</text>
+  </svg></div><figcaption>TEST-1 – TEST-5. CI runs lint, typecheck, unit and e2e on every push; <code>main</code> deploys only when all pass.</figcaption></figure>
+  <div class="note"><b>Done (TEST-6)</b>: every MUST has a passing test or checked manual item, and the owner used it on an iPhone and a PC for a week without losing data.</div>
+  <details class="spec"><summary>Spec text · TEST-1 – TEST-6</summary><div class="inner"><div class="req"><span class="id" data-a="test">TEST-1</span><div class="b"><p>Unit tests (Vitest):</p>
+    <ul class="clean"><li>the Markdown round-trip corpus for every row of §3.4, including Chinese, nested lists past item 10, colours, mark order and unknown constructs (DATA-13 to DATA-16);</li>
+    <li>file-name and reserved-name rules (DATA-2 to DATA-6) and the link rewriter (DATA-17);</li>
+    <li>three-way merge, frontmatter merge, the rule order of SYNC-5 and the JSON merges of SYNC-6a;</li>
+    <li>the push snapshot (SYNC-8 step 7) and the local blob SHA;</li>
+    <li>the LINK-1 encryption.</li></ul></div></div>
+<div class="req"><span class="id" data-a="test">TEST-2</span><div class="b"><p>Tests never touch real GitHub. A fake GitHub API (an in-memory git object store) is used by the sync-engine unit tests and the end-to-end tests. It reproduces the GitHub behaviour that matters here:</p>
+    <div class="swatches"><span class="pill">CORS-hidden headers</span><span class="pill"><code>422</code>/<code>409</code> on non-fast-forward</span><span class="pill">error deleting a missing path</span><span class="pill"><code>409</code> for an empty repo</span><span class="pill">secondary limits ± <code>retry-after</code></span></div></div></div>
+<div class="req"><span class="id" data-a="test">TEST-3</span><div class="b"><p>End-to-end tests (Playwright):</p>
+    <div class="tw"><table><thead><tr><th>Viewport</th><th>Chromium</th><th>WebKit</th><th>Firefox</th></tr></thead><tbody>
+      <tr><td>1440×900</td><td>✓</td><td>✓</td><td>✓</td></tr>
+      <tr><td>393×852</td><td>✓</td><td>✓</td><td>—</td></tr>
+    </tbody></table></div>
+    <p>Scenarios:</p>
+    <ul class="clean"><li>setup with an empty repo, an existing repo, a read-only token and a public repo;</li>
+    <li>create, edit, rename, move, delete and restore pages, checking the resulting commits;</li>
+    <li>editing offline, then reconnecting, gives one commit;</li>
+    <li>typing during a push (SYNC-8 step 7);</li>
+    <li>two browser contexts editing the same page: a clean merge; a conflict resolved each of the three ways; delete against edit, and move against edit; the same new path on both;</li>
+    <li>Chinese search, and IME composition (simulated <code>compositionstart</code> / <code>compositionend</code>);</li>
+    <li>QR payload encryption and decryption, with right and wrong pairing codes (payload injected; camera capture is not testable);</li>
+    <li>an expired token, and the expiry banner.</li></ul></div></div>
+<div class="req"><span class="id" data-a="test">TEST-4</span><div class="b"><p>CI (GitHub Actions) runs lint, typecheck, unit and e2e tests on every push. A push to <code>main</code> deploys to GitHub Pages only if everything passes.</p></div></div>
+<div class="req"><span class="id" data-a="test">TEST-5</span><div class="b"><p>Before each release, a person compares the key screens with Figma at both sizes, in light and dark.</p></div></div>
+<div class="req"><span class="id" data-a="test">TEST-6</span><div class="b"><p>v1 is done when every MUST in this spec has a passing test or a checked manual item, and the owner has used the app on an iPhone and a PC for a week without losing data.</p></div></div></div></details>
+</section>
+
+<!-- 11 MILESTONES -->
+<section id="milestones">
+  <h2><span class="sn">§11</span>Milestones</h2>
+  <figure><div class="fig"><svg viewBox="0 0 780 120" role="img" aria-label="Milestones">
+    <line x1="50" y1="34" x2="730" y2="34" style="stroke:var(--blue-bg);stroke-width:4"/>
+    <g style="fill:var(--blue)"><circle cx="50" cy="34" r="16"/><circle cx="163" cy="34" r="16"/><circle cx="277" cy="34" r="16"/><circle cx="390" cy="34" r="16"/><circle cx="503" cy="34" r="16"/><circle cx="617" cy="34" r="16"/><circle cx="730" cy="34" r="16"/></g>
+    <g class="mono mid" style="fill:#fff;font-size:12px"><text x="50" y="38">1</text><text x="163" y="38">2</text><text x="277" y="38">3</text><text x="390" y="38">4</text><text x="503" y="38">5</text><text x="617" y="38">6</text><text x="730" y="38">7</text></g>
+    <g class="sm mid w6"><text x="50" y="72">Skeleton</text><text x="163" y="72">Setup + read</text><text x="277" y="72">Write</text><text x="390" y="72">Robust sync</text><text x="503" y="72">Find + recover</text><text x="617" y="72">iPhone</text><text x="730" y="72" class="end" style="text-anchor:end">Release</text></g>
+    <g class="xs mid"><text x="50" y="92">PWA · CI · D01</text><text x="163" y="92">probe · pull</text><text x="277" y="92">editor · push</text><text x="390" y="92">conflicts · IME</text><text x="503" y="92">search · history</text><text x="617" y="92">M02–M22 · QR</text><text x="730" y="92" style="text-anchor:end">a11y · perf</text></g>
+  </svg></div></figure>
+  <details class="spec"><summary>Spec text · milestones</summary><div class="inner"><div class="timeline">
+    <div class="ms"><div><b>Skeleton</b><br>Vite + React + TS, PWA, hash routing, design tokens, CI and Pages deploy, D01/M01, M16.</div></div>
+    <div class="ms"><div><b>Setup and read</b><br>D12–D14 / M12–M14 with the write probe, pull (SYNC-5) including GraphQL batches, sidebar tree, read-only pages.</div></div>
+    <div class="ms"><div><b>Write</b><br>The editor with the full §3.4 mapping, push (SYNC-8), new / rename / move / delete, trash.</div></div>
+    <div class="ms"><div><b>Robust sync</b><br>Offline queue, conflicts (D10/M20), rate limits, several tabs, IME, token expiry.</div></div>
+    <div class="ms"><div><b>Find and recover</b><br>Search, page history, backlinks, favourites, recents, print, <code>.zip</code> export.</div></div>
+    <div class="ms"><div><b>iPhone</b><br>M02–M09, M17–M22, keyboard toolbar, camera upload, QR linking.</div></div>
+    <div class="ms"><div><b>Release</b><br>Dark-mode check, accessibility, performance budget, the acceptance run (TEST-6).</div></div>
+  </div></div></details>
+</section>
+
+<!-- 12 DEFAULTS -->
+<section id="defaults">
+  <h2><span class="sn">§12</span>Defaults chosen</h2>
+  <p class="sub">Say if you disagree.</p>
+  <div class="tw"><table><thead><tr><th>Topic</th><th>Default</th><th>Alternative</th></tr></thead><tbody>
+    <tr><td><b>Auto-sync</b></td><td>5 s after the last edit, at most every 30 s; immediately when leaving a page</td><td style="color:var(--ink-3)">Only when leaving a page</td></tr>
+    <tr><td><b>Trash</b></td><td>Deleted permanently after 30 days (as in Notion); still in git history</td><td style="color:var(--ink-3)">Keep forever</td></tr>
+    <tr><td><b>Untitled empty pages</b></td><td>Never pushed; discarded when left</td><td style="color:var(--ink-3)">Kept as 未命名</td></tr>
+    <tr><td><b>Public repos</b></td><td>Allowed after a confirmation</td><td style="color:var(--ink-3)">Not allowed</td></tr>
+    <tr><td><b>Classic tokens</b> (<code>ghp_</code>)</td><td>Allowed after a warning</td><td style="color:var(--ink-3)">Fine-grained only</td></tr>
+    <tr><td><b>Polling</b></td><td>Every 60 s while visible</td><td style="color:var(--ink-3)">Only on open and focus</td></tr>
+    <tr><td><b>Token expiry asked at setup</b></td><td>Default today + 90 days, the same as the pre-filled GitHub form</td><td style="color:var(--ink-3)">Don't ask; only react to <code>401</code></td></tr>
+    <tr><td><b>Attachment cap</b></td><td>25 MB; images scaled to 2560 px</td><td style="color:var(--ink-3)">Other limits</td></tr>
+  </tbody></table></div>
+  <footer>Rendered from <code>SPEC.md</code> (v0.2) in <code>TingGeorge/notion-like-web-app</code>. Diagrams illustrate the spec; the Markdown file remains the source of truth.</footer>
+</section>
+</main>
+
+</div>
+
+<script>
+(function(){
+  // DATA-4 / DATA-5 demo
+  var MAP={'/':'／','\\':'＼',':':'：','*':'＊','?':'？','"':'＂','<':'＜','>':'＞','|':'｜'};
+  var enc=new TextEncoder();
+  function esc(s){return s.replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
+  function toName(title,atRoot){
+    var s=Array.from(title).map(function(c){return MAP[c]||c}).join('');
+    s=s.replace(/[\u0000-\u001F\u007F-\u009F]/g,'');
+    s=s.replace(/^[ .]+|[ .]+$/g,'');
+    if(!s) s='未命名';
+    var out='',bytes=0;
+    for(var ch of s){var b=enc.encode(ch).length;if(bytes+b>150)break;out+=ch;bytes+=b}
+    if(atRoot && out==='_assets') out='＿assets';
+    return {name:out,bytes:bytes};
+  }
+  var tin=document.getElementById('title-in'),rin=document.getElementById('root-in'),out=document.getElementById('name-out');
+  function render(){
+    var t=tin.value,r=toName(t,rin.checked);
+    var needTitle=r.name!==t;
+    out.innerHTML='file: '+esc(r.name)+'.md<br><span style="color:var(--ink-3)">'+r.bytes+' / 150 bytes · '+
+      (needTitle?'frontmatter <b>title: '+esc(JSON.stringify(t))+'</b> (DATA-5)':'no frontmatter title needed')+'</span>';
+  }
+  tin.addEventListener('input',render);rin.addEventListener('change',render);
+  document.querySelectorAll('#namer button.chip').forEach(function(b){b.addEventListener('click',function(){tin.value=b.dataset.t;if(b.dataset.t==='_assets')rin.checked=true;render()})});
+  render();
+
+  // SYNC-8 snapshot stepper
+  var S=[
+    {base:'"A"',text:'"A"',push:'null',dirty:'false',hot:[],cap:'Clean: the file matches GitHub.'},
+    {base:'"A"',text:'"AB"',push:'null',dirty:'true',hot:['text','dirty'],cap:'The user types "B". STORE-3 writes it to files.text within 300 ms.'},
+    {base:'"A"',text:'"AB"',push:'"AB"',dirty:'true',hot:['push'],cap:'Push step 2: the exact text being sent is recorded in pushing.'},
+    {base:'"A"',text:'"ABC"',push:'"AB"',dirty:'true',hot:['text'],cap:'While the request is in flight, the user types "C". pushing is unchanged.'},
+    {base:'"AB"',text:'"ABC"',push:'null',dirty:'true',hot:['base','push'],cap:'Step 7: baseText = pushing, baseSha is computed locally, pushing is cleared. text ≠ "AB", so the file stays dirty.'},
+    {base:'"ABC"',text:'"ABC"',push:'null',dirty:'false',hot:['base','dirty'],cap:'The next push sends "ABC". Nothing typed during the first push was lost.'}
+  ];
+  var i=0,cells={base:'c-base',text:'c-text',push:'c-push',dirty:'c-dirty'};
+  var prev=document.getElementById('s-prev'),next=document.getElementById('s-next'),cap=document.getElementById('s-cap');
+  function show(){
+    var s=S[i];
+    Object.keys(cells).forEach(function(k){var el=document.getElementById(cells[k]);el.querySelector('.v').textContent=s[k];el.classList.toggle('hot',s.hot.indexOf(k)>=0)});
+    cap.textContent=(i+1)+' / '+S.length+' · '+s.cap;
+    prev.disabled=i===0;next.disabled=i===S.length-1;
+  }
+  prev.addEventListener('click',function(){if(i>0){i--;show()}});
+  next.addEventListener('click',function(){if(i<S.length-1){i++;show()}});
+  show();
+
+  // active TOC link
+  var links=[].slice.call(document.querySelectorAll('nav.toc a'));
+  var map={};links.forEach(function(a){map[a.getAttribute('href').slice(1)]=a});
+  if('IntersectionObserver' in window){
+    var io=new IntersectionObserver(function(es){es.forEach(function(e){if(e.isIntersecting){links.forEach(function(a){a.classList.remove('on')});var a=map[e.target.id];if(a)a.classList.add('on')}})},{rootMargin:'-20% 0px -70% 0px'});
+    document.querySelectorAll('main section[id]').forEach(function(s){io.observe(s)});
+  }
+})();
+(function(){var b=document.getElementById('toggle-all');if(!b)return;b.addEventListener('click',function(){var ds=[].slice.call(document.querySelectorAll('details.spec'));var open=!ds.every(function(d){return d.open});ds.forEach(function(d){d.open=open});b.textContent=open?'Collapse all spec text':'Expand all spec text'})})();
+</script>
+</body>
+</html>

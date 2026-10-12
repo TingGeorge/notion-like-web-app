@@ -1,0 +1,43 @@
+.banners:empty {
+  display: none;
+}
+.banner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  min-height: 36px;
+  padding: 6px 16px;
+  font-size: 13px;
+  text-align: center;
+}
+.banner.is-info {
+  background: var(--accent-default);
+  color: var(--text-on-accent);
+}
+.banner.is-danger {
+  background: var(--palette-bg-red);
+  color: var(--text-primary);
+}
+.banner.is-warning {
+  background: var(--palette-bg-yellow);
+  color: var(--text-primary);
+}
+.banner.is-muted {
+  background: var(--bg-sidebar);
+  color: var(--text-secondary);
+  border-bottom: 1px solid var(--border-default);
+}
+.banner-action {
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  color: inherit;
+  white-space: nowrap;
+}
+.banner-close {
+  font-size: 18px;
+  line-height: 1;
+  color: inherit;
+  padding: 0 4px;
+}

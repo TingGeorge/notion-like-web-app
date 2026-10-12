@@ -1,0 +1,89 @@
+.emoji-picker,
+.cover-picker {
+  width: 360px;
+  max-width: calc(100vw - 16px);
+  padding: 8px;
+}
+.picker-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 0 2px 6px;
+  border-bottom: 1px solid var(--border-default);
+  margin-bottom: 6px;
+}
+.picker-tabs {
+  display: flex;
+  gap: 2px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.picker-tab {
+  flex: none;
+  padding: 4px 6px;
+  border-radius: var(--radius-s);
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+.picker-tab:hover {
+  background: var(--bg-hover);
+}
+.picker-tab.is-active {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+.picker-actions {
+  display: flex;
+  gap: 2px;
+  flex: none;
+}
+.picker-link {
+  padding: 4px 6px;
+  border-radius: var(--radius-s);
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+.picker-link:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+.picker-title {
+  font-size: 13px;
+  font-weight: 600;
+}
+.emoji-grid {
+  display: grid;
+  grid-template-columns: repeat(10, 1fr);
+  gap: 2px;
+  max-height: 240px;
+  overflow-y: auto;
+}
+.emoji-cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  aspect-ratio: 1;
+  font-size: 22px;
+  border-radius: var(--radius-s);
+}
+.emoji-cell:hover {
+  background: var(--bg-hover);
+}
+.cover-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+  margin-bottom: 8px;
+}
+.cover-cell {
+  height: 48px;
+  border-radius: var(--radius-m);
+}
+.cover-cell:hover {
+  outline: 2px solid var(--accent-default);
+  outline-offset: 1px;
+}
+.cover-upload {
+  cursor: pointer;
+}
