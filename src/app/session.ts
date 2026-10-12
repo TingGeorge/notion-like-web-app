@@ -3,7 +3,7 @@
  * and the registry of open editors that must be flushed before a sync (SYNC-3).
  */
 import { GitHubClient } from '../lib/github/client'
-import { deviceName } from '../lib/data/device'
+import { deviceName, isSafariTab } from '../lib/data/device'
 import { ulid } from '../lib/data/ulid'
 import { db, type ConfigRow } from '../lib/store/db'
 import { SyncEngine } from '../lib/sync/engine'
@@ -121,6 +121,8 @@ export function startSession(workspace: Workspace, device: DeviceInfo): Session 
     flushEditors,
     onFilesChanged: filesChanged,
     onNotice: (message) => noticeListeners.forEach((fn) => fn(message)),
+    // SETUP-13: Safari may delete the data of a plain tab, so push without the 30 s spacing.
+    safariTabMode: isSafariTab,
   })
   current = { workspace, device, client, engine }
   return current
