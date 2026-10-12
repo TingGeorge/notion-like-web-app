@@ -140,7 +140,7 @@
   left: 0;
   right: 0;
   bottom: 0;
-  z-index: 110;
+  z-index: 90;
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   height: calc(56px + env(safe-area-inset-bottom));

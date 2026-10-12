@@ -109,7 +109,7 @@ export function HistoryDialog({ pageKey }: { pageKey: string }) {
             >
               <span className="history-row-time">{historyTime(Date.parse(v.commit.date))}</span>
               <span className="history-row-sub">
-                {isFirst ? t.history.created : [v.commit.authorLogin, v.commit.device ?? t.history.githubVersion].filter(Boolean).join(' · ')}
+                {isFirst ? t.history.created : [v.commit.authorLogin, v.commit.device?.split(' · ')[0] ?? t.history.githubVersion].filter(Boolean).join(' · ')}
               </span>
             </button>
           )

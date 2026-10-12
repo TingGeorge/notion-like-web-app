@@ -754,6 +754,8 @@
 }
 
 .settings.is-mobile {
+  display: block;
+  height: auto;
   background: var(--bg-default);
   padding: 0 20px 40px;
 }
@@ -830,4 +832,13 @@
 .m-row.is-danger,
 .m-row.is-danger .m-row-icon {
   color: var(--status-danger);
+}
+
+/* M07: search keeps the tab bar visible below it. */
+.fullscreen-overlay.with-tabbar {
+  bottom: calc(56px + env(safe-area-inset-bottom));
+  padding-bottom: 0;
+}
+.search.is-mobile .search-row.is-selected {
+  background: none;
 }

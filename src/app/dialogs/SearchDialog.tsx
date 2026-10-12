@@ -234,7 +234,7 @@ export function SearchDialog({ initialQuery = '' }: { initialQuery?: string }) {
 
   if (mobile) {
     return (
-      <div className="fullscreen-overlay" role="dialog" aria-modal="true" aria-label={t.search.placeholder}>
+      <div className="fullscreen-overlay with-tabbar" role="dialog" aria-modal="true" aria-label={t.search.placeholder}>
         {body}
       </div>
     )
