@@ -397,11 +397,10 @@ describe('DATA-15 unknown Markdown is kept byte-for-byte', () => {
 
   it('unknown Markdown written without blank lines keeps its bytes', () => {
     // Separators may be normalised, the constructs themselves are not.
-    const md = '- a\n<!-- c -->\n# h\n<div>\nx\n</div>\n'
+    const md = '- a\n<!-- c -->\n- b\n# h\n<div>\nx\n</div>\n> q\n<!-- d -->\n'
     const parsed = parseMarkdown(md)
     const out = serializeMarkdown(parsed)
-    expect(out).toContain('<!-- c -->')
-    expect(out).toContain('<div>\nx\n</div>')
+    expect(out).toBe('- a\n\n<!-- c -->\n\n- b\n\n# h\n\n<div>\nx\n</div>\n> q\n<!-- d -->\n')
     expectSameDoc(parseMarkdown(out), parsed)
   })
 
