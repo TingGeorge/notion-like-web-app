@@ -6,11 +6,11 @@ import type { PageRow, Workspace } from '../../lib/types'
 import { t } from '../../strings/zh-TW'
 import { cx, IconButton } from '../../ui/primitives'
 import { newPage } from '../actions'
-import { useFile, usePages, useSettings, useUi } from '../hooks'
+import { useFile, usePage, usePages, useSettings, useUi } from '../hooks'
 import { HomeScreen } from '../home/HomeScreen'
 import { openOverlay, useOverlay } from '../overlays'
 import { PageIcon } from '../PageIcon'
-import { PageNotFound, PageView, usePageByKey } from '../page/PageView'
+import { PageNotFound, PageView } from '../page/PageView'
 import { isFollow, navigate, useRoute } from '../router'
 import { useGlobalShortcuts } from '../shortcuts'
 import { Banners } from './Banners'
@@ -25,7 +25,7 @@ import './shell.css'
  * received an id (`followKey`), so the editor keeps its caret.
  */
 function usePageRoute(routeKey: string): { page: PageRow | null | undefined; mountId: number } {
-  const page = usePageByKey(routeKey)
+  const page = usePage(routeKey)
   const mount = useRef({ key: routeKey, id: 0 })
   const last = useRef<PageRow | null>(null)
   if (mount.current.key !== routeKey) {

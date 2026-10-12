@@ -31,19 +31,32 @@ export function usePages(): PageRow[] {
   return pages ?? NO_PAGES
 }
 
-/** The page for a route key; resolves `path:` keys of pages that have since received an id. */
+/**
+ * A live query about one key. `useLiveQuery` keeps returning the previous result while the query
+ * for new deps runs, which here would be another key's answer (another page, or its "not found"),
+ * so the answer carries its key and reads as `undefined` (loading) until it matches.
+ */
+function useLiveQueryFor<T>(key: string | null | undefined, query: () => Promise<T>): T | undefined {
+  const result = useLiveQuery(async () => ({ key, value: await query() }), [key])
+  return result && result.key === key ? result.value : undefined
+}
+
+/**
+ * A page by key (an id, or `path:<repo path>`, which also finds a page that has since received an
+ * id): `undefined` while loading, `null` if there is none.
+ */
 export function usePage(key: string | null): PageRow | null | undefined {
-  return useLiveQuery(async () => {
+  return useLiveQueryFor(key, async () => {
     if (!key) return null
     const page = await db().pages.get(key)
     if (page) return page
     if (key.startsWith('path:')) return (await db().pages.where('path').equals(key.slice(5)).first()) ?? null
     return null
-  }, [key])
+  })
 }
 
 export function useFile(path: string | null | undefined): FileRow | null | undefined {
-  return useLiveQuery(async () => (path ? ((await db().files.get(path)) ?? null) : null), [path])
+  return useLiveQueryFor(path, async () => (path ? ((await db().files.get(path)) ?? null) : null))
 }
 
 export function useSettings(): NotesSettings {

@@ -3,7 +3,6 @@
  * Loading and saving (STORE-3): edits are written to `files.text` within 300 ms of the last
  * keystroke and before the page is left; remote changes are shown right away (SYNC-5 step 5).
  */
-import { useLiveQuery } from 'dexie-react-hooks'
 import { AlertTriangle, ImagePlus, Smile } from 'lucide-react'
 import type { Node as PMNode } from 'prosemirror-model'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -13,7 +12,6 @@ import { PAGE_TEMPLATES, type PageTemplate } from '../../lib/data/templates'
 import { parseMarkdown, serializeMarkdown, splitPageFile } from '../../lib/markdown'
 import { schema } from '../../lib/schema'
 import { mergeLines } from '../../lib/sync/merge'
-import { db } from '../../lib/store/db'
 import type { FileRow, PageRow } from '../../lib/types'
 import { renamePage, savePageBody, setPageField } from '../../lib/workspace/ops'
 import { t } from '../../strings/zh-TW'
@@ -454,15 +452,6 @@ function TitleInput({ page, readOnly, onEnter }: { page: PageRow; readOnly: bool
 }
 
 /** A page route: resolves the key; `null` page → not found. */
-export function usePageByKey(key: string): PageRow | null | undefined {
-  return useLiveQuery(async () => {
-    const page = await db().pages.get(key)
-    if (page) return page
-    if (key.startsWith('path:')) return (await db().pages.where('path').equals(key.slice(5)).first()) ?? null
-    return null
-  }, [key])
-}
-
 export function PageNotFound() {
   return (
     <div className="page-not-found">
