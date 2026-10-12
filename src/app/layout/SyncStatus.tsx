@@ -1,25 +1,21 @@
 /** Sync/Status (SYNC-11): 已同步 / 同步中… / 離線 · N 頁待同步 / 同步失敗 · 點此重試. */
-import { AlertCircle, CloudOff, RefreshCw } from 'lucide-react'
+import { useLiveQuery } from 'dexie-react-hooks'
+import { AlertCircle, CloudOff, CloudUpload, RefreshCw } from 'lucide-react'
 import { useEffect, useState } from 'react'
-import type { SyncError } from '../../lib/types'
+import type { SyncStatus } from '../../lib/types'
 import { t } from '../../strings/zh-TW'
 import { cx, Popover } from '../../ui/primitives'
 import { syncNow } from '../actions'
-import { useDirtyCount, useOnline, useSyncState } from '../hooks'
+import { useOnline } from '../hooks'
 import { session } from '../session'
-import { useSyncing } from '../syncActivity'
 
-export type StatusView = { state: 'synced' } | { state: 'syncing' } | { state: 'offline'; pending: number } | { state: 'error'; error: SyncError }
+export type StatusView = SyncStatus
 
+/** SYNC-11, from the shared tables, so every tab shows the same state. */
 export function useSyncStatus(): StatusView {
-  const state = useSyncState()
-  const pending = useDirtyCount()
   const online = useOnline()
-  const syncing = useSyncing()
-  if (syncing) return { state: 'syncing' }
-  if (!online || state?.lastError?.kind === 'network') return { state: 'offline', pending }
-  if (state?.lastError) return { state: 'error', error: state.lastError }
-  return { state: 'synced' }
+  const status = useLiveQuery(async () => (await session()?.engine.getStatus()) ?? null, [online])
+  return status ?? { state: 'synced' }
 }
 
 export function statusLabel(s: StatusView): string {
@@ -30,6 +26,8 @@ export function statusLabel(s: StatusView): string {
       return t.sync.syncing
     case 'offline':
       return t.sync.offline(s.pending)
+    case 'pending':
+      return t.sync.pending(s.pending)
     case 'error':
       return t.sync.error
   }
@@ -57,6 +55,8 @@ export function SyncStatusButton({ compact = false }: { compact?: boolean }) {
       <RefreshCw size={15} className="spin-slow" />
     ) : status.state === 'offline' ? (
       <CloudOff size={15} />
+    ) : status.state === 'pending' ? (
+      <CloudUpload size={15} />
     ) : status.state === 'error' ? (
       <AlertCircle size={15} />
     ) : (

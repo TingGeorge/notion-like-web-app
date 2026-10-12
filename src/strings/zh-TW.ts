@@ -137,6 +137,7 @@ export const t = {
     syncing: '同步中…',
     offline: (n: number) => (n > 0 ? `離線 · ${n} 頁待同步` : '離線'),
     error: '同步失敗 · 點此重試',
+    pending: (n: number) => (n > 0 ? `${n} 頁待同步` : '待同步'),
     syncNow: '立即同步',
     autoSync: '自動同步',
     autoSyncHint: '停止輸入 5 秒後自動同步到 GitHub',
