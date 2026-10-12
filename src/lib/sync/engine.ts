@@ -1,10 +1,11 @@
 /**
  * Sync engine (SPEC §5): pull, push, merge, conflicts, scheduling.
  *
- * CONTRACT — the UI creates one engine per tab. Only the tab holding the Web Lock `sync`
- * actually talks to GitHub (STORE-6); every tab reads status from the `sync` table.
+ * CONTRACT — the UI creates one engine per tab. Every pull, push and conflict choice runs under
+ * the Web Lock `sync`, so only one tab talks to GitHub at a time (STORE-6); every tab reads status
+ * from the `sync` table (`syncingSince` shows a sync running in another tab).
  *
- * Wiring (see the module docs of `pull.ts`, `push.ts` for the row conventions):
+ * Wiring (row conventions: `types.ts` FileRow; planning: `pull.ts`, `push.ts`):
  * - `start()` once the workspace is set up; `stop()` when it goes away (or the token changes).
  * - `notifyLocalChange()` after every local write to `files`/`uploads` (SYNC-7 timer).
  * - `pushSoon()` when leaving a page; the engine itself listens to `visibilitychange`,
@@ -19,11 +20,11 @@ import { classifyPath, dirname, pagePathFor } from '../data/names'
 import { ulid } from '../data/ulid'
 import { EMPTY_SYNC_STATE, type NotesDB } from '../store/db'
 import { t } from '../../strings/zh-TW'
-import type { DeviceInfo, FileRow, SyncError, SyncState, SyncStatus, TreeItem, Workspace } from '../types'
+import { SETTINGS_PATH, TRASH_INDEX_PATH, type DeviceInfo, type FileRow, type SyncError, type SyncState, type SyncStatus, type TreeItem, type Workspace } from '../types'
 import { commitMessage, commitSummary, titleOfText } from './commitMessage'
 import { blobsToDownload, planPull, type PullPlan } from './pull'
 import { applyToTree, isEmptyNewPage, planPush, type PushPlan } from './push'
-import { planTrashPurge } from './trash'
+import { expiredTrashEntries, planTrashPurge } from './trash'
 import { WorkingSet, addTrashCopy, hhmm, isDirty, namesInDir, newRow, settleDeletedConflicts, withFrontmatter, withNewId } from './working'
 
 export type ConflictChoice = 'keep-both' | 'mine' | 'theirs'
@@ -614,6 +615,8 @@ export class SyncEngine {
   /** DATA-22 retention. Returns the changed paths. */
   private async purgeExpiredTrash(): Promise<string[]> {
     const { db } = this.options
+    const [index, settings] = await db.files.bulkGet([TRASH_INDEX_PATH, SETTINGS_PATH])
+    if (expiredTrashEntries(index, settings, this.now()).length === 0) return []
     for (let attempt = 0; attempt < 5; attempt++) {
       const state = await this.state()
       const work = new WorkingSet(await db.files.toArray())

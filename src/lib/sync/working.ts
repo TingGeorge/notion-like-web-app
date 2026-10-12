@@ -11,17 +11,18 @@ import { titleOfText } from './commitMessage'
 /**
  * A working copy of `files` rows. The planners change it; the engine then writes the touched rows
  * in one transaction, after checking that none of them changed in the database meanwhile.
+ * Rows are never mutated in place (`put` always gets a new object), so the rows as read stay
+ * available for that check.
  */
 export class WorkingSet {
   private rows = new Map<string, FileRow>()
-  /** JSON of each row as read, for the optimistic check before writing. */
-  private readonly signatures = new Map<string, string>()
+  private readonly original = new Map<string, FileRow>()
   readonly touched = new Set<string>()
 
   constructor(rows: FileRow[]) {
     for (const r of rows) {
       this.rows.set(r.path, r)
-      this.signatures.set(r.path, JSON.stringify(r))
+      this.original.set(r.path, r)
     }
   }
 
@@ -49,7 +50,7 @@ export class WorkingSet {
 
   /** The row as it was read (JSON), or 'null'. */
   signature(path: string): string {
-    return this.signatures.get(path) ?? 'null'
+    return JSON.stringify(this.original.get(path) ?? null)
   }
 
   /** Touched paths whose content changed for the app (ignores `pushing` and `updatedAt`). */

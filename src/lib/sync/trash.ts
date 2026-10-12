@@ -4,27 +4,35 @@
  * `.notes/trash/index.json`. They stay in git history.
  */
 import { parseSettings, parseTrashIndex } from '../data/notesFiles'
-import { SETTINGS_PATH, TRASH_DIR, TRASH_INDEX_PATH, type TreeItem } from '../types'
+import { SETTINGS_PATH, TRASH_DIR, TRASH_INDEX_PATH, type FileRow, type TreeItem } from '../types'
 import { removeTrashEntries, type WorkingSet } from './working'
 
 const DAY = 24 * 60 * 60 * 1000
 
-/** Returns the ids of the purged entries (empty when nothing expired). */
-export function planTrashPurge(work: WorkingSet, tree: Record<string, TreeItem> | null, now: number): string[] {
-  const index = work.get(TRASH_INDEX_PATH)
+/**
+ * The ids of the trash entries past `trashRetentionDays`, from the two JSON rows only (cheap
+ * enough to run after every pull). A retention of 0 means "keep forever".
+ */
+export function expiredTrashEntries(index: FileRow | undefined, settings: FileRow | undefined, now: number): string[] {
   if (!index || index.text === null || index.deleted || index.conflict) return []
   const parsed = parseTrashIndex(index.text)
   if (!parsed.ok) return []
-  const days = parseSettings(work.get(SETTINGS_PATH)?.text ?? null).value.trashRetentionDays
-  // 0 means "keep forever": never purge on a value that could be a mistake.
+  const days = parseSettings(settings?.text ?? null).value.trashRetentionDays
   if (!(days > 0)) return []
   const cutoff = now - days * DAY
-  const expired = parsed.value.entries.filter((e) => {
-    const at = Date.parse(e.deletedAt)
-    return Number.isFinite(at) && at < cutoff
-  })
+  return parsed.value.entries
+    .filter((e) => {
+      const at = Date.parse(e.deletedAt)
+      return Number.isFinite(at) && at < cutoff
+    })
+    .map((e) => e.id)
+}
+
+/** Returns the ids of the purged entries (empty when nothing expired). */
+export function planTrashPurge(work: WorkingSet, tree: Record<string, TreeItem> | null, now: number): string[] {
+  const expired = expiredTrashEntries(work.get(TRASH_INDEX_PATH), work.get(SETTINGS_PATH), now)
   if (expired.length === 0) return []
-  const ids = new Set(expired.map((e) => e.id))
+  const ids = new Set(expired)
   for (const id of ids) {
     const dir = `${TRASH_DIR}${id}/`
     for (const row of work.values()) {
