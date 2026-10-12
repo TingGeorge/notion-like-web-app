@@ -326,7 +326,7 @@ export function Popover({
   onClose: () => void
   children: ReactNode
   className?: string
-  placement?: 'bottom-start' | 'bottom-end' | 'top-start' | 'right-start'
+  placement?: 'bottom-start' | 'bottom-end' | 'top-start' | 'right-start' | 'right-end'
   offset?: number
 }) {
   const ref = useRef<HTMLDivElement>(null)
@@ -339,9 +339,14 @@ export function Popover({
       const h = el.offsetHeight
       const vw = window.innerWidth
       const vh = window.innerHeight
-      let left = placement === 'bottom-end' ? r.right - w : placement === 'right-start' ? r.right + offset : r.left
-      let top = placement === 'top-start' ? r.top - h - offset : placement === 'right-start' ? r.top : r.bottom + offset
-      if (top + h > vh - 8 && placement !== 'top-start') top = Math.max(8, r.top - h - offset)
+      const right = placement === 'right-start' || placement === 'right-end'
+      let left = placement === 'bottom-end' ? r.right - w : right ? r.right + offset : r.left
+      let top = placement === 'top-start' ? r.top - h - offset : placement === 'right-start' ? r.top : placement === 'right-end' ? r.bottom - h : r.bottom + offset
+      if (top + h > vh - 8) {
+        // Below the anchor: flip above it. Beside it: slide up to fit.
+        if (right) top = vh - 8 - h
+        else if (placement !== 'top-start') top = Math.max(8, r.top - h - offset)
+      }
       if (top < 8) top = 8
       left = Math.min(Math.max(8, left), vw - w - 8)
       el.style.left = `${left}px`

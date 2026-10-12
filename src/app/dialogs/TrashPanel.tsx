@@ -100,7 +100,7 @@ export function TrashPanel({ anchor }: { anchor?: DOMRect }) {
     )
   }
   return (
-    <Popover anchor={anchor ?? new DOMRect(16, window.innerHeight - 80, 200, 30)} onClose={closeOverlay} placement="right-start" className="trash-popover">
+    <Popover anchor={anchor ?? new DOMRect(16, window.innerHeight - 80, 200, 30)} onClose={closeOverlay} placement="right-end" offset={4} className="trash-popover">
       <TrashList mobile={false} />
     </Popover>
   )

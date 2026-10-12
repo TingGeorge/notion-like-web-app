@@ -278,9 +278,16 @@ test.describe('delete, restore, purge', () => {
     expect((await trashIndex(fake)).entries.map((e) => e.title).sort()).toEqual(['回收一', '回收二'])
 
     // Restore 回收一.
-    await page.locator('.sidebar .sb-footer').getByRole('button', { name: '垃圾桶' }).click()
+    const trashButton = page.locator('.sidebar .sb-footer').getByRole('button', { name: '垃圾桶' })
+    await trashButton.click()
     const row = (title: string) => page.locator('.trash-row', { hasText: title })
     await expect(row('回收一')).toBeVisible()
+    // D07: the panel sits just right of the sidebar, its bottom level with the 垃圾桶 row.
+    const panel = (await page.locator('.trash-popover').boundingBox())!
+    const sidebar = (await page.locator('.sidebar').boundingBox())!
+    const button = (await trashButton.boundingBox())!
+    expect(panel.x).toBeCloseTo(sidebar.x + sidebar.width + 4, 0)
+    expect(panel.y + panel.height).toBeCloseTo(button.y + button.height, 0)
     await row('回收一').getByRole('button', { name: '還原' }).click()
     await expect(page.getByText('已還原「回收一」')).toBeVisible()
     await syncAndWaitForCommit(page, fake)

@@ -167,7 +167,12 @@ export function Sidebar({ workspace, onCollapse }: { workspace: Workspace; onCol
         <button
           type="button"
           className="sb-nav-row"
-          onClick={(e) => openOverlay({ kind: 'trash', anchor: (e.currentTarget as HTMLElement).getBoundingClientRect() })}
+          onClick={(e) => {
+            // D07: the panel opens beside the sidebar, its bottom level with this row.
+            const row = e.currentTarget.getBoundingClientRect()
+            const sidebar = e.currentTarget.closest('.sidebar')?.getBoundingClientRect() ?? row
+            openOverlay({ kind: 'trash', anchor: new DOMRect(sidebar.left, row.top, sidebar.width, row.height) })
+          }}
         >
           <Trash2 size={18} />
           <span>{t.nav.trash}</span>
