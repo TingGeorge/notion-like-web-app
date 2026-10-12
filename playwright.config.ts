@@ -27,6 +27,8 @@ export default defineConfig({
     trace: 'retain-on-failure',
     locale: 'zh-TW',
     timezoneId: 'Asia/Taipei',
+    // The fake GitHub is wired with page routes; keep the service worker out of the way.
+    serviceWorkers: 'block',
   },
   projects: wanted ? all.filter((p) => wanted.includes(p.name)) : all,
   webServer: {

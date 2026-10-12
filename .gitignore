@@ -9,3 +9,4 @@ blob-report/
 .DS_Store
 .vite/
 .claude/worktrees/
+*.local.spec.ts

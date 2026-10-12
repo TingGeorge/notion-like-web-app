@@ -89,7 +89,7 @@ export const t = {
     templateBlank: '空白頁面',
     templateTodo: '待辦清單',
     templateMeeting: '會議記錄範本',
-    editedAgo: (s: string) => `已編輯 ${s}`,
+    editedAgo: (s: string) => (s === '剛剛' ? '剛剛編輯' : `已編輯 ${s}`),
     createdJustNow: '剛剛建立',
     backlinks: '反向連結',
     history: '頁面歷史',
