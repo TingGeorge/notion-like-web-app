@@ -3,7 +3,7 @@
  * that axe finds (contrast, names of icon-only buttons, roles), and keyboard focus is visible.
  */
 import { REPO, TOKEN, expect, test } from './fixtures'
-import { editor, expectAccessible, openSettings } from './helpers'
+import { editor, expectAccessible, openSettings, setupDevice } from './helpers'
 
 const RICH = [
   '# 標題一',
@@ -111,4 +111,28 @@ test('keyboard focus is visible (NFR-3)', async ({ page, fake }) => {
   expect(outline.tag).not.toBe('BODY')
   expect(outline.style).toBe('solid')
   expect(outline.width).toBeGreaterThanOrEqual(2)
+})
+
+test('the sidebar page tree works with the arrow keys (NFR-3)', async ({ page, fake }) => {
+  await fake.commit(REPO, { files: { 'A 專案.md': 'a\n', 'A 專案/A1 會議.md': 'a1\n', 'B 讀書.md': 'b\n' }, message: 'seed' })
+  await setupDevice(page)
+  const link = (title: string) => page.locator('.sidebar .tree-link', { hasText: new RegExp(`^${title}$`) })
+  const focused = () => page.evaluate(() => document.activeElement?.textContent ?? '')
+  await link('A 專案').focus()
+  // → expands, ↓ walks into the child, ← on a child goes to its parent, ← again collapses.
+  await page.keyboard.press('ArrowRight')
+  await expect(link('A1 會議')).toBeVisible()
+  await page.keyboard.press('ArrowDown')
+  expect(await focused()).toBe('A1 會議')
+  await page.keyboard.press('ArrowLeft')
+  expect(await focused()).toBe('A 專案')
+  await page.keyboard.press('ArrowLeft')
+  await expect(link('A1 會議')).toHaveCount(0)
+  await page.keyboard.press('ArrowDown')
+  expect(await focused()).toBe('B 讀書')
+  await page.keyboard.press('ArrowUp')
+  expect(await focused()).toBe('A 專案')
+  // Enter opens the page, as any link.
+  await page.keyboard.press('Enter')
+  await expect(page.locator('.breadcrumb-item.is-current')).toContainText('A 專案')
 })

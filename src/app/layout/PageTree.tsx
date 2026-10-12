@@ -15,6 +15,20 @@ import type { PageTree as Tree } from '../../lib/data/tree'
 
 const DRAG_TYPE = 'application/x-github-notes-page'
 
+/** NFR-3: ↑/↓ move between rows, → expands, ← collapses (or goes to the parent row). */
+function onTreeKey(e: React.KeyboardEvent<HTMLAnchorElement>, open: boolean, toggle: () => void) {
+  const links = Array.from(e.currentTarget.closest('.page-tree')?.querySelectorAll<HTMLAnchorElement>('.tree-link') ?? [])
+  const i = links.indexOf(e.currentTarget)
+  if (e.key === 'ArrowDown' && i < links.length - 1) links[i + 1].focus()
+  else if (e.key === 'ArrowUp' && i > 0) links[i - 1].focus()
+  else if (e.key === 'ArrowRight' && !open) toggle()
+  else if (e.key === 'ArrowLeft') {
+    if (open) toggle()
+    else e.currentTarget.closest('ul[role=group]')?.closest('li')?.querySelector<HTMLAnchorElement>('.tree-link')?.focus()
+  } else return
+  e.preventDefault()
+}
+
 type DropZone = 'before' | 'inside' | 'after'
 
 interface Props {
@@ -113,6 +127,7 @@ export function PageTree({ tree, roots, currentKey, expanded, onToggle, variant 
                 e.preventDefault()
                 navigate({ name: 'page', key: page.key })
               }}
+              onKeyDown={(e) => onTreeKey(e, open, () => onToggle(page.key))}
               id={`${idPrefix}-${page.key}`}
             >
               <PageIcon icon={page.icon} size={variant === 'mobile' ? 22 : 18} />
