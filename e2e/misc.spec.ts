@@ -47,14 +47,23 @@ test('the print stylesheet hides the app chrome and keeps the page', async ({ pa
   await expect(titleInput(page)).toBeVisible()
   await page.emulateMedia({ media: 'screen' })
   await expect(page.locator('.sidebar')).toBeVisible()
-  // 列印／存成 PDF in the page menu calls window.print().
+  // An open menu is not printed.
+  await page.locator('.topbar').getByRole('button', { name: '頁面選單' }).click()
+  await expect(page.getByRole('menu')).toBeVisible()
+  await page.emulateMedia({ media: 'print' })
+  await expect(page.getByRole('menu')).toBeHidden()
+  await page.emulateMedia({ media: 'screen' })
+  await page.keyboard.press('Escape')
+  await expect(page.getByRole('menu')).toHaveCount(0)
+  // 列印／存成 PDF in the page menu calls window.print() once the menu has closed.
+  type Printed = { __printed: { menuOpen: boolean }[] }
   await page.evaluate(() => {
-    ;(window as unknown as { __printed: number }).__printed = 0
-    window.print = () => void ((window as unknown as { __printed: number }).__printed += 1)
+    ;(window as unknown as Printed).__printed = []
+    window.print = () => void (window as unknown as Printed).__printed.push({ menuOpen: !!document.querySelector('[role="menu"]') })
   })
   await page.locator('.topbar').getByRole('button', { name: '頁面選單' }).click()
   await page.getByRole('menuitem', { name: '列印／存成 PDF' }).click()
-  expect(await page.evaluate(() => (window as unknown as { __printed: number }).__printed)).toBe(1)
+  await expect.poll(() => page.evaluate(() => (window as unknown as Printed).__printed)).toEqual([{ menuOpen: false }])
 })
 
 test('the built index.html carries the CSP of SEC-3', () => {

@@ -130,9 +130,13 @@ export async function exportMarkdown(key: string): Promise<void> {
   setTimeout(() => URL.revokeObjectURL(url), 1000)
 }
 
-/** UI-16: 列印／存成 PDF. */
+/**
+ * UI-16: 列印／存成 PDF. The menu that called this has asked to close, but React has not
+ * removed it from the DOM yet, and window.print() blocks and snapshots the page as it is —
+ * so print on the next task, once the menu is gone.
+ */
 export function printPage(): void {
-  window.print()
+  setTimeout(() => window.print(), 0)
 }
 
 /** Leaving a page: discard it if it is a new empty page (UI-10), and push soon (SYNC-7). */

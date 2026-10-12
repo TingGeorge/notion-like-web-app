@@ -1090,6 +1090,10 @@ body.gn-dragging * {
 @media print {
   .gn-handle,
   .gn-gutter,
+  .gn-drop-indicator,
+  .gn-slash,
+  .gn-toolbar,
+  .gn-kbbar,
   .gn-prose .table-add,
   .gn-prose .code-copy {
     display: none !important;
