@@ -6,7 +6,6 @@ import { useFile, useIsMobile, usePage, useSettings } from '../hooks'
 import { closeOverlay } from '../overlays'
 import { PageIcon } from '../PageIcon'
 import { pageMenuItems } from '../page/pageMenu'
-import { useRoute } from '../router'
 import { statusLabel, useSyncStatus } from '../layout/SyncStatus'
 import './dialogs.css'
 
@@ -15,11 +14,9 @@ export function PageMenuOverlay({ pageKey, anchor }: { pageKey: string; anchor?:
   const file = useFile(page && !page.virtual ? page.path : null)
   const settings = useSettings()
   const mobile = useIsMobile()
-  const route = useRoute()
   const status = useSyncStatus()
   if (!page) return null
-  const currentKey = route.name === 'page' ? route.key : null
-  const items = pageMenuItems(page.key, settings.favorites.includes(page.key), currentKey, page.virtual)
+  const items = pageMenuItems(page.key, settings.favorites.includes(page.key), page.virtual)
 
   if (mobile) {
     const normal = items.filter((i) => i !== 'separator' && !i.danger)

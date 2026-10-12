@@ -174,7 +174,9 @@ describe('SYNC-12 / SYNC-13 retries', () => {
     e.notifyLocalChange()
     await clock.advance(5000, e)
     expect(clock.pending()).toContain(5000)
-    expect(await e.getStatus()).toMatchObject({ state: 'error', error: { kind: 'network', message: t.sync.errors.network } })
+    // SYNC-11: a network failure is 離線, the reason stays in the sync state.
+    expect(await e.getStatus()).toEqual({ state: 'offline', pending: 1 })
+    expect((await d.db.sync.get('state'))!.lastError).toMatchObject({ kind: 'network', message: t.sync.errors.network })
     expect((await d.db.sync.get('state'))!.lastError!.retryAt).toBe(clock.time + 5000)
     await clock.advance(5000, e)
     expect(clock.pending()).toContain(10_000)
@@ -271,6 +273,19 @@ describe('SYNC-11 status', () => {
     gh.failNext({ kind: 'server', status: 503 })
     await e.syncNow()
     expect(await e.getStatus()).toMatchObject({ state: 'error', error: { kind: 'server', message: t.sync.errors.server } })
+    await e.syncNow()
+    expect(await e.getStatus()).toEqual({ state: 'synced' })
+  })
+})
+
+describe('SYNC-11 network failures', () => {
+  it('shows 離線 when GitHub cannot be reached although the browser says it is online', async () => {
+    const { gh, d, e } = await setup({ isOnline: () => true })
+    await d.edit('a.md', 'a1\n')
+    gh.failNext({ kind: 'network' }, { times: 5 })
+    await e.syncNow()
+    expect(await e.getStatus()).toEqual({ state: 'offline', pending: 1 })
+    gh.clearFailures()
     await e.syncNow()
     expect(await e.getStatus()).toEqual({ state: 'synced' })
   })

@@ -48,7 +48,8 @@ export function SyncStatusButton({ compact = false }: { compact?: boolean }) {
   const [anchor, setAnchor] = useState<HTMLElement | null>(null)
   const label = statusLabel(status)
   useEffect(() => {
-    if (status.state !== 'error') setAnchor(null)
+    // The click that opens the reason also retries, so the state passes through 同步中… and back.
+    if (status.state !== 'error' && status.state !== 'syncing') setAnchor(null)
   }, [status.state])
   const icon =
     status.state === 'syncing' ? (

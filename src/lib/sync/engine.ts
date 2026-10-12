@@ -272,7 +272,8 @@ export class SyncEngine {
     const dirty = await db.files.filter((r) => (r.dirty || r.deleted) && !isEmptyNewPage(r)).toArray()
     const uploads = await db.uploads.count()
     const pages = dirty.filter((r) => r.kind === 'page' && !(r.deleted && r.movedTo)).length
-    if (!this.isOnline()) return { state: 'offline', pending: pages }
+    // SYNC-11: 離線 is "no network", which `navigator.onLine` alone does not always know.
+    if (!this.isOnline() || state.lastError?.kind === 'network') return { state: 'offline', pending: pages }
     if (state.lastError) return { state: 'error', error: state.lastError }
     if (dirty.length > 0 || uploads > 0) return { state: 'pending', pending: pages }
     return { state: 'synced' }

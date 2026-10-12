@@ -19,7 +19,7 @@ import {
 } from '../lib/workspace/ops'
 import { t } from '../strings/zh-TW'
 import { toast, toastWithUndo } from '../ui/toast'
-import { navigate, pageHash } from './router'
+import { followKey, navigate, pageHash, parseHash } from './router'
 import { broadcast, flushEditors, session } from './session'
 
 /** Tell the sync engine a local change happened (SYNC-7). */
@@ -64,7 +64,7 @@ export async function duplicate(key: string): Promise<void> {
   navigate({ name: 'page', key: id })
 }
 
-export async function trashPage(key: string, currentKey: string | null): Promise<void> {
+export async function trashPage(key: string): Promise<void> {
   const page = await getPage(key)
   if (!page) return
   const parentKey = page.parentKey
@@ -72,7 +72,9 @@ export async function trashPage(key: string, currentKey: string | null): Promise
   await flushEditors()
   const entryId = await deletePage(key)
   localChange()
-  if (currentKey && (currentKey === key || currentKey === page.key)) {
+  // Leave the page only if it is still the one shown: the user may have moved on meanwhile.
+  const route = parseHash(location.hash)
+  if (route.name === 'page' && (route.key === key || route.key === page.key)) {
     navigate(parentKey ? { name: 'page', key: parentKey } : { name: 'home' }, { replace: true })
   }
   toastWithUndo(t.toast.pageDeleted(page.title), () => {
@@ -101,6 +103,8 @@ export async function moveTo(key: string, parentKey: string | null, index?: numb
   const page = await getPage(key)
   const id = await movePage(key, parentKey, index)
   localChange()
+  // A page without an id was open under its path, which just changed.
+  followKey(key, id)
   if (page && page.parentKey !== parentKey) {
     toastWithUndo(t.toast.pageMoved(page.title), () => {
       // The page may have been deleted or moved again since; then there is nothing to undo.

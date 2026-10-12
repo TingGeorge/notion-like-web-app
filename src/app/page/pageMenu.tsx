@@ -5,7 +5,7 @@ import { t } from '../../strings/zh-TW'
 import { copyPageLink, duplicate, exportMarkdown, printPage, toggleFavorite, trashPage } from '../actions'
 import { openOverlay } from '../overlays'
 
-export function pageMenuItems(pageKey: string, isFavorite: boolean, currentKey: string | null, isVirtual = false): (MenuItem | 'separator')[] {
+export function pageMenuItems(pageKey: string, isFavorite: boolean, isVirtual = false): (MenuItem | 'separator')[] {
   const size = 17
   return [
     {
@@ -43,7 +43,7 @@ export function pageMenuItems(pageKey: string, isFavorite: boolean, currentKey: 
       label: t.page.deletePage,
       icon: <Trash2 size={size} />,
       danger: true,
-      onSelect: () => void trashPage(pageKey, currentKey),
+      onSelect: () => void trashPage(pageKey),
     },
   ]
 }

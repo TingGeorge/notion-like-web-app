@@ -116,15 +116,22 @@ export function Kbd({ children }: { children: ReactNode }) {
 
 /** Locks body scroll and traps Tab focus inside `ref` while mounted. */
 function useModalBehaviour(ref: React.RefObject<HTMLElement | null>, onClose: (() => void) | undefined) {
+  // Callers pass a new `onClose` on every render; the effect below must run only once per mount,
+  // or it would take the focus back from an input inside the dialog on every re-render.
+  const closeRef = useRef(onClose)
+  useEffect(() => {
+    closeRef.current = onClose
+  })
+  const closable = !!onClose
   useEffect(() => {
     const previous = document.activeElement as HTMLElement | null
     const el = ref.current
     const first = el?.querySelector<HTMLElement>('[autofocus], [data-autofocus]')
     ;(first ?? el)?.focus({ preventScroll: true })
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && onClose) {
+      if (e.key === 'Escape' && closable) {
         e.stopPropagation()
-        onClose()
+        closeRef.current?.()
       } else if (e.key === 'Tab' && el) {
         const focusable = Array.from(
           el.querySelectorAll<HTMLElement>(
@@ -148,7 +155,7 @@ function useModalBehaviour(ref: React.RefObject<HTMLElement | null>, onClose: ((
       document.removeEventListener('keydown', onKey, true)
       previous?.focus?.({ preventScroll: true })
     }
-  }, [ref, onClose])
+  }, [ref, closable])
 }
 
 export interface ModalProps {
@@ -351,14 +358,20 @@ export function Popover({
     }
   }, [anchor, placement, offset])
   useEffect(() => {
+    // A dialog opened from inside the popover (a confirmation) lives in its own portal, after the
+    // popover. While it is open, clicks and Esc are the dialog's.
+    const dialogOnTop = () =>
+      !!ref.current &&
+      Array.from(document.querySelectorAll('.overlay')).some((o) => !!(ref.current!.compareDocumentPosition(o) & Node.DOCUMENT_POSITION_FOLLOWING))
     const onDown = (e: MouseEvent | TouchEvent) => {
       const target = e.target as Node
       if (ref.current?.contains(target)) return
       if (anchor instanceof HTMLElement && anchor.contains(target)) return
+      if (dialogOnTop()) return
       onClose()
     }
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
+      if (e.key === 'Escape' && !dialogOnTop()) {
         e.stopPropagation()
         onClose()
       }
