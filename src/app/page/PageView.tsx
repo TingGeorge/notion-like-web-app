@@ -382,7 +382,8 @@ function TitleInput({ page, readOnly, onEnter }: { page: PageRow; readOnly: bool
   useEffect(() => {
     const el = ref.current
     if (!el) return
-    el.style.height = '0px'
+    // Firefox reports scrollHeight 0 for an empty textarea at height 0; never go below one line (CSS min-height).
+    el.style.height = 'auto'
     el.style.height = `${el.scrollHeight}px`
   }, [value])
 

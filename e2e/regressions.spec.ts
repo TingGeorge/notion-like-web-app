@@ -1,6 +1,7 @@
 import { REPO, expect, setupWorkspace, test } from './fixtures'
 
-test('leaving a page never renames it (title committed only when edited)', async ({ page, fake }) => {
+test('leaving a page never renames it (title committed only when edited)', async ({ page, fake, isMobile }) => {
+  test.skip(isMobile, 'uses the desktop sidebar')
   await fake.commit(REPO, { files: { '京都旅行計畫.md': '---\nid: 01JA8Z3K5N6P7Q8R9S0T1V2KYT\n---\n清水寺\n' }, message: 'seed' })
   await setupWorkspace(page)
   await page.locator('.sidebar').getByText('京都旅行計畫').click()

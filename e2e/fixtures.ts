@@ -11,10 +11,14 @@ export const REPO = `${LOGIN}/notes`
 
 /** Route a browser context's GitHub API calls to the fake. */
 export async function attachFake(context: BrowserContext, fake: FakeGitHub): Promise<void> {
+  // Playwright's WebKit cannot fulfil a 304, so there conditional requests always get a full answer
+  // (the 304 path is covered by the unit tests).
+  const allow304 = context.browser()?.browserType().name() !== 'webkit'
   await context.route('https://api.github.com/**', async (route) => {
     const request = route.request()
     const method = request.method()
     const headers = await request.allHeaders()
+    if (!allow304) delete headers['if-none-match']
     const body = method === 'GET' || method === 'HEAD' || method === 'OPTIONS' ? undefined : (request.postDataBuffer() ?? undefined)?.toString("utf8")
     try {
       const response = await fake.handle(new Request(request.url(), { method, headers, body }))
@@ -40,7 +44,12 @@ export async function makeFake(options: { files?: Record<string, string>; empty?
 /** Go through 首次設定 (D12–D14) with the test token and repo. */
 export async function setupWorkspace(page: Page): Promise<void> {
   await page.goto('./')
-  await page.getByRole('button', { name: '開始設定' }).click()
+  // SETUP-2: iPhone Safari outside the home-screen app shows 「加入主畫面」 first.
+  const start = page.getByRole('button', { name: '開始設定' })
+  const inSafari = page.getByRole('button', { name: '仍要在 Safari 使用' })
+  await expect(start.or(inSafari)).toBeVisible()
+  if (await inSafari.isVisible()) await inSafari.click()
+  await start.click()
   await page.getByLabel('GitHub token').fill(TOKEN)
   await page.getByRole('button', { name: '連結', exact: true }).click()
   await page.getByText(REPO).click()

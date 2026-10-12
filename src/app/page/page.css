@@ -117,6 +117,7 @@
   font-size: 40px;
   font-weight: 700;
   line-height: 1.2;
+  min-height: 1.2em;
 }
 .page-title-input::placeholder {
   color: var(--text-tertiary);
