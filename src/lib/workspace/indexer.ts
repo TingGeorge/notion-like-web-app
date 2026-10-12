@@ -2,7 +2,7 @@
  * STORE-4: the `pages` table (and the search index) are derived from `files` and updated on
  * every local write and every pull. They can always be rebuilt (`reindexAll`).
  */
-import { analyzePage, type PageAnalysis } from '../markdown'
+import { analyzePage, readPageMeta, splitPageFile, type PageAnalysis } from '../markdown'
 import { dirname, isPagePath, basename, titleOf, ancestorDirs } from '../data/names'
 import { SearchIndex } from '../search'
 import { db } from '../store/db'
@@ -17,12 +17,14 @@ function safeAnalyze(text: string): PageAnalysis {
     return analyzePage(text)
   } catch (error) {
     console.error('analyzePage failed', error)
+    // Keep the identity and title from the frontmatter even if the body cannot be analysed.
+    const { frontmatter, body } = splitPageFile(text)
     return {
-      meta: { id: null, title: null, icon: null, cover: null, created: null },
+      meta: readPageMeta(frontmatter),
       links: [],
       headings: [],
-      plainText: text,
-      excerpt: text.slice(0, 200).replace(/\s+/g, ' '),
+      plainText: body,
+      excerpt: body.slice(0, 200).replace(/\s+/g, ' '),
     }
   }
 }

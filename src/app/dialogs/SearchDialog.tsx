@@ -1,6 +1,7 @@
 /** Search (UI-9, D05 / M07): ⌘K or ⌘P; title > headings > body; filters; Enter / ⌘Enter. */
 import { ChevronDown, Search, X } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { shortcutLabel } from '../../lib/data/device'
 import type { SearchResult } from '../../lib/search'
 import { getSearchIndex } from '../../lib/workspace/indexer'
 import { t } from '../../strings/zh-TW'
@@ -205,7 +206,7 @@ export function SearchDialog({ initialQuery = '' }: { initialQuery?: string }) {
       </div>
       {!mobile && (
         <div className="search-footer">
-          <span>{t.search.footer}</span>
+          <span>{shortcutLabel(t.search.footer)}</span>
           <span>{t.search.chineseOk}</span>
         </div>
       )}
