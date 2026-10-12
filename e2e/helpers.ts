@@ -309,6 +309,15 @@ export async function openSettings(page: Page, section?: string): Promise<void> 
 
 /** NFR-3: the current screen has no WCAG 2.1 A/AA violations that axe can find (labels, contrast, roles…). */
 export async function expectAccessible(page: Page, screen: string): Promise<void> {
+  // Let fade-ins finish (spinners run forever and are left alone): axe reads colours mid-fade as faint.
+  await page.evaluate(() =>
+    Promise.all(
+      document
+        .getAnimations()
+        .filter((a) => a.effect?.getComputedTiming().iterations !== Infinity)
+        .map((a) => a.finished.catch(() => undefined)),
+    ),
+  )
   const { violations } = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa']).analyze()
   const found = violations.flatMap((v) => v.nodes.map((n) => `${v.id}: ${n.target.join(' ')} — ${n.failureSummary?.split('\n')[1]?.trim() ?? v.help}`))
   expect(found, `${screen}: accessibility violations`).toEqual([])
