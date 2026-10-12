@@ -8,7 +8,7 @@ import { cx, IconButton } from '../../ui/primitives'
 import { newPage } from '../actions'
 import { useFile, usePage, usePages, useSettings, useUi } from '../hooks'
 import { HomeScreen } from '../home/HomeScreen'
-import { openOverlay, useOverlay } from '../overlays'
+import { closeOverlay, openOverlay, useOverlay } from '../overlays'
 import { PageIcon } from '../PageIcon'
 import { PageNotFound, PageView } from '../page/PageView'
 import { isFollow, navigate, useRoute } from '../router'
@@ -91,11 +91,16 @@ export function DesktopShell({ workspace }: { workspace: Workspace }) {
 // --- iPhone ----------------------------------------------------------------------------------
 
 function TabBar({ active }: { active: 'home' | 'search' | 'pages' }) {
+  // The search screen sits above the tab bar's other screens: leaving it for another tab closes it.
+  const leaveSearch = (run: () => void) => () => {
+    if (active === 'search') closeOverlay()
+    run()
+  }
   const tabs = [
-    { id: 'home', label: t.nav.home, icon: <Home size={24} strokeWidth={active === 'home' ? 2.1 : 1.7} />, run: () => navigate({ name: 'home' }) },
+    { id: 'home', label: t.nav.home, icon: <Home size={24} strokeWidth={active === 'home' ? 2.1 : 1.7} />, run: leaveSearch(() => navigate({ name: 'home' })) },
     { id: 'search', label: t.nav.search, icon: <Search size={24} strokeWidth={active === 'search' ? 2.1 : 1.7} />, run: () => openOverlay({ kind: 'search' }) },
-    { id: 'pages', label: t.nav.allPages, icon: <FileText size={24} strokeWidth={active === 'pages' ? 2.1 : 1.7} />, run: () => navigate({ name: 'pages' }) },
-    { id: 'new', label: t.nav.add, icon: <SquarePen size={24} strokeWidth={1.7} />, run: () => void newPage() },
+    { id: 'pages', label: t.nav.allPages, icon: <FileText size={24} strokeWidth={active === 'pages' ? 2.1 : 1.7} />, run: leaveSearch(() => navigate({ name: 'pages' })) },
+    { id: 'new', label: t.nav.add, icon: <SquarePen size={24} strokeWidth={1.7} />, run: leaveSearch(() => void newPage()) },
   ]
   return (
     <nav className="tabbar" data-print="hide">

@@ -42,6 +42,36 @@ test.describe('phone', () => {
     await context.close()
   })
 
+  test('the tab bar leaves the search screen for 首頁, 所有頁面 and 新增', async ({ browser }) => {
+    const fake = await makeFake({ files: FILES })
+    const context = await browser.newContext({ baseURL: BASE_URL, locale: 'zh-TW', serviceWorkers: 'block', viewport: { width: 393, height: 852 }, isMobile: true, hasTouch: true })
+    await attachFake(context, fake)
+    const page = await context.newPage()
+    await setupDevice(page)
+    const tabbar = page.locator('.tabbar')
+    const search = page.locator('.search.is-mobile')
+
+    await tabbar.getByRole('button', { name: '搜尋' }).tap()
+    await expect(search).toBeVisible()
+    await tabbar.getByRole('button', { name: '首頁' }).tap()
+    await expect(search).toHaveCount(0)
+    await expect(page.locator('.home-greeting')).toBeVisible()
+    await expect(tabbar.getByRole('button', { name: '首頁' })).toHaveAttribute('aria-current', 'page')
+
+    await tabbar.getByRole('button', { name: '搜尋' }).tap()
+    await expect(search).toBeVisible()
+    await tabbar.getByRole('button', { name: '所有頁面' }).tap()
+    await expect(search).toHaveCount(0)
+    await expect(page.getByRole('heading', { name: '所有頁面' })).toBeVisible()
+
+    await tabbar.getByRole('button', { name: '搜尋' }).tap()
+    await expect(search).toBeVisible()
+    await tabbar.getByRole('button', { name: '新增' }).tap()
+    await expect(search).toHaveCount(0)
+    await expect(titleInput(page)).toBeVisible()
+    await context.close()
+  })
+
   test('所有頁面 shows the same tree as the sidebar; tapping opens a page', async ({ browser }) => {
     const fake = await makeFake({ files: FILES })
     const context = await browser.newContext({ baseURL: BASE_URL, locale: 'zh-TW', serviceWorkers: 'block', viewport: { width: 393, height: 852 }, isMobile: true, hasTouch: true })
