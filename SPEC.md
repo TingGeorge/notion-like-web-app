@@ -4,6 +4,7 @@ A Notion-like notes app that runs entirely in the browser (a PWA) and stores eve
 
 - **Related documents**:
   - Plan and decision log (zh-TW): [`TingGeorge/ideas` → `github-notes/README.md`](https://github.com/TingGeorge/ideas/blob/claude/bold-sagan-uthv65/github-notes/README.md)
+  - Visual companion: [`SPEC.html`](SPEC.html), the same spec as diagrams, with the full requirement text in collapsible panels. Open it in a browser. This file stays the source of truth.
   - Design: [Figma](https://www.figma.com/design/N3TDXtJeqjUd6wiUBHPzNu/Untitled). Screen codes `D01`–`D15` (desktop) and `M01`–`M22` (iPhone) refer to frames in that file.
   - Links to other repos point at the working branch `claude/bold-sagan-uthv65` until it is merged.
 - **How to read this spec**: requirement IDs (`DATA-3`, `SYNC-7`, …) are referenced by tests. "MUST" is required for v1; "SHOULD" may slip to a later release.
