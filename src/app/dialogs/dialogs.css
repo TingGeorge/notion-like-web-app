@@ -771,11 +771,16 @@
   padding: 0 20px 40px;
 }
 .m-large-header {
+  /* Sticky and opaque for the same reason as the home header (iOS 26 top-edge blur). */
+  position: sticky;
+  top: 0;
+  z-index: 5;
   display: flex;
   align-items: center;
   justify-content: space-between;
   height: 56px;
   margin-top: 8px;
+  background: var(--bg-default);
 }
 .m-large-header h1 {
   font-size: 30px;
