@@ -8,7 +8,7 @@ import { ulid } from '../lib/data/ulid'
 import { db, type ConfigRow } from '../lib/store/db'
 import { SyncEngine } from '../lib/sync/engine'
 import { DEFAULT_UI, type DeviceInfo, type UiPrefs, type Workspace } from '../lib/types'
-import { refreshSearchFor, reindexPaths } from '../lib/workspace/indexer'
+import { flushSearchIndex, getSearchIndex, refreshSearchFor, reindexPaths } from '../lib/workspace/indexer'
 
 type Flusher = () => Promise<void>
 
@@ -126,6 +126,19 @@ export function startSession(workspace: Workspace, device: DeviceInfo): Session 
   })
   current = { workspace, device, client, engine }
   return current
+}
+
+/** Keep the search index ready: save it when the app is hidden, load it when the app is idle. */
+if (typeof window !== 'undefined') {
+  const save = () => void flushSearchIndex()
+  window.addEventListener('pagehide', save)
+  document.addEventListener('visibilitychange', () => document.visibilityState === 'hidden' && save())
+}
+
+export function preloadSearch(): void {
+  const load = () => void getSearchIndex().catch(() => undefined)
+  if ('requestIdleCallback' in window) window.requestIdleCallback(load, { timeout: 5000 })
+  else setTimeout(load, 2000)
 }
 
 export function session(): Session | null {

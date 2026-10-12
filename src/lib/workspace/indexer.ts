@@ -71,12 +71,24 @@ export function getSearchIndex(): Promise<SearchIndex> {
   return searchLoad
 }
 
+let pendingSave: SearchIndex | null = null
+
 function scheduleSave(index: SearchIndex) {
+  pendingSave = index
   if (saveTimer) clearTimeout(saveTimer)
-  saveTimer = setTimeout(() => {
-    saveTimer = null
-    void db().search.put({ key: 'index', json: index.toJSON(), updatedAt: Date.now() })
-  }, 2000)
+  saveTimer = setTimeout(() => void flushSearchIndex(), 2000)
+}
+
+/**
+ * Write a pending search index now (when the app is hidden or closed). Without a stored index the
+ * next start has to rebuild it from every page, which takes seconds on a large workspace.
+ */
+export async function flushSearchIndex(): Promise<void> {
+  if (saveTimer) clearTimeout(saveTimer)
+  saveTimer = null
+  const index = pendingSave
+  pendingSave = null
+  if (index) await db().search.put({ key: 'index', json: index.toJSON(), updatedAt: Date.now() })
 }
 
 function searchDoc(key: string, row: FileRow & { text: string }, analysis: PageAnalysis) {
@@ -155,6 +167,7 @@ export async function reindexAll(): Promise<void> {
   searchIndex = index
   searchLoad = Promise.resolve(index)
   scheduleSave(index)
+  await flushSearchIndex()
 }
 
 async function indexOne(path: string, change: Change, known?: FileRow): Promise<void> {

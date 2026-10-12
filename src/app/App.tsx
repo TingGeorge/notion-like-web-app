@@ -14,7 +14,7 @@ import { DesktopShell, MobileShell } from './layout/Shells'
 import { OverlayHost } from './OverlayHost'
 import { registerServiceWorker } from './pwa'
 import { navigate, useRoute } from './router'
-import { createClient, loadDevice, loadUi, loadWorkspace, onNotice, saveWorkspace, session, startSession, updateUi } from './session'
+import { createClient, loadDevice, loadUi, loadWorkspace, onNotice, preloadSearch, saveWorkspace, session, startSession, updateUi } from './session'
 import { useTheme } from './shortcuts'
 import { runInitialSync } from './workspaceAdmin'
 
@@ -35,6 +35,7 @@ export function App() {
       if (workspace) {
         const s = startSession(workspace, device)
         s.engine.start()
+        preloadSearch()
       }
       const resume = resumeRow && resumeRow.key === 'resume' ? resumeRow.value : null
       setBoot({ state: 'ready', workspace, device, resume, safariAccepted: prefs.safariTabModeAccepted ?? false })
