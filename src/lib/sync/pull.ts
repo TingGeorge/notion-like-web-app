@@ -148,6 +148,22 @@ export function planPull(input: PullInput): PullPlan {
       }
     }
   }
+  // Pages without an id inside a folder that moved follow it by path (a folder move on github.com
+  // or by an app version that never saw those pages).
+  if (moveTarget.size > 0) {
+    const taken = new Set(moveTarget.values())
+    const folders = [...moveTarget].map(([p, q]) => [childDirOf(p), childDirOf(q)] as const)
+    for (const p of removed) {
+      if (moveTarget.has(p) || original.get(p)!.kind !== 'page') continue
+      const folder = folders.find(([from]) => isInside(p, from))
+      if (!folder) continue
+      const q = folder[1] + p.slice(folder[0].length)
+      if (addedSet.has(q) && !taken.has(q)) {
+        moveTarget.set(p, q)
+        taken.add(q)
+      }
+    }
+  }
   const moveTargets = new Set(moveTarget.values())
 
   // ---- helpers --------------------------------------------------------------------------------
@@ -329,6 +345,20 @@ export function planPull(input: PullInput): PullPlan {
     if (row.kind === 'page') notice(t.page.remoteDeletedKept)
   }
 
+  // Unpushed local pages inside a folder the remote moved go along with it.
+  for (const [p, q] of moveTarget) {
+    const from = childDirOf(p)
+    const to = childDirOf(q)
+    for (const row of work.values()) {
+      if (row.baseSha !== null || row.deleted || !isInside(row.path, from)) continue
+      const dest = to + row.path.slice(from.length)
+      if (work.has(dest) || remote.has(dest)) continue
+      work.remove(row.path)
+      work.put({ ...row, path: dest, updatedAt: now })
+      relink(row, row.path, dest)
+    }
+  }
+
   // ---- 4. Edits --------------------------------------------------------------------------------
   for (const p of changed) {
     const row = work.get(p)
@@ -341,18 +371,11 @@ export function planPull(input: PullInput): PullPlan {
       work.put({ ...row, baseSha: sha, baseText: rt, pushing: null, dirty: row.deleted || row.text !== rt })
       continue
     }
-    if (isLocalDelete(row)) {
-      work.put({ ...row, baseSha: sha, baseText: rt })
-      if (rt !== row.baseText) intoTrash(row.movedTo, row.baseText, rt, p)
-      continue
-    }
-    if (isLocalMove(row)) {
-      work.put({ ...row, baseSha: sha, baseText: rt })
-      const target = work.get(row.movedTo!)
-      if (target) intoMoved(target, row.baseText, rt, sha, p)
-      continue
-    }
     if (row.kind === 'meta') {
+      if (row.deleted) {
+        work.put({ ...row, baseSha: sha, baseText: rt })
+        continue
+      }
       const remoteBad = !(p === SETTINGS_PATH ? parseSettings(rt) : parseTrashIndex(rt)).ok
       if (isClean(row) && !remoteBad) {
         work.put(cleanRow(p, 'meta', sha, rt, now))
@@ -362,6 +385,17 @@ export function planPull(input: PullInput): PullPlan {
         work.put({ ...row, baseSha: sha, baseText: rt, text: merged, dirty: merged !== rt, updatedAt: now })
         if (remoteInvalid) notice(t.sync.invalidRemoteJson(p))
       }
+      continue
+    }
+    if (isLocalDelete(row)) {
+      work.put({ ...row, baseSha: sha, baseText: rt })
+      if (rt !== row.baseText) intoTrash(row.movedTo, row.baseText, rt, p)
+      continue
+    }
+    if (isLocalMove(row)) {
+      work.put({ ...row, baseSha: sha, baseText: rt })
+      const target = work.get(row.movedTo!)
+      if (target) intoMoved(target, row.baseText, rt, sha, p)
       continue
     }
     if (isClean(row)) {

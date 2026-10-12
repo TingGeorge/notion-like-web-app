@@ -122,6 +122,9 @@ export class SyncEngine {
   private pollTimer: unknown = null
   private retryTimer: unknown = null
   private retryWantsPush = false
+  /** The failed cycle was 「立即同步」: its retry pushes even with 「自動同步」 off. */
+  private retryManual = false
+  private stopped = false
   private networkFailures = 0
   private rateFailures = 0
   private blocked = false
@@ -145,6 +148,7 @@ export class SyncEngine {
   start(): void {
     if (this.started) return
     this.started = true
+    this.stopped = false
     const doc = (globalThis as { document?: Document }).document
     if (doc && typeof doc.addEventListener === 'function') {
       const onVisibility = () => this.handleVisibilityChange()
@@ -177,6 +181,7 @@ export class SyncEngine {
 
   stop(): void {
     this.started = false
+    this.stopped = true
     for (const timer of [this.pushTimer, this.pollTimer, this.retryTimer]) if (timer !== null) this.timers.clearTimeout(timer)
     this.pushTimer = this.pollTimer = this.retryTimer = null
     for (const cleanup of this.cleanups.splice(0)) cleanup()
@@ -189,7 +194,7 @@ export class SyncEngine {
     this.rateFailures = 0
     this.clearTimer('retryTimer')
     this.clearTimer('pushTimer')
-    await this.track(this.runCycle(true))
+    await this.track(this.runCycle(true, true))
   }
 
   /** SYNC-5. Throws on failure (the error is also recorded for `getStatus()`). */
@@ -209,6 +214,7 @@ export class SyncEngine {
     this.changeSeq++
     this.retryWantsPush = true
     this.clearTimer('pushTimer')
+    if (this.stopped) return
     let delay = this.intervals.pushDelayMs
     if (!this.isSafariTabMode()) delay = Math.max(delay, this.lastPushStartedAt + this.intervals.pushSpacingMs - this.now())
     this.pushTimer = this.timers.setTimeout(() => {
@@ -283,8 +289,9 @@ export class SyncEngine {
     this.clearTimer('retryTimer')
     this.track(
       (async () => {
-        const push = (this.retryWantsPush || (await this.hasPending())) && (await this.autoSyncEnabled())
-        await this.runCycle(push)
+        const manual = this.retryManual
+        const push = (this.retryWantsPush || (await this.hasPending())) && (manual || (await this.autoSyncEnabled()))
+        await this.runCycle(push, manual)
       })(),
     )
   }
@@ -376,14 +383,15 @@ export class SyncEngine {
   }
 
   /** One scheduled pull or push. Failures are recorded and retried per SYNC-12 / SYNC-13. */
-  private async runCycle(push: boolean): Promise<void> {
+  private async runCycle(push: boolean, manual = false): Promise<void> {
     try {
       if (push) await this.push()
       else await this.pull()
       this.networkFailures = 0
       this.rateFailures = 0
+      this.retryManual = false
     } catch (e) {
-      this.onFailure(e, push)
+      this.onFailure(e, push, manual)
     } finally {
       const rl = this.options.client.rateLimit
       if (rl.remaining !== null && rl.remaining < this.intervals.rateLimitFloor && rl.resetAt !== null) {
@@ -392,8 +400,11 @@ export class SyncEngine {
     }
   }
 
-  private onFailure(e: unknown, push: boolean): void {
+  private onFailure(e: unknown, push: boolean, manual: boolean): void {
     if (push) this.retryWantsPush = true
+    if (manual) this.retryManual = true
+    if (!(e instanceof GitHubError)) console.warn('sync: unexpected error', e)
+    if (this.stopped) return
     const kind = e instanceof GitHubError ? e.kind : 'unknown'
     let delay: number
     if (kind === 'unauthorized') {
@@ -415,7 +426,13 @@ export class SyncEngine {
     this.clearTimer('retryTimer')
     this.retryTimer = this.timers.setTimeout(() => {
       this.retryTimer = null
-      this.track(this.runCycle(this.retryWantsPush))
+      this.track(
+        (async () => {
+          const manual = this.retryManual
+          const push = this.retryWantsPush && (manual || (await this.autoSyncEnabled()))
+          await this.runCycle(push, manual)
+        })(),
+      )
     }, delay)
     this.track(this.patchState((s) => (s.lastError ? { lastError: { ...s.lastError, retryAt } } : {})))
   }

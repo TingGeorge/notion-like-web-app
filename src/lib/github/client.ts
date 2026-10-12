@@ -428,7 +428,13 @@ export class GitHubClient {
         rest = []
         for (let i = 0; i < unique.length; i += GRAPHQL_BATCH) {
           const batch = unique.slice(i, i + GRAPHQL_BATCH)
-          const got = await this.graphqlBlobTexts(owner, repo, batch)
+          let got = new Map<string, string>()
+          try {
+            got = await this.graphqlBlobTexts(owner, repo, batch)
+          } catch (e) {
+            // GraphQL refused (e.g. a token type it does not accept): REST still works, only slower.
+            if (!(e instanceof GitHubError) || (e.kind !== 'forbidden' && e.kind !== 'unknown')) throw e
+          }
           for (const sha of batch) {
             const text = got.get(sha)
             if (text === undefined) rest.push(sha)

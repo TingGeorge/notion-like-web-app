@@ -18,8 +18,11 @@ export const REPO = 'notes'
 export const FULL = `${OWNER}/${REPO}`
 export const TOKEN = 'github_pat_11AAAAAA0_test_token_value'
 
-export async function makeGitHub(files: Record<string, string | Uint8Array> = { 'README.md': '# Notes\n' }): Promise<FakeGitHub> {
-  const gh = new FakeGitHub()
+export async function makeGitHub(
+  files: Record<string, string | Uint8Array> = { 'README.md': '# Notes\n' },
+  opts: { now?: () => number } = {},
+): Promise<FakeGitHub> {
+  const gh = new FakeGitHub(opts)
   gh.addUser(OWNER, { name: '小明' })
   gh.addToken(TOKEN, { login: OWNER, repos: [FULL] })
   await gh.createRepo(FULL, { files })
@@ -159,7 +162,7 @@ export class Device {
 
   /** A local move of a page and its child folder (DATA-7). */
   async move(from: string, to: string): Promise<void> {
-    await this.relocate(from, to, (p) => (p === from ? to : childDirOf(to) + p.slice(childDirOf(from).length)), 'page')
+    await this.relocate(from, (p) => (p === from ? to : childDirOf(to) + p.slice(childDirOf(from).length)), 'page')
   }
 
   /** A local delete: the page and its child folder go to `.notes/trash/<id>/` plus an index entry. */
@@ -167,7 +170,7 @@ export class Device {
     const entryId = ulid(this.now())
     const page = await this.db.files.get(path)
     const target = trashPathFor(entryId, path)
-    await this.relocate(path, target, (p) => (p === path ? target : `${TRASH_DIR}${entryId}/${basename(childDirOf(path))}${p.slice(childDirOf(path).length)}`), 'trash')
+    await this.relocate(path, (p) => (p === path ? target : `${TRASH_DIR}${entryId}/${basename(childDirOf(path))}${p.slice(childDirOf(path).length)}`), 'trash')
     const idxRow = await this.db.files.get(TRASH_INDEX_PATH)
     const index = idxRow?.text ? parseTrashIndex(idxRow.text).value : emptyTrashIndex()
     index.entries.push({
@@ -181,7 +184,7 @@ export class Device {
     return entryId
   }
 
-  private async relocate(from: string, to: string, map: (p: string) => string, kind: 'page' | 'trash'): Promise<void> {
+  private async relocate(from: string, map: (p: string) => string, kind: 'page' | 'trash'): Promise<void> {
     const now = this.now()
     const rows = (await this.db.files.toArray()).filter((r) => !r.deleted && (r.path === from || isInside(r.path, childDirOf(from))))
     const state = await this.db.sync.get('state')
@@ -212,7 +215,6 @@ export class Device {
         await this.db.files.put({ path: dest, kind: 'blob', baseSha: null, baseText: null, text: null, blobSha: item.sha, mode: item.mode, pushing: null, dirty: true, deleted: false, conflict: null, movedFrom: p, updatedAt: now })
       }
     })
-    void to
   }
 
   async close(): Promise<void> {

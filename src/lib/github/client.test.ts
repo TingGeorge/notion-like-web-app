@@ -239,6 +239,17 @@ describe('GitHubClient: git data', () => {
     expect(gh.count('GET', /\/git\/blobs\//)).toBe(1)
   })
 
+  it('falls back to REST when GraphQL is refused', async () => {
+    const files: Record<string, string> = {}
+    for (let i = 0; i < 25; i++) files[`p${i}.md`] = `${i}\n`
+    await gh.commit('me/notes', { files })
+    gh.failNext({ kind: 'status', status: 403, message: 'Resource not accessible by personal access token' }, { match: (r) => r.path === '/graphql' })
+    const shas = Object.keys(files).map((p) => gh.blobSha('me/notes', p)!)
+    const texts = await client.getBlobTexts('me', 'notes', shas)
+    expect(texts.size).toBe(25)
+    expect(gh.count('GET', /\/git\/blobs\//)).toBe(25)
+  })
+
   it('writes blobs, trees and commits and refuses a non-fast-forward ref update', async () => {
     const head = gh.headSha('me/notes')!
     const { treeSha } = await client.getCommit('me', 'notes', head)
