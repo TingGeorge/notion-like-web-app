@@ -87,6 +87,9 @@ for (const scheme of ['light', 'dark'] as const) {
     await page.locator('.settings-content').getByRole('button', { name: '顯示 QR code' }).click()
     const link = page.getByRole('dialog', { name: '連結新裝置' })
     await link.getByRole('button', { name: '顯示 QR code' }).click()
+    // The pairing code shows after 複製設定碼; check it too.
+    await page.evaluate(() => Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: async () => undefined } }))
+    await link.getByRole('button', { name: '複製設定碼' }).click()
     await expect(link.locator('.link-code')).toBeVisible()
     await expectAccessible(page, 'link a device')
     await page.keyboard.press('Escape')
