@@ -84,7 +84,12 @@ export async function resolveAttachment(href: string): Promise<string | null> {
       return null
     }
   }
-  const url = URL.createObjectURL(blob)
+  // SEC-5: only raster images are shown (through <img>); anything else, including .svg and
+  // .html, is retyped so it can only be downloaded.
+  const shown = IMAGE_EXT.test(path) ? blob : new Blob([blob], { type: 'application/octet-stream' })
+  const url = URL.createObjectURL(shown)
   urls.set(path, url)
   return url
 }
+
+const IMAGE_EXT = /\.(png|jpe?g|gif|webp|avif|bmp|ico)$/i
