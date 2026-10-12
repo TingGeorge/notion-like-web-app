@@ -2,7 +2,7 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { AlertCircle, CloudOff, CloudUpload, RefreshCw } from 'lucide-react'
 import { useEffect, useState } from 'react'
-import type { SyncStatus } from '../../lib/types'
+import type { SyncError, SyncStatus } from '../../lib/types'
 import { t } from '../../strings/zh-TW'
 import { cx, Popover } from '../../ui/primitives'
 import { syncNow } from '../actions'
@@ -46,11 +46,14 @@ export function CloudCheck({ size = 16 }: { size?: number }) {
 export function SyncStatusButton({ compact = false }: { compact?: boolean }) {
   const status = useSyncStatus()
   const [anchor, setAnchor] = useState<HTMLElement | null>(null)
+  /** The reason in the popover. It stays while a retry runs, so the popover does not flicker. */
+  const [reason, setReason] = useState<SyncError | null>(null)
   const label = statusLabel(status)
   useEffect(() => {
+    if (status.state === 'error') setReason(status.error)
     // The click that opens the reason also retries, so the state passes through 同步中… and back.
-    if (status.state !== 'error' && status.state !== 'syncing') setAnchor(null)
-  }, [status.state])
+    else if (status.state !== 'syncing') setAnchor(null)
+  }, [status])
   const icon =
     status.state === 'syncing' ? (
       <RefreshCw size={15} className="spin-slow" />
@@ -79,11 +82,16 @@ export function SyncStatusButton({ compact = false }: { compact?: boolean }) {
         {icon}
         <span>{label}</span>
       </button>
-      {anchor && status.state === 'error' && (
+      {anchor && reason && (status.state === 'error' || status.state === 'syncing') && (
         <Popover anchor={anchor} onClose={() => setAnchor(null)} placement="bottom-end">
           <div className="sync-error-pop">
-            <strong>{t.sync.errors[status.error.kind] ?? t.sync.errors.unknown}</strong>
-            <button type="button" className="btn btn-sm btn-secondary" onClick={() => void session()?.engine.syncNow()}>
+            <strong>{t.sync.errors[reason.kind] ?? t.sync.errors.unknown}</strong>
+            <button
+              type="button"
+              className="btn btn-sm btn-secondary"
+              disabled={status.state === 'syncing'}
+              onClick={() => void session()?.engine.syncNow()}
+            >
               {t.common.retry}
             </button>
           </div>
