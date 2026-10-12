@@ -15,6 +15,11 @@ const all = [
 const wanted = process.env.PW_PROJECTS?.split(',').map((s) => s.trim())
 const port = Number(process.env.PW_PORT ?? 4173)
 
+// Specs named `*.phone.spec.ts` are the iPhone-layout scenarios and only run in the phone projects;
+// every other spec drives the desktop layout.
+const phoneSpecs = /\.phone\.spec\.ts$/
+const isPhone = (p: { name: string }) => p.name.endsWith('-phone')
+
 export default defineConfig({
   testDir: './e2e',
   timeout: 60_000,
@@ -31,7 +36,9 @@ export default defineConfig({
     // The fake GitHub is wired with page routes; keep the service worker out of the way.
     serviceWorkers: 'block',
   },
-  projects: wanted ? all.filter((p) => wanted.includes(p.name)) : all,
+  projects: (wanted ? all.filter((p) => wanted.includes(p.name)) : all).map((p) =>
+    isPhone(p) ? { ...p, testMatch: phoneSpecs } : { ...p, testIgnore: phoneSpecs },
+  ),
   webServer: {
     command: `npm run build && npx vite preview --port ${port} --strictPort`,
     url: `http://localhost:${port}/`,

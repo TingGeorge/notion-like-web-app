@@ -5,6 +5,8 @@
 import { test as base, expect, type BrowserContext, type Page } from '@playwright/test'
 import { FakeGitHub, FakeNetworkError } from '../test/fake-github'
 
+/** The preview server the tests run against (same port as `playwright.config.ts`). */
+export const BASE_URL = `http://localhost:${Number(process.env.PW_PORT ?? 4173)}/`
 export const LOGIN = 'TingGeorge'
 export const TOKEN = 'github_pat_11ABCDEFG0testtoken_0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJ'
 export const REPO = `${LOGIN}/notes`
@@ -58,9 +60,13 @@ export async function setupWorkspace(page: Page): Promise<void> {
   await expect(page.locator('.sidebar, .home').first()).toBeVisible()
 }
 
-/** The app's shortcut modifier for the emulated device: ⌘ on a Mac or iPhone user agent, Ctrl elsewhere. */
+/** The shortcut modifier the page expects (`usesCommandKey`): ⌘ on a Mac or iPhone platform, Ctrl elsewhere. */
 export async function modKey(page: Page): Promise<'Meta' | 'Control'> {
-  return (await page.evaluate(() => /Macintosh|iPhone|iPad/.test(navigator.userAgent))) ? 'Meta' : 'Control'
+  const mac = await page.evaluate(() => {
+    const nav = navigator as Navigator & { userAgentData?: { platform?: string } }
+    return /mac|iphone|ipad|ipod/i.test(nav.userAgentData?.platform || navigator.platform || '')
+  })
+  return mac ? 'Meta' : 'Control'
 }
 
 export const test = base.extend<{ fake: FakeGitHub }>({
