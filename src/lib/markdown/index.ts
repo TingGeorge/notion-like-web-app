@@ -5,30 +5,34 @@
  */
 import type { Node as PMNode } from 'prosemirror-model'
 import type { PageMeta } from '../types'
+import { analyze } from './analyze'
+import { canonicalize } from './canonicalize'
+import { parseBody } from './parse'
+import { rewrite } from './rewrite'
+import { serializeCanonical } from './serialize'
 
 export { emptyFrontmatter, joinPageFile, readPageId, readPageMeta, splitPageFile } from './frontmatter'
-
-const notImplemented = (name: string): never => {
-  throw new Error(`markdown: ${name} is not implemented yet`)
-}
+export { canonicalize } from './canonicalize'
 
 /**
  * Parse a page body (no frontmatter) into an editor document using `schema` from `../schema`.
  * Never throws: anything the editor does not understand becomes a `raw` block holding the exact
  * source (DATA-15). An empty body gives a doc with one empty paragraph.
+ * The result is always canonical (`canonicalize(parseMarkdown(md))` equals it).
  */
-export function parseMarkdown(_body: string): PMNode {
-  return notImplemented('parseMarkdown')
+export function parseMarkdown(body: string): PMNode {
+  return parseBody(body)
 }
 
 /**
  * Serialize an editor document to a page body. LF line endings, exactly one trailing newline,
  * or the empty string for a doc that is a single empty paragraph (DATA-10).
- * DATA-16: parse(serialize(doc)) equals doc (ignoring `toggle.open`), and
- * serialize(parse(md)) === md for Markdown written by this serializer.
+ * DATA-16: parse(serialize(doc)) equals canonicalize(doc) (see `canonicalize.ts` for the few
+ * normalisations, e.g. `toggle.open` is reset), and serialize(parse(md)) === md for Markdown
+ * written by this serializer.
  */
-export function serializeMarkdown(_doc: PMNode): string {
-  return notImplemented('serializeMarkdown')
+export function serializeMarkdown(doc: PMNode): string {
+  return serializeCanonical(canonicalize(doc))
 }
 
 /**
@@ -75,8 +79,8 @@ export interface PageAnalysis {
   excerpt: string
 }
 
-export function analyzePage(_text: string): PageAnalysis {
-  return notImplemented('analyzePage')
+export function analyzePage(text: string): PageAnalysis {
+  return analyze(text)
 }
 
 export interface LinkRef {
@@ -95,9 +99,6 @@ export interface LinkRef {
  * or null to keep the link. Everything else stays byte-for-byte the same. Links inside `raw`
  * constructs (HTML, code) are never touched.
  */
-export function rewriteLinks(
-  _body: string,
-  _map: (link: LinkRef) => { href: string; text?: string } | null,
-): string {
-  return notImplemented('rewriteLinks')
+export function rewriteLinks(body: string, map: (link: LinkRef) => { href: string; text?: string } | null): string {
+  return rewrite(body, map)
 }
