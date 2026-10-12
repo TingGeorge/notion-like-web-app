@@ -6,6 +6,8 @@
 import type { Node as PMNode } from 'prosemirror-model'
 import type { PageMeta } from '../types'
 
+export { emptyFrontmatter, joinPageFile, readPageId, readPageMeta, splitPageFile } from './frontmatter'
+
 const notImplemented = (name: string): never => {
   throw new Error(`markdown: ${name} is not implemented yet`)
 }
@@ -58,29 +60,6 @@ export interface PageFile {
   body: string
   /** True when the file had a frontmatter block (even an empty one). */
   hadFrontmatter: boolean
-}
-
-/** Split a page file into frontmatter and body. Accepts CRLF input. Never throws. */
-export function splitPageFile(_text: string): PageFile {
-  return notImplemented('splitPageFile')
-}
-
-/**
- * Join frontmatter and body into a page file (DATA-10): UTF-8, LF, one trailing newline.
- * An empty frontmatter writes no `---` block. An empty page (no frontmatter, empty body) is ''.
- */
-export function joinPageFile(_frontmatter: Frontmatter, _body: string): string {
-  return notImplemented('joinPageFile')
-}
-
-/** An empty frontmatter object. */
-export function emptyFrontmatter(): Frontmatter {
-  return notImplemented('emptyFrontmatter')
-}
-
-/** The app's keys from a frontmatter (DATA-8). Invalid values read as null. */
-export function readPageMeta(_frontmatter: Frontmatter): PageMeta {
-  return notImplemented('readPageMeta')
 }
 
 /** Everything the index and search need from a page file, from a single parse. */
