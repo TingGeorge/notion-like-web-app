@@ -96,6 +96,40 @@ describe('conflicts on a page moved here', () => {
   })
 })
 
+describe('a page in conflict that is then deleted or moved here', () => {
+  async function conflicted() {
+    const gh = await makeGitHub({ 'x.md': BASE, '工作.md': page(ID_B, '工作\n') })
+    const a = device(gh, 'iPhone')
+    await a.engine.pull()
+    await a.edit('x.md', page(ID_A, '一（iPhone）\n\n二\n\n三\n'))
+    await gh.commit(FULL, { files: { 'x.md': page(ID_A, '一（Mac）\n\n二\n\n三\n') }, device: 'Mac' })
+    await a.engine.pull()
+    expect((await a.row('x.md'))!.conflict).not.toBeNull()
+    return { gh, a }
+  }
+
+  it('a delete wins over the pending conflict', async () => {
+    const { gh, a } = await conflicted()
+    const entryId = await a.remove('x.md')
+    await a.engine.push()
+    expect(gh.listFiles(FULL)).toEqual([`.notes/trash/${entryId}/x.md`, TRASH_INDEX_PATH, '工作.md'])
+    expect(await a.dirty()).toEqual([])
+  })
+
+  it('a move carries the conflict to the new path', async () => {
+    const { gh, a } = await conflicted()
+    await a.move('x.md', '工作/x.md')
+    const before = gh.commits(FULL).length
+    await a.engine.push()
+    expect(gh.commits(FULL)).toHaveLength(before)
+    expect((await a.row('工作/x.md'))!.conflict).toMatchObject({ remoteText: page(ID_A, '一（Mac）\n\n二\n\n三\n'), mergeBase: BASE })
+    await a.engine.resolveConflict('工作/x.md', 'mine')
+    await a.engine.push()
+    expect(await gh.readFile(FULL, '工作/x.md')).toBe(page(ID_A, '一（iPhone）\n\n二\n\n三\n'))
+    expect(await gh.readFile(FULL, 'x.md')).toBeNull()
+  })
+})
+
 describe('trash restore', () => {
   it('pushes a restore from the trash as 還原', async () => {
     const gh = await makeGitHub({ '工作.md': page(ID_A, '工作\n') })
@@ -109,6 +143,48 @@ describe('trash restore', () => {
     await d.engine.push()
     expect(subject(gh)).toBe('還原「工作」')
     expect(gh.listFiles(FULL)).toEqual([TRASH_INDEX_PATH, '工作.md'])
+  })
+})
+
+describe('files the app does not treat as pages', () => {
+  it('ignores symlinks named .md and keeps them out of conflicts', async () => {
+    const gh = await makeGitHub({ 'a.md': 'a\n' })
+    const d = device(gh, 'A')
+    await d.engine.pull()
+    // Replace a.md by a symlink with the raw API (the helper only writes regular files).
+    const base = gh.commits(FULL)[0]
+    const res = await gh.fetch(`https://api.github.com/repos/${FULL}/git/trees`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${TOKEN}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ base_tree: base.tree, tree: [{ path: 'link.md', mode: '120000', type: 'blob', content: 'a.md' }] }),
+    })
+    const tree = (await res.json()) as { sha: string }
+    const commit = (await (
+      await gh.fetch(`https://api.github.com/repos/${FULL}/git/commits`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${TOKEN}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: 'link', tree: tree.sha, parents: [base.sha] }),
+      })
+    ).json()) as { sha: string }
+    await gh.fetch(`https://api.github.com/repos/${FULL}/git/refs/heads/main`, {
+      method: 'PATCH',
+      headers: { Authorization: `Bearer ${TOKEN}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sha: commit.sha }),
+    })
+    await d.engine.pull()
+    expect(await d.paths()).toEqual(['a.md'])
+    expect((await d.db.sync.get('state'))!.tree!['link.md'].mode).toBe('120000')
+  })
+
+  it('never raises a conflict for a trash file: the local version wins', async () => {
+    const gh = await makeGitHub({ '.notes/trash/01T/x.md': 'a\n' })
+    const d = device(gh, 'A')
+    await d.engine.pull()
+    await d.edit('.notes/trash/01T/x.md', 'local\n')
+    await gh.commit(FULL, { files: { '.notes/trash/01T/x.md': 'remote\n' } })
+    await d.engine.push()
+    expect((await d.row('.notes/trash/01T/x.md'))!.conflict).toBeNull()
+    expect(await gh.readFile(FULL, '.notes/trash/01T/x.md')).toBe('local\n')
   })
 })
 

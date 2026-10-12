@@ -24,7 +24,7 @@ import { commitMessage, commitSummary, titleOfText } from './commitMessage'
 import { blobsToDownload, planPull, type PullPlan } from './pull'
 import { applyToTree, isEmptyNewPage, planPush, type PushPlan } from './push'
 import { planTrashPurge } from './trash'
-import { WorkingSet, addTrashCopy, hhmm, isDirty, namesInDir, newRow, withFrontmatter, withNewId } from './working'
+import { WorkingSet, addTrashCopy, hhmm, isDirty, namesInDir, newRow, settleDeletedConflicts, withFrontmatter, withNewId } from './working'
 
 export type ConflictChoice = 'keep-both' | 'mine' | 'theirs'
 
@@ -486,7 +486,7 @@ export class SyncEngine {
   private async hasPending(): Promise<boolean> {
     const { db } = this.options
     if ((await db.uploads.count()) > 0) return true
-    const dirty = await db.files.filter((r) => (r.dirty || r.deleted) && !r.conflict && !isEmptyNewPage(r)).first()
+    const dirty = await db.files.filter((r) => (r.dirty || r.deleted) && !(r.conflict && !r.deleted) && !isEmptyNewPage(r)).first()
     return !!dirty
   }
 
@@ -655,6 +655,7 @@ export class SyncEngine {
     const uploaded = new Map<string, string>()
     for (let attempt = 1; ; attempt++) {
       if (attempt > 1) await this.pullLocked()
+      await this.settleConflicts()
       const state = await this.state()
       const rows = await db.files.toArray()
       const plan = planPush(rows, await db.uploads.toArray(), state.tree ?? {})
@@ -708,6 +709,19 @@ export class SyncEngine {
       // Step 7.
       await this.finishPush(plan, uploads, commitSha, treeSha, state)
       return
+    }
+  }
+
+  /** See `settleDeletedConflicts`: runs before planning a push (the pull may have been a 304). */
+  private async settleConflicts(): Promise<void> {
+    const { db } = this.options
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const work = new WorkingSet(await db.files.toArray())
+      if (!settleDeletedConflicts(work)) return
+      if (await this.commitWork(work)) {
+        await this.options.onFilesChanged(work.changedPaths())
+        return
+      }
     }
   }
 
@@ -850,6 +864,12 @@ export class SyncEngine {
       if (!row?.conflict) return []
       const c = row.conflict
       const now = this.now()
+      if (row.deleted) {
+        // Deleted here meanwhile: the delete stands.
+        work.put({ ...row, conflict: null })
+        if (await this.commitWork(work)) return work.changedPaths()
+        continue
+      }
       const local = row.text ?? ''
       const movedTarget = row.baseSha === null && !!row.movedFrom
       const resolved: FileRow = { ...row, conflict: null, updatedAt: now }

@@ -6,10 +6,11 @@
  *   Device: iPhone · Safari
  *   App: GitHub Notes 0.1.0
  */
-import { basename, childDirOf, dirname, isInside, parentPagePathOf, titleOf } from '../data/names'
+import { basename, childDirOf, dirname, isInside, parentPagePathOf, titleOf, trashEntryIdOf } from '../data/names'
+import { parseTrashIndex } from '../data/notesFiles'
 import { readPageMeta, splitPageFile } from '../markdown/frontmatter'
 import { t } from '../../strings/zh-TW'
-import type { FileKind } from '../types'
+import { TRASH_INDEX_PATH, type FileKind } from '../types'
 
 export type PushChange =
   | { op: 'write'; path: string; kind: FileKind; text: string; baseText: string | null; movedFrom?: string | null }
@@ -58,6 +59,10 @@ export function commitSummary(changes: PushChange[], titleAt: (path: string) => 
   const uploads = changes.filter((c) => c.op === 'upload')
   const metaOnly = changes.some((c) => c.op !== 'upload' && c.kind === 'meta')
 
+  const indexWrite = changes.find((c) => c.op === 'write' && c.path === TRASH_INDEX_PATH)
+  const trashEntries = new Map(
+    (indexWrite?.op === 'write' ? parseTrashIndex(indexWrite.text).value.entries : []).map((e) => [e.id, e] as const),
+  )
   const writeAt = new Map(writes.map((w) => [w.path, w]))
   const pairedWrites = new Set<string>()
   const ops: Op[] = []
@@ -95,7 +100,12 @@ export function commitSummary(changes: PushChange[], titleAt: (path: string) => 
   for (const w of writes) {
     if (pairedWrites.has(w.path)) continue
     if (w.kind === 'page') ops.push({ type: w.baseText === null ? 'add' : 'update', path: w.path, text: titleOfText(w.path, w.text) })
-    else if (w.kind === 'trash' && w.baseText === null) ops.push({ type: 'resolve', path: w.path, text: titleOfText(w.path, w.text) })
+    else if (w.kind === 'trash' && w.baseText === null) {
+      // A version saved to the trash on its own: replaced in a conflict, or a page that never reached GitHub.
+      const entry = trashEntries.get(trashEntryIdOf(w.path) ?? '')
+      const title = entry?.title || titleOfText(w.path, w.text)
+      ops.push({ type: entry?.reason === 'deleted' ? 'delete' : 'resolve', path: w.path, text: title })
+    }
   }
 
   // Child pages that moved, got deleted, restored, purged or added along with their parent fold into it.

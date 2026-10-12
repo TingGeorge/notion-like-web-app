@@ -50,7 +50,8 @@ export interface PushPlan {
 
 export function planPush(rows: FileRow[], uploads: UploadRow[], tree: Record<string, TreeItem>): PushPlan {
   const held = new Set<string>()
-  for (const r of rows) if (r.conflict || isEmptyNewPage(r)) held.add(r.path)
+  // A page deleted here is not held by a pending conflict: the delete wins (the remote version is in history).
+  for (const r of rows) if ((r.conflict && !r.deleted) || isEmptyNewPage(r)) held.add(r.path)
   // A move whose new half is held stays whole: hold the old half too.
   for (let changed = true; changed; ) {
     changed = false

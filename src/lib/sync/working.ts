@@ -208,6 +208,25 @@ export function removeTrashEntries(work: WorkingSet, ids: Set<string>, now: numb
   work.put({ ...row, text, dirty: row.deleted || text !== row.baseText, updatedAt: now })
 }
 
+/**
+ * A page in conflict that was then deleted or moved here: a delete wins over the pending conflict
+ * (the remote version stays in history); a move carries the conflict to the new path, where the
+ * conflict dialog can see it. Returns true when a row changed.
+ */
+export function settleDeletedConflicts(work: WorkingSet): boolean {
+  let changed = false
+  for (const row of work.values()) {
+    if (!row.deleted || !row.conflict) continue
+    const target = isLocalMove(row) ? work.get(row.movedTo!) : undefined
+    if (target && !target.deleted && !target.conflict) {
+      work.put({ ...target, conflict: { ...row.conflict, mergeBase: row.conflict.mergeBase ?? row.baseText } })
+    }
+    work.put({ ...row, conflict: null })
+    changed = true
+  }
+  return changed
+}
+
 /** `HH:mm` in local time (SYNC-6 conflict copy title). */
 export function hhmm(ms: number): string {
   const d = new Date(ms)

@@ -97,6 +97,15 @@ describe('SYNC-9 commit messages', () => {
     expect(commitSummary(changes)).toBe('處理「會議記錄」的衝突')
   })
 
+  it('a page that never reached GitHub, deleted into the trash, is a delete', () => {
+    const index = JSON.stringify({ version: 1, entries: [{ id: '01D', title: '草稿', originalPath: '草稿.md', deletedAt: '2026-10-12T00:00:00Z', reason: 'deleted' }] })
+    const changes: PushChange[] = [
+      { op: 'write', path: '.notes/trash/01D/草稿.md', kind: 'trash', text: 'x\n', baseText: null },
+      { op: 'write', path: '.notes/trash/index.json', kind: 'meta', text: index, baseText: null },
+    ]
+    expect(commitSummary(changes)).toBe('刪除「草稿」')
+  })
+
   it('adds the Device and App trailers after a blank line', () => {
     expect(commitMessage('更新「x」', 'iPhone · Safari', '0.1.0')).toBe('更新「x」\n\nDevice: iPhone · Safari\nApp: GitHub Notes 0.1.0')
     expect(commitMessage('x', 'Mac · Safari')).toMatch(/\nApp: GitHub Notes \S+$/)

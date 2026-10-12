@@ -192,8 +192,15 @@ export class Device {
     await this.db.transaction('rw', this.db.files, async () => {
       for (const r of rows) {
         const dest = map(r.path)
+        // The chain stays intact: an unpushed row that came from a move keeps pointing at the
+        // original source, and the source points at the new place.
+        const origin = r.baseSha !== null ? r.path : (r.movedFrom ?? null)
         if (r.baseSha !== null) await this.db.files.put({ ...r, deleted: true, dirty: true, movedTo: dest, updatedAt: now })
         else await this.db.files.delete(r.path)
+        if (r.baseSha === null && r.movedFrom) {
+          const src = await this.db.files.get(r.movedFrom)
+          if (src) await this.db.files.put({ ...src, movedTo: dest })
+        }
         await this.db.files.put({
           ...r,
           path: dest,
@@ -205,7 +212,7 @@ export class Device {
           deleted: false,
           conflict: null,
           movedTo: null,
-          movedFrom: r.baseSha !== null ? r.path : null,
+          movedFrom: origin,
           updatedAt: now,
         })
       }

@@ -20,6 +20,7 @@ import {
   isLocalMove,
   namesInDir,
   removeTrashEntries,
+  settleDeletedConflicts,
   withFrontmatter,
 } from './working'
 
@@ -41,12 +42,17 @@ export interface PullPlan {
   conflicts: Array<{ path: string; remotePath: string }>
 }
 
+/** A file the app keeps a text row for: a page, meta or trash file (not a symlink or submodule). */
+export function isTracked(path: string, item: TreeItem | undefined): item is TreeItem {
+  return !!item && item.type === 'blob' && item.mode !== '120000' && classifyPath(path) !== null
+}
+
 /** The blob SHAs a pull must download: tracked files whose SHA differs from the local base. */
 export function blobsToDownload(rows: FileRow[], remote: Map<string, TreeItem>): string[] {
   const byPath = new Map(rows.map((r) => [r.path, r]))
   const out = new Set<string>()
   for (const [path, item] of remote) {
-    if (item.type !== 'blob' || !classifyPath(path)) continue
+    if (!isTracked(path, item)) continue
     const row = byPath.get(path)
     if (row && row.baseSha === item.sha && row.baseText !== null) continue
     if (row?.conflict?.remoteSha === item.sha) continue
@@ -102,11 +108,11 @@ export function planPull(input: PullInput): PullPlan {
   for (const row of input.rows) {
     if (row.kind === 'blob' || row.baseSha === null) continue
     const item = remote.get(row.path)
-    if (!item) removed.push(row.path)
+    if (!isTracked(row.path, item)) removed.push(row.path)
     else if (item.sha !== row.baseSha) changed.push(row.path)
   }
   for (const [path, item] of remote) {
-    if (item.type !== 'blob' || !classifyPath(path)) continue
+    if (!isTracked(path, item)) continue
     const row = original.get(path)
     if (!row || row.baseSha === null) added.push(path)
   }
@@ -127,7 +133,7 @@ export function planPull(input: PullInput): PullPlan {
     const pages = new Map<string, string[]>()
     const trashed = new Map<string, string>()
     for (const [path, item] of remote) {
-      if (item.type !== 'blob') continue
+      if (!isTracked(path, item)) continue
       const kind = classifyPath(path)
       if (kind !== 'page' && kind !== 'trash') continue
       const text = remoteText(path)
@@ -167,6 +173,18 @@ export function planPull(input: PullInput): PullPlan {
   const moveTargets = new Set(moveTarget.values())
 
   // ---- helpers --------------------------------------------------------------------------------
+
+  /**
+   * Where a local move went. Normally `row.movedTo`; if that row is gone (the new page was moved
+   * again before it was pushed and the link was not kept), the unpushed page with the same id.
+   */
+  const moveTargetOf = (row: FileRow): FileRow | undefined => {
+    const direct = row.movedTo ? work.get(row.movedTo) : undefined
+    if (direct) return direct
+    const id = row.baseText !== null && row.kind === 'page' ? readPageId(row.baseText) : null
+    if (!id) return undefined
+    return work.values().find((r) => r.baseSha === null && !r.deleted && r.kind === 'page' && r.text !== null && r.text.includes(id) && readPageId(r.text) === id)
+  }
 
   /** DATA-6: an unpushed local page that took a path the remote now uses gets a new name. */
   const evictLocal = (path: string) => {
@@ -266,7 +284,9 @@ export function planPull(input: PullInput): PullPlan {
       const item = remote.get(q)!
       const rt = remoteText(q)
       const kind = classifyPath(q)!
-      if (isLocalMove(row) && row.movedTo === q) {
+      const localTarget = isLocalMove(row) ? moveTargetOf(row) : undefined
+      const localDest = localTarget?.path ?? row.movedTo
+      if (isLocalMove(row) && localDest === q) {
         // Both sides made the same move.
         const target = work.get(q)
         work.remove(p)
@@ -291,8 +311,8 @@ export function planPull(input: PullInput): PullPlan {
       if (isLocalMove(row)) {
         // Both moved, to different places: the local move wins; the remote location is deleted.
         work.remove(p)
-        work.put({ ...cleanRow(q, kind, item.sha, rt, now), deleted: true, dirty: true, movedTo: row.movedTo })
-        const target = work.get(row.movedTo!)
+        work.put({ ...cleanRow(q, kind, item.sha, rt, now), deleted: true, dirty: true, movedTo: localDest })
+        const target = localTarget ? work.get(localTarget.path) : undefined
         if (target) intoMoved(target, row.baseText, rt, item.sha, q)
         continue
       }
@@ -331,7 +351,7 @@ export function planPull(input: PullInput): PullPlan {
     }
     if (isLocalMove(row)) {
       work.remove(p)
-      const target = work.get(row.movedTo!)
+      const target = moveTargetOf(row)
       if (target) work.put({ ...target, movedFrom: null })
       if (row.kind === 'page') notice(t.page.remoteDeletedKept)
       continue
@@ -388,13 +408,13 @@ export function planPull(input: PullInput): PullPlan {
       continue
     }
     if (isLocalDelete(row)) {
-      work.put({ ...row, baseSha: sha, baseText: rt })
+      work.put({ ...row, baseSha: sha, baseText: rt, conflict: null })
       if (rt !== row.baseText) intoTrash(row.movedTo, row.baseText, rt, p)
       continue
     }
     if (isLocalMove(row)) {
-      work.put({ ...row, baseSha: sha, baseText: rt })
-      const target = work.get(row.movedTo!)
+      const target = moveTargetOf(row)
+      work.put({ ...row, baseSha: sha, baseText: rt, conflict: null, movedTo: target?.path ?? row.movedTo })
       if (target) intoMoved(target, row.baseText, rt, sha, p)
       continue
     }
@@ -406,6 +426,9 @@ export function planPull(input: PullInput): PullPlan {
     const merged = row.text === null ? rt : mergeFile(row.kind, p, base, row.text, rt).text
     if (merged !== null) {
       work.put({ ...row, baseSha: sha, baseText: rt, text: merged, conflict: null, dirty: merged !== rt, updatedAt: now })
+    } else if (row.kind === 'trash') {
+      // Trash files never ask the user: the local version wins, the remote one stays in the history.
+      work.put({ ...row, baseSha: sha, baseText: rt, conflict: null, dirty: true, updatedAt: now })
     } else {
       work.put({ ...row, baseSha: sha, baseText: rt, dirty: true, conflict: conflictInfo(row, rt, sha, base) })
       conflicts.push({ path: p, remotePath: p })
@@ -467,6 +490,8 @@ export function planPull(input: PullInput): PullPlan {
       work.put({ ...row, baseSha: null, dirty: true })
     }
   }
+
+  settleDeletedConflicts(work)
 
   // ---- 7. Left-over push snapshots are stale now -----------------------------------------------
   for (const row of work.values()) {
