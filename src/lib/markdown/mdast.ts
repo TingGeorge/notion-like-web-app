@@ -152,7 +152,11 @@ const LIST_START = /^(?:[-+*]|\d{1,9}[.)])(?:[ \t]|$)/
 
 const FENCE_OPEN = /^ {0,3}(`{3,}|~{3,}|\${2,})/
 
-function isUnterminated(node: RootContent, text: string, base: number): boolean {
+/**
+ * Whether a block that ends where its text ends was cut short (an unclosed fence, math block or
+ * HTML block that ends on a marker) and would take in whatever is written after it.
+ */
+export function isUnterminated(node: RootContent, text: string, base: number): boolean {
   if (!node.position) return false
   const source = text.slice(base + (node.position.start.offset ?? 0), base + (node.position.end.offset ?? 0))
   if (node.type === 'code' || node.type === 'math') {

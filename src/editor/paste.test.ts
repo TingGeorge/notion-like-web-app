@@ -107,6 +107,43 @@ describe('sliceFromText', () => {
   })
 })
 
+describe('one line of Markdown pasted into text', () => {
+  const p = (text?: string) => schema.nodes.paragraph.create(null, text ? schema.text(text) : null)
+  const inText = schema.topNodeType.create(null, p('hello world')).resolve(3)
+  const inEmpty = schema.topNodeType.create(null, p()).resolve(1)
+  const inlineOf = (slice: Slice) => {
+    expect(slice.openStart).toBe(1)
+    expect(slice.content.childCount).toBe(1)
+    expect(slice.content.firstChild!.type.name).toBe('paragraph')
+    return slice.content.firstChild!
+  }
+
+  it('becomes inline content: a page link stays in the sentence', () => {
+    const para = inlineOf(sliceFromText('[頁面](/a.md)', false, inText))
+    expect(para.textContent).toBe('頁面')
+    expect(para.firstChild!.marks.map((m) => [m.type.name, m.attrs.href])).toEqual([['link', '/a.md']])
+  })
+
+  it('keeps marks and takes the text of a one-item list or quote', () => {
+    expect(inlineOf(sliceFromText('**粗體**', false, inText)).firstChild!.marks.map((m) => m.type.name)).toEqual(['bold'])
+    expect(inlineOf(sliceFromText('- 項目', false, inText)).textContent).toBe('項目')
+    expect(inlineOf(sliceFromText('> 引用', false, inText)).textContent).toBe('引用')
+  })
+
+  it('stays a block on an empty line, and for real blocks', () => {
+    expect(sliceFromText('[頁面](/a.md)', false, inEmpty).content.firstChild!.type.name).toBe('page_link')
+    expect(sliceFromText('![圖](/_assets/a.png)', false, inText).content.firstChild!.type.name).toBe('image')
+    expect(sliceFromText('- a\n- b', false, inText).content.firstChild!.type.name).toBe('bullet_list')
+  })
+
+  it('prices stay text, math stays math', () => {
+    const slice = sliceFromText('買了 $5 and $6 的東西', false, inEmpty)
+    expect(slice.content.firstChild!.type.name).toBe('paragraph')
+    expect(slice.content.firstChild!.textContent).toBe('買了 $5 and $6 的東西')
+    expect(sliceFromText('$$\nx^2\n$$', false, inEmpty).content.firstChild!.type.name).toBe('raw')
+  })
+})
+
 describe('callouts pasted into lists (DATA-13)', () => {
   const callout = schema.nodes.callout.create({ kind: 'TIP' }, schema.nodes.paragraph.create(null, schema.text('c')))
   const raw = schema.nodes.raw.create(null, schema.text('<b>'))

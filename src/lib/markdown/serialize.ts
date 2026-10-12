@@ -120,17 +120,27 @@ const handleText = ((node: { value: string }, parent: Parameters<Handle>[1], sta
   return out
 }) as Handle
 
+export interface SerializeOptions {
+  /**
+   * The list marker (`-`, `*`, `+`, `.` or `)`) of a list written right before this document
+   * (when it is appended to another body): a list at the start uses another marker, so that the
+   * two stay separate lists.
+   */
+  avoidListMarker?: string | null
+}
+
 /** Serialize a canonical document. */
-export function serializeCanonical(doc: PMNode): string {
-  session = { pending: [], forceHtml: new Set() }
+export function serializeCanonical(doc: PMNode, options: SerializeOptions = {}): string {
+  const avoid = options.avoidListMarker ?? null
+  session = { pending: [], forceHtml: new Set(), avoid }
   try {
     const first = runSerializer(doc)
     const failed = failedChecks(session.pending)
     if (failed.size === 0) return first
-    session = { pending: [], forceHtml: failed }
+    session = { pending: [], forceHtml: failed, avoid }
     return runSerializer(doc)
   } finally {
-    session = { pending: [], forceHtml: new Set() }
+    session = { pending: [], forceHtml: new Set(), avoid: null }
   }
 }
 
@@ -172,7 +182,7 @@ function serializeDoc(doc: PMNode, state: State): string {
     let s: string
     if (block.type === nodes.paragraph && block.content.size === 0) s = ''
     else if (block.type === nodes.bullet_list || block.type === nodes.ordered_list) {
-      s = list(block, state, listMarkerFor(block, blocks[i - 1], blocks[i + 1]))
+      s = list(block, state, listMarkerFor(block, blocks[i - 1], blocks[i + 1], i === 0 ? session.avoid : null))
     } else s = serializeBlock(block, state)
     if (s !== '') parts.push(s)
   })
@@ -191,8 +201,8 @@ function rawListMarker(node: PMNode | undefined): string | null {
  * (kept as written, e.g. `- item <br>`): Markdown would join the two into one list, so this list
  * uses `*` / `+` (or `1)`) instead.
  */
-function listMarkerFor(node: PMNode, prev: PMNode | undefined, next: PMNode | undefined): string {
-  const taken = [rawListMarker(prev), rawListMarker(next)]
+function listMarkerFor(node: PMNode, prev: PMNode | undefined, next: PMNode | undefined, avoid: string | null): string {
+  const taken = [rawListMarker(prev), rawListMarker(next), avoid]
   const options = node.type === nodes.ordered_list ? ['.', ')'] : ['-', '*', '+']
   return options.find((o) => !taken.includes(o)) ?? options[0]
 }
@@ -301,7 +311,11 @@ interface PendingCheck {
 }
 
 /** State of one `serializeCanonical` call (serializing is synchronous, never re-entered). */
-let session: { pending: PendingCheck[]; forceHtml: Set<PMNode> } = { pending: [], forceHtml: new Set() }
+let session: { pending: PendingCheck[]; forceHtml: Set<PMNode>; avoid: string | null } = {
+  pending: [],
+  forceHtml: new Set(),
+  avoid: null,
+}
 
 /** The containers whose Markdown does not read back as their content. One parse for all. */
 function failedChecks(pending: readonly PendingCheck[]): Set<PMNode> {

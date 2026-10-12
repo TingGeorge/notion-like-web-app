@@ -2,7 +2,7 @@ import { encodeLinkPath, parseHref } from '../../lib/data/links'
 import { createPage, getPage, savePageBody } from '../../lib/workspace/ops'
 import { getSearchIndex } from '../../lib/workspace/indexer'
 import { readText } from '../../lib/workspace/files'
-import { splitPageFile } from '../../lib/markdown'
+import { appendMarkdown, splitPageFile } from '../../lib/markdown'
 import type { EditorServices, PageRef } from '../../editor/types'
 import type { PageRow } from '../../lib/types'
 import { localChange } from '../actions'
@@ -69,7 +69,7 @@ export function editorServices(getPageKey: () => string): EditorServices {
       if (!page) throw new Error('page not found')
       const text = page.virtual ? '' : ((await readText(page.path)) ?? '')
       const body = splitPageFile(text).body.replace(/\n+$/, '')
-      await savePageBody(page.key, body ? `${body}\n\n${markdown}` : markdown)
+      await savePageBody(page.key, appendMarkdown(body, markdown))
       localChange()
     },
     getLastColor: () => lastColor,

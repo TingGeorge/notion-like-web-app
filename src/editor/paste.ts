@@ -11,7 +11,7 @@ import DOMPurify from 'dompurify'
 import { Fragment, Slice, type Node as PMNode, type ResolvedPos } from 'prosemirror-model'
 import { TextSelection } from 'prosemirror-state'
 import type { EditorProps, EditorView } from 'prosemirror-view'
-import { parseMarkdown } from '../lib/markdown'
+import { escapeProseDollars, parseMarkdown } from '../lib/markdown'
 import { schema } from '../lib/schema'
 import { paragraphsFromText } from './commands'
 import type { EditorContext } from './context'
@@ -89,11 +89,49 @@ function isNested($pos: ResolvedPos): boolean {
   return false
 }
 
-/** Slice for pasted text: Markdown when it looks like it, else paragraphs. Never throws. */
-export function sliceFromText(text: string, plain = false): Slice {
+/**
+ * The inline content one pasted line of Markdown stands for, when it is pasted into existing
+ * text: a paragraph's or heading's text, a list item's or quote's text, a page link or file as
+ * a linked name, Markdown the editor keeps raw as its source text. Null for real blocks
+ * (images, tables, code, dividers, toggles).
+ */
+function inlineContent(doc: PMNode): Fragment | null {
+  if (doc.childCount !== 1) return null
+  let node = doc.firstChild!
+  // A one-item list, a quote or callout around one paragraph: their text.
+  for (;;) {
+    const wrapper = node.type === N.bullet_list || node.type === N.ordered_list || node.type === N.blockquote || node.type === N.callout
+    if (!wrapper || node.childCount !== 1) break
+    node = node.firstChild!
+    if (node.type === N.list_item) {
+      if (node.childCount !== 1) return null
+      node = node.firstChild!
+    }
+  }
+  if (node.type === N.paragraph || node.type === N.heading) return node.content.size > 0 ? node.content : null
+  if (node.type === N.page_link || node.type === N.file) {
+    const href = node.attrs.href as string
+    const label = ((node.type === N.file ? node.attrs.name : node.attrs.title) as string) || href
+    return Fragment.from(schema.text(label, [schema.marks.link.create({ href })]))
+  }
+  if (node.type === N.raw) return Fragment.from(schema.text(node.textContent))
+  return null
+}
+
+/**
+ * Slice for pasted text: Markdown when it looks like it, else paragraphs. Never throws.
+ * `$context` is where it goes: one line pasted into existing text is inserted as inline content
+ * (a pasted `[頁面](/a.md)` becomes a link in the sentence, not a block that splits it).
+ * Prices like `$5 and $6` stay text (`escapeProseDollars`).
+ */
+export function sliceFromText(text: string, plain = false, $context?: ResolvedPos): Slice {
   if (!plain && looksLikeMarkdown(text)) {
     try {
-      const doc = parseMarkdown(text)
+      const doc = parseMarkdown(escapeProseDollars(text))
+      const oneLine = !/\n/.test(text.replace(/\r?\n$/, ''))
+      const inText = !!$context && $context.parent.isTextblock && $context.parent.content.size > 0 && !$context.parent.type.spec.code
+      const inline = oneLine && inText ? inlineContent(doc) : null
+      if (inline) return new Slice(Fragment.from(N.paragraph.create(null, inline)), 1, 1)
       const only = doc.childCount === 1 && doc.firstChild!.type === N.paragraph
       return new Slice(doc.content, only ? 1 : 0, only ? 1 : 0)
     } catch {
@@ -107,7 +145,7 @@ export function sliceFromText(text: string, plain = false): Slice {
 export function pasteProps(ctx: EditorContext): Partial<EditorProps> {
   return {
     transformPastedHTML: (html) => sanitizePastedHTML(html),
-    clipboardTextParser: (text, _$context, plain) => sliceFromText(text, plain),
+    clipboardTextParser: (text, $context, plain) => sliceFromText(text, plain, $context),
     transformPasted(slice, view) {
       return new Slice(convertForContext(slice.content, isNested(view.state.selection.$from)), slice.openStart, slice.openEnd)
     },
@@ -129,7 +167,7 @@ export function pasteProps(ctx: EditorContext): Partial<EditorProps> {
       }
       // HTML without structure (code editors) next to Markdown text: trust the text.
       if (html && text && !htmlHasSemantics(html) && looksLikeMarkdown(text) && !sel.$from.parent.type.spec.code) {
-        const slice = sliceFromText(text)
+        const slice = sliceFromText(text, false, sel.$from)
         const converted = new Slice(convertForContext(slice.content, isNested(sel.$from)), slice.openStart, slice.openEnd)
         view.dispatch(view.state.tr.replaceSelection(converted).scrollIntoView().setMeta('paste', true).setMeta('uiEvent', 'paste'))
         return true

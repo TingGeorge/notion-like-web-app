@@ -13,6 +13,7 @@ import { serializeCanonical } from './serialize'
 
 export { emptyFrontmatter, joinPageFile, readPageId, readPageMeta, splitPageFile } from './frontmatter'
 export { canonicalize } from './canonicalize'
+export { appendMarkdown, escapeProseDollars } from './append'
 
 /**
  * Parse a page body (no frontmatter) into an editor document using `schema` from `../schema`.
