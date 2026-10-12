@@ -32,6 +32,7 @@ import {
 } from './commands'
 import { createParagraphNear, liftEmptyBlock, splitBlockKeepMarks } from 'prosemirror-commands'
 import type { EditorContext } from './context'
+import { usesCommandKey } from '../lib/data/device'
 
 export type MarkShortcut = 'bold' | 'italic' | 'underline' | 'strike' | 'code'
 
@@ -58,9 +59,7 @@ export interface KeyLike {
 }
 
 export function isMacPlatform(): boolean {
-  if (typeof navigator === 'undefined') return false
-  const nav = navigator as Navigator & { userAgentData?: { platform?: string } }
-  return /Mac|iPhone|iPad|iPod/.test(nav.userAgentData?.platform ?? navigator.platform ?? '')
+  return usesCommandKey()
 }
 
 export function resolveShortcut(e: KeyLike, mac: boolean): ShortcutAction | null {

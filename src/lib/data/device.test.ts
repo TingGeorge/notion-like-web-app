@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { t } from '../../strings/zh-TW'
-import { deviceName, isApplePlatform, isIOS, isSafariTab, isStandalone, shortcutLabel, type DeviceEnv } from './device'
+import { deviceName, isApplePlatform, isIOS, isSafariTab, isStandalone, shortcutLabel, usesCommandKey, type DeviceEnv } from './device'
 
 const UA = {
   iphoneSafari:
@@ -102,6 +102,17 @@ describe('platform checks', () => {
     expect(isApplePlatform({ userAgent: UA.iphoneSafari })).toBe(true)
     expect(isApplePlatform({ userAgent: UA.winChrome })).toBe(false)
     expect(isApplePlatform({ userAgent: UA.linuxFirefox })).toBe(false)
+  })
+
+  it('usesCommandKey follows the platform, as ProseMirror keymaps do', () => {
+    expect(usesCommandKey({ userAgent: UA.macChrome, platform: 'MacIntel' })).toBe(true)
+    expect(usesCommandKey({ userAgent: UA.iphoneSafari, platform: 'iPhone' })).toBe(true)
+    expect(usesCommandKey({ userAgent: UA.macChrome, userAgentData: { platform: 'macOS' }, platform: 'MacIntel' })).toBe(true)
+    expect(usesCommandKey({ userAgent: UA.winChrome, platform: 'Win32' })).toBe(false)
+    expect(usesCommandKey({ userAgent: UA.linuxFirefox, platform: 'Linux x86_64' })).toBe(false)
+    // A Mac user agent on another platform (an emulated device): the keys the editor reacts to win.
+    expect(usesCommandKey({ userAgent: UA.macChrome, platform: 'Linux x86_64' })).toBe(false)
+    expect(usesCommandKey({ userAgent: UA.macChrome })).toBe(false)
   })
 })
 

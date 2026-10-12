@@ -3,7 +3,7 @@
  * Shortcuts with ⌥ are matched on `event.code` because ⌥ changes `event.key` on a Mac.
  */
 import { useEffect } from 'react'
-import { isApplePlatform } from '../lib/data/device'
+import { usesCommandKey } from '../lib/data/device'
 import type { ThemePref } from '../lib/types'
 import { newPage } from './actions'
 import { closeOverlay, openOverlay } from './overlays'
@@ -40,7 +40,7 @@ function hasSelection(): boolean {
 export function useGlobalShortcuts(enabled: boolean, toggleSidebar: () => void): void {
   useEffect(() => {
     if (!enabled) return
-    const apple = isApplePlatform()
+    const apple = usesCommandKey()
     const onKey = (e: KeyboardEvent) => {
       if (e.isComposing || e.defaultPrevented) return
       const mod = apple ? e.metaKey : e.ctrlKey

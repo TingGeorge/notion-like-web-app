@@ -13,6 +13,8 @@ export interface DeviceEnv {
   maxTouchPoints?: number
   /** `navigator.userAgentData` (Chromium), if present. */
   userAgentData?: { platform?: string; mobile?: boolean } | null
+  /** `navigator.platform` (`MacIntel`, `iPhone`, `Win32`, `Linux x86_64`…). */
+  platform?: string
   /** iOS Safari's `navigator.standalone`. */
   standalone?: boolean
   /** `matchMedia('(display-mode: standalone)').matches`. */
@@ -46,6 +48,7 @@ export function currentEnv(): DeviceEnv {
     userAgent: nav.userAgent ?? '',
     maxTouchPoints: nav.maxTouchPoints,
     userAgentData: nav.userAgentData ?? null,
+    platform: nav.platform,
     standalone: nav.standalone,
     displayModeStandalone,
   }
@@ -117,9 +120,17 @@ export function isIOS(env: DeviceEnv = currentEnv()): boolean {
   return kind === 'iphone' || kind === 'ipad'
 }
 
-/** Mac, iPhone and iPad: where shortcuts say ⌘. */
+/** Mac, iPhone and iPad (from the user agent). */
 export function isApplePlatform(env: DeviceEnv = currentEnv()): boolean {
   return isIOS(env) || deviceKind(env) === 'mac'
+}
+
+/**
+ * §7.1: shortcuts use ⌘ rather than Ctrl. Decided from the platform the same way ProseMirror's own
+ * keymaps decide `Mod-`, so the app's shortcuts, the editor's and the labels always agree.
+ */
+export function usesCommandKey(env: DeviceEnv = currentEnv()): boolean {
+  return /mac|iphone|ipad|ipod/i.test(env.userAgentData?.platform || env.platform || '')
 }
 
 /** SETUP-2: running as an installed app (iOS home screen, or a desktop/Android PWA window). */
@@ -141,7 +152,7 @@ const MODIFIERS = /[⌘⌥⇧⌃]+/gu
  * `⇧` `Shift`, and `⌘⌥<digit>` becomes `Ctrl+Shift+<digit>` (`⌘⌥N` → `Ctrl+Alt+N`).
  * Text around the shortcuts is kept: `⌘B / ⌘I` → `Ctrl+B / Ctrl+I`.
  */
-export function shortcutLabel(label: string, apple: boolean = isApplePlatform()): string {
+export function shortcutLabel(label: string, apple: boolean = usesCommandKey()): string {
   if (apple) return label
   return label.replace(new RegExp(`(${MODIFIERS.source})(.?)`, 'gu'), (_m, mods: string, next: string) => {
     const has = (c: string) => mods.includes(c)
