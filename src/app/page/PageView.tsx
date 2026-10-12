@@ -9,7 +9,7 @@ import type { Node as PMNode } from 'prosemirror-model'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Editor } from '../../editor'
 import type { EditorHandle } from '../../editor/types'
-import { TEMPLATE_MEETING, TEMPLATE_TODO } from '../../lib/data/templates'
+import { PAGE_TEMPLATES, type PageTemplate } from '../../lib/data/templates'
 import { parseMarkdown, serializeMarkdown, splitPageFile } from '../../lib/markdown'
 import { schema } from '../../lib/schema'
 import { db } from '../../lib/store/db'
@@ -162,11 +162,21 @@ function PageBody({ page, file, readOnly, mobile }: { page: PageRow; file: FileR
   )
 
   const isNew = !!file && file.baseSha === null
-  const applyTemplate = (markdown: string) => {
-    const doc = safeParse(markdown)
-    editorRef.current?.setContent(doc)
-    onChange(doc)
-    editorRef.current?.focus('end')
+  const applyTemplate = (template: PageTemplate) => {
+    if (template.body) {
+      const doc = safeParse(template.body)
+      editorRef.current?.setContent(doc)
+      onChange(doc)
+    }
+    editorRef.current?.focus(template.body ? 'end' : 'start')
+    // An untitled page takes the starter's title (UI-10).
+    if (template.title && page.title === t.common.untitled) {
+      const key = keyRef.current
+      void renamePage(key, template.title).then((newKey) => {
+        localChange()
+        if (newKey !== key) followKey(key, newKey)
+      })
+    }
   }
 
   return (
@@ -196,18 +206,12 @@ function PageBody({ page, file, readOnly, mobile }: { page: PageRow; file: FileR
         {isNew && isEmpty && !readOnly && (
           <div className="page-starters" data-print="hide">
             <div className="page-starters-label">{t.page.startFrom}</div>
-            <button type="button" className="page-starter" onClick={() => editorRef.current?.focus('start')}>
-              <StarterIcon kind="blank" />
-              {t.page.templateBlank}
-            </button>
-            <button type="button" className="page-starter" onClick={() => applyTemplate(TEMPLATE_TODO)}>
-              <StarterIcon kind="todo" />
-              {t.page.templateTodo}
-            </button>
-            <button type="button" className="page-starter" onClick={() => applyTemplate(TEMPLATE_MEETING)}>
-              <StarterIcon kind="meeting" />
-              {t.page.templateMeeting}
-            </button>
+            {PAGE_TEMPLATES.map((template) => (
+              <button key={template.id} type="button" className="page-starter" onClick={() => applyTemplate(template)}>
+                <StarterIcon kind={template.id} />
+                {template.label}
+              </button>
+            ))}
           </div>
         )}
       </div>
