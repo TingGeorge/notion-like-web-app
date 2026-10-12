@@ -19,6 +19,12 @@ A Notion-like notes app that runs entirely in the browser (a PWA) and stores eve
 
 ## 2. Architecture
 
+![Architecture: GitHub Pages serves the app; each device keeps its config, a notes cache and pending changes in IndexedDB and reads/writes the private repo through api.github.com; a second device is linked by scanning a QR code](docs/architecture.svg)
+
+Editable source: [`docs/architecture.excalidraw`](docs/architecture.excalidraw) (open it in Excalidraw, then export it again to `docs/architecture.svg`).
+
+Modules inside the app:
+
 ```
 ┌──────────────── Device (iPhone / PC) ────────────────┐
 │  UI (React) ── Editor (Milkdown)                      │
