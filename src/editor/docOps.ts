@@ -58,11 +58,33 @@ export function replaceDocTr(state: EditorState, incoming: PMNode): Transaction 
   const blockIndex = $head.depth >= 1 ? $head.index(0) : 0
   const offset = $head.depth >= 1 ? head - $head.before(1) : 0
 
-  const tr = state.tr.replace(start, endA, next.slice(start, endB))
+  let tr = state.tr.replace(start, endA, next.slice(start, endB))
+  let from = start
+  let to = endA
+  if (!tr.doc.eq(next)) {
+    // A replace that starts or ends inside a table or list can be "fitted" into a different
+    // structure (cells moving to another row or table). Replace the differing top-level blocks
+    // whole instead, which always gives exactly `next`.
+    let i = 0
+    while (i < oldDoc.childCount && i < next.childCount && oldDoc.child(i).eq(next.child(i))) i++
+    let endOld = oldDoc.childCount
+    let endNew = next.childCount
+    while (endOld > i && endNew > i && oldDoc.child(endOld - 1).eq(next.child(endNew - 1))) {
+      endOld--
+      endNew--
+    }
+    from = 0
+    for (let k = 0; k < i; k++) from += oldDoc.child(k).nodeSize
+    to = from
+    for (let k = i; k < endOld; k++) to += oldDoc.child(k).nodeSize
+    const blocks: PMNode[] = []
+    for (let k = i; k < endNew; k++) blocks.push(next.child(k))
+    tr = state.tr.replaceWith(from, to, blocks)
+  }
   tr.setMeta('addToHistory', false)
   tr.setMeta('gn-silent', true)
 
-  if (head >= start && head <= endA) {
+  if (head >= from && head <= to) {
     const index = Math.min(blockIndex, tr.doc.childCount - 1)
     let blockStart = 0
     for (let i = 0; i < index; i++) blockStart += tr.doc.child(i).nodeSize

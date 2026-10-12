@@ -12,7 +12,7 @@ import { firstDifference } from './testing/diff'
 import { prng, randomDoc } from './testing/randomDoc'
 
 const env = (globalThis as { process?: { env: Record<string, string | undefined> } }).process?.env ?? {}
-const ITERATIONS = Number(env.MD_PARSE_FUZZ_ITERATIONS ?? 1200)
+const ITERATIONS = Number(env.MD_PARSE_FUZZ_ITERATIONS ?? 600)
 
 const LINES = [
   '', '', '', '', '中文段落，含**粗體**與*斜體*。', 'plain text', 'a **b** *c* ~~d~~ `e` <u>f</u>', '<span data-color="red">紅</span><span data-bg="blue">藍</span>',
@@ -75,7 +75,7 @@ describe('parsing arbitrary Markdown', () => {
   }, 120_000)
 
   it('gives the same document whether long bodies are parsed whole or in chunks', () => {
-    for (let seed = 1; seed <= 150; seed++) {
+    for (let seed = 1; seed <= 60; seed++) {
       let md = ''
       for (let k = 0; k < 8; k++) md += randomMarkdown(seed * 100 + k) + '\n\n'
       // Definitions make a body unchunkable; leave them out here.

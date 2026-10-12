@@ -75,6 +75,10 @@ function linkClickPlugin(ctx: EditorContext): Plugin {
           const lastNode = doc.lastChild
           if (!(lastNode && lastNode.type === schema.nodes.paragraph && lastNode.content.size === 0)) {
             tr.insert(doc.content.size, schema.nodes.paragraph.create())
+            // An empty paragraph is not written to Markdown: no change to report (a click must
+            // not rewrite a page whose Markdown is not in the app's style, DATA-16).
+            tr.setMeta('gn-ui-only', true)
+            tr.setMeta('addToHistory', false)
           }
           tr.setSelection(Selection.atEnd(tr.doc))
           view.dispatch(tr.scrollIntoView())

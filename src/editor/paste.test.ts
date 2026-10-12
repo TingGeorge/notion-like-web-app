@@ -53,12 +53,17 @@ describe('sanitising pasted HTML (SEC-4)', () => {
 
 describe('Markdown detection', () => {
   it('spots block and inline Markdown', () => {
-    for (const md of ['# Title', '- item', '1. item', '> quote', '```js\nx\n```', '---', '| a | b |', '- [ ] todo', 'a **bold** b', '[x](/y.md)', '`code`']) {
+    for (const md of [
+      '# Title', '- item', '1. item', '> quote', '```js\nx\n```', '---', '| a | b |', '- [ ] todo', 'a **bold** b', '[x](/y.md)', '`code`',
+      // What the app itself writes (§3.4).
+      '<u>底線</u>', '<span data-color="red">紅</span>', '<details>\n<summary>T</summary>\n\n</details>', '&#x20; 縮排', 'a\\*b',
+      '![](/_assets/a.png)', '$$\nx\n$$', '[a \\[b\\]](/x.md)',
+    ]) {
       expect(looksLikeMarkdown(md), md).toBe(true)
     }
   })
   it('leaves prose alone', () => {
-    for (const t of ['just a sentence.', '今天開會，下週再說', 'price: 3 * 4 = 12', 'a-b c-d']) {
+    for (const t of ['just a sentence.', '今天開會，下週再說', 'price: 3 * 4 = 12', 'a-b c-d', '5*3*2', 'C:\\Users\\me', 'R&D: a < b > c', 'x = $5']) {
       expect(looksLikeMarkdown(t), t).toBe(false)
     }
   })

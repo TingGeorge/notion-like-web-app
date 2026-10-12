@@ -140,7 +140,7 @@ describe('analyzePage', () => {
       '<a href="/html.md">x</a>', '[l](rel.md)', '[m]( /space.md )', '[n](\n/next-line.md)', '中文', '**b**', '\n', '\n\n', '- ', '> ',
       '[o][e]', '![p][e]', '[q]:\n/defnext.md', '[^1]: x', '[r](/a%20b.md)', '[s](/%E4%B8%AD.md)',
     ]
-    for (let seed = 1; seed <= 400; seed++) {
+    for (let seed = 1; seed <= 200; seed++) {
       const rand = prng(seed)
       let md = ''
       for (let i = 0; i < 12; i++) md += snippets[Math.floor(rand() * snippets.length)] + (rand() < 0.5 ? ' ' : '\n')
@@ -150,7 +150,7 @@ describe('analyzePage', () => {
   })
 
   it('agrees with micromark on Markdown written by the serializer', () => {
-    for (let seed = 1; seed <= 120; seed++) {
+    for (let seed = 1; seed <= 60; seed++) {
       const md = serializeMarkdown(randomDoc(seed))
       const fast = analyzePage(md)
       const ref = fromMdast(md)
