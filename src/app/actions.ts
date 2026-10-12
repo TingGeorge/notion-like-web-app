@@ -74,10 +74,12 @@ export async function trashPage(key: string, currentKey: string | null): Promise
     navigate(parentKey ? { name: 'page', key: parentKey } : { name: 'home' }, { replace: true })
   }
   toastWithUndo(t.toast.pageDeleted(page.title), () => {
-    void restorePage(entryId).then((restored) => {
-      localChange()
-      if (restored) navigate({ name: 'page', key: restored })
-    })
+    void restorePage(entryId)
+      .then((restored) => {
+        localChange()
+        if (restored) navigate({ name: 'page', key: restored })
+      })
+      .catch((error: unknown) => console.warn('undo delete failed', error))
   })
 }
 
@@ -99,7 +101,10 @@ export async function moveTo(key: string, parentKey: string | null, index?: numb
   localChange()
   if (page && page.parentKey !== parentKey) {
     toastWithUndo(t.toast.pageMoved(page.title), () => {
-      void movePage(id, page.parentKey).then(localChange)
+      // The page may have been deleted or moved again since; then there is nothing to undo.
+      void movePage(id, page.parentKey)
+        .then(localChange)
+        .catch((error: unknown) => console.warn('undo move failed', error))
     })
   }
 }

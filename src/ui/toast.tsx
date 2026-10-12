@@ -28,7 +28,9 @@ function emit() {
 
 export function toast(message: string, options: ToastOptions = {}): void {
   const id = nextId++
-  items = [...items.slice(-2), { id, message, ...options }]
+  // Only the latest 復原 is offered: an older undo toast is replaced, so it can't be clicked by mistake.
+  const kept = options.action ? items.filter((i) => !i.action) : items
+  items = [...kept.slice(-2), { id, message, ...options }]
   emit()
   const duration = options.duration ?? (options.action ? 5000 : 3000)
   setTimeout(() => dismiss(id), duration)
