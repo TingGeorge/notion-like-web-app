@@ -9,6 +9,7 @@ import {
   bodyOf,
   commitCount,
   createPage,
+  deviceKindOf,
   editor,
   forceSync,
   frontmatterOf,
@@ -24,8 +25,8 @@ import {
   titleInput,
   trashIndex,
   treeRow,
-  waitSynced,
   type Device,
+  waitSynced,
 } from './helpers'
 
 /** Click into the paragraph containing `needle` and type at its end. */
@@ -114,7 +115,7 @@ test.describe('conflict', () => {
     // Both versions are shown, the other side is named from the Device trailer (SYNC-9).
     await expect(dialog).toContainText('B 的版本')
     await expect(dialog).toContainText('A 的版本')
-    await expect(dialog).toContainText('Windows 電腦')
+    await expect(dialog).toContainText(await deviceKindOf(a))
     return dialog
   }
 
@@ -169,7 +170,7 @@ test.describe('conflict', () => {
     await setupDevice(a)
     const d = await secondDevice(browser, fake)
     const dialog = await makeConflict(a, fake, d)
-    await dialog.getByRole('button', { name: /^使用 Windows 電腦 的版本$/ }).click()
+    await dialog.getByRole('button', { name: `使用 ${await deviceKindOf(a)} 的版本`, exact: true }).click()
     await expect(d.page.locator('.page-banner')).toHaveCount(0)
     await expect(editor(d.page)).toContainText('共同的一行，A 的版本')
     await expect.poll(async () => (await trashIndex(fake)).entries.length, { timeout: 20_000 }).toBe(1)

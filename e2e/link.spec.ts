@@ -20,7 +20,6 @@ import {
 
 /** 設定 → 連結新裝置 → 顯示 QR code → 複製設定碼. Returns the payload and the pairing code. */
 async function showLinkCode(page: Page): Promise<{ payload: string; code: string }> {
-  await page.context().grantPermissions(['clipboard-read', 'clipboard-write'])
   await openSettings(page, '同步與儲存')
   await page.locator('.settings-content').getByRole('button', { name: '顯示 QR code' }).click()
   const dialog = page.getByRole('dialog', { name: '連結新裝置' })
@@ -31,9 +30,14 @@ async function showLinkCode(page: Page): Promise<{ payload: string; code: string
   await expect(dialog.getByRole('img', { name: '連結新裝置用的 QR code' })).toBeVisible()
   const code = ((await dialog.locator('.link-code').innerText()) ?? '').replace('-', '')
   expect(code).toMatch(/^[23456789ABCDEFGHJKMNPQRSTUVWXYZ]{8}$/)
+  // Record what the app copies (clipboard permissions exist only in Chromium).
+  await page.evaluate(() => {
+    const w = window as Window & { __copied?: string }
+    Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: async (text: string) => void (w.__copied = text) } })
+  })
   await dialog.getByRole('button', { name: '複製設定碼' }).click()
   await expect(dialog.getByText('剪貼簿記錄和「通用剪貼板」可能會保留設定碼')).toBeVisible()
-  const payload = await page.evaluate(() => navigator.clipboard.readText())
+  const payload = (await page.evaluate(() => (window as Window & { __copied?: string }).__copied)) ?? ''
   expect(payload).toMatch(/^ghnotes:1:[\w-]+\.[\w-]+\.[\w-]+$/)
   // The token is encrypted: neither the token nor the repo name is readable in the payload.
   expect(payload).not.toContain(TOKEN)

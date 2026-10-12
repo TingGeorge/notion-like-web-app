@@ -3,6 +3,8 @@
  * reading the repo through the fake GitHub. Nothing here talks to the real GitHub (TEST-2).
  */
 import type { Browser, BrowserContext, Locator, Page } from '@playwright/test'
+import AxeBuilder from '@axe-core/playwright'
+import { deviceName } from '../src/lib/data/device'
 import type { FakeGitHub } from '../test/fake-github'
 import { BASE_URL, attachFake, expect, LOGIN, modKey, REPO, TOKEN } from './fixtures'
 
@@ -38,7 +40,12 @@ export interface ConnectOptions {
 /** 開始設定 → paste the token → 連結. Stops at the repo list. */
 export async function connectToken(page: Page, options: ConnectOptions = {}): Promise<void> {
   await page.goto('./')
-  await page.getByRole('button', { name: '開始設定' }).click()
+  // SETUP-2: iPhone Safari outside the home-screen app shows 「加入主畫面」 first.
+  const start = page.getByRole('button', { name: '開始設定' })
+  const inSafari = page.getByRole('button', { name: '仍要在 Safari 使用' })
+  await expect(start.or(inSafari)).toBeVisible()
+  if (await inSafari.isVisible()) await inSafari.click()
+  await start.click()
   await page.getByLabel('GitHub token').fill(options.token ?? TOKEN)
   if (options.expiresOn) {
     const [y, m, d] = options.expiresOn.split('-')
@@ -111,6 +118,24 @@ export async function secondDevice(browser: Browser, fake: FakeGitHub): Promise<
   const device = await newContextOn(browser, fake)
   await setupDevice(device.page)
   return device
+}
+
+/** SYNC-9: the name the app gives the device and browser `page` runs in (`Mac · Safari`). */
+export async function deviceNameOf(page: Page): Promise<string> {
+  const env = await page.evaluate(() => {
+    const nav = navigator as Navigator & { userAgentData?: { platform?: string; mobile?: boolean } }
+    return {
+      userAgent: nav.userAgent,
+      maxTouchPoints: nav.maxTouchPoints,
+      userAgentData: nav.userAgentData ? { platform: nav.userAgentData.platform, mobile: nav.userAgentData.mobile } : null,
+    }
+  })
+  return deviceName(env)
+}
+
+/** The device part alone (`Mac`), as conflict dialogs name the other side. */
+export async function deviceKindOf(page: Page): Promise<string> {
+  return (await deviceNameOf(page)).split(' · ')[0]
 }
 
 // --- Status and sync -------------------------------------------------------------------------
@@ -278,4 +303,13 @@ export async function pageMenu(page: Page, item: string): Promise<void> {
 export async function openSettings(page: Page, section?: string): Promise<void> {
   await page.locator('.sidebar .sb-nav-row', { hasText: '設定' }).click()
   if (section) await page.locator('.settings-nav-row', { hasText: section }).click()
+}
+
+// --- Accessibility -----------------------------------------------------------------------------
+
+/** NFR-3: the current screen has no WCAG 2.1 A/AA violations that axe can find (labels, contrast, roles…). */
+export async function expectAccessible(page: Page, screen: string): Promise<void> {
+  const { violations } = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa']).analyze()
+  const found = violations.flatMap((v) => v.nodes.map((n) => `${v.id}: ${n.target.join(' ')} — ${n.failureSummary?.split('\n')[1]?.trim() ?? v.help}`))
+  expect(found, `${screen}: accessibility violations`).toEqual([])
 }

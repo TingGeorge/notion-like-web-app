@@ -6,6 +6,10 @@ import type { CDPSession, Page } from '@playwright/test'
 import { expect, test, modKey } from './fixtures'
 import { bodyOf, createPage, editor, readRepoFile, setupDevice, syncAndWaitForCommit, titleInput } from './helpers'
 
+// Composition is driven through CDP, which only Chromium has; the editor's composition handling is
+// also covered by the unit tests in src/editor/ime.test.ts.
+test.skip(({ browserName }) => browserName !== 'chromium', 'IME composition is simulated through Chromium CDP')
+
 async function ime(page: Page): Promise<CDPSession> {
   return page.context().newCDPSession(page)
 }

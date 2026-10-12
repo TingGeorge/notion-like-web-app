@@ -1,6 +1,6 @@
 /** Token expiry and revocation (SETUP-11, SETUP-13). */
 import { expect, LOGIN, test, TOKEN } from './fixtures'
-import { bodyOf, caretToEnd, commitCount, createPage, editor, readRepoFile, setupDevice, syncAndWaitForCommit, syncButton, titleInput, waitSynced } from './helpers'
+import { bodyOf, caretToEnd, commitCount, createPage, editor, openSettings, readRepoFile, setupDevice, syncAndWaitForCommit, syncButton, titleInput, waitSynced } from './helpers'
 
 const NEW_TOKEN = 'github_pat_11NEWTOKEN0_0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJ'
 
@@ -18,8 +18,12 @@ test('an expiry within 14 days shows 「token 將在 N 天後到期」 with 更�
 })
 
 test('a token that expires later shows no banner; the date is shown in settings', async ({ page }) => {
-  await setupDevice(page, { expiresOn: inDays(60) })
-  await expect(page.locator('.banner')).toHaveCount(0)
+  const expiresOn = inDays(60)
+  await setupDevice(page, { expiresOn })
+  // Only the token banner: Safari on a Mac also shows its own hint (SETUP-13).
+  await expect(page.locator('.banner', { hasText: 'token' })).toHaveCount(0)
+  await openSettings(page)
+  await expect(page.getByRole('dialog', { name: '設定' })).toContainText(`${expiresOn.replaceAll('-', '/')} 到期`)
 })
 
 test('a revoked token makes the app read-only; edits stay; 更換 token pushes them', async ({ page, fake }) => {

@@ -3,7 +3,7 @@
  * (SYNC-8 step 7), pulling remote changes (SYNC-4, SYNC-5), the auto-sync switch (SYNC-7) and failures.
  */
 import { expect, test } from './fixtures'
-import { REPO, bodyOf, caretToEnd, commitCount, createPage, editor, forceSync, frontmatterOf, headSubject, openFromSidebar, openSettings, readRepoFile, setupDevice, syncAndWaitForCommit, syncButton, typeLines, waitSynced } from './helpers'
+import { REPO, bodyOf, caretToEnd, commitCount, createPage, editor, forceSync, frontmatterOf, headSubject, openFromSidebar, openSettings, readRepoFile, setupDevice, syncAndWaitForCommit, syncButton, typeLines, waitSynced, deviceNameOf } from './helpers'
 
 test.describe('offline', () => {
   test('edits made while the network is down go out as one commit when it is back', async ({ page, fake, context }) => {
@@ -48,6 +48,8 @@ test.describe('offline', () => {
     const before = commitCount(fake)
 
     fake.offline = true
+    // The sync button took the focus; go back to the end of the page.
+    await caretToEnd(page)
     await page.keyboard.type('，斷線後')
     await page.waitForTimeout(400)
     await syncButton(page).click()
@@ -67,12 +69,16 @@ test.describe('offline', () => {
     fake.failNext({ kind: 'server', status: 503 }, { times: 20 })
     await syncButton(page).click()
     await expect(syncButton(page)).toHaveText('同步失敗 · 點此重試')
-    // Tapping the error state shows the reason (SYNC-11).
+    // Tapping the error state shows the reason (SYNC-11); it stays while a retry runs.
     await syncButton(page).click()
     await expect(page.getByText('GitHub 暫時無法使用')).toBeVisible()
-    fake.clearFailures()
+    // 重試 asks GitHub again at once (still failing here, so the result does not race the back-off).
+    const asked = fake.requests.length
     await page.getByRole('button', { name: '重試', exact: true }).click()
-    await waitSynced(page)
+    await expect.poll(() => fake.requests.length).toBeGreaterThan(asked)
+    await expect(page.getByText('GitHub 暫時無法使用')).toBeVisible()
+    fake.clearFailures()
+    await forceSync(page)
     expect(await readRepoFile(fake, '壞掉.md')).toContain('內容')
   })
 })
@@ -202,7 +208,7 @@ test('the 「立即同步」 button in settings and the commit trailer name this
   await expect.poll(() => readRepoFile(fake, '設定同步.md')).not.toBeNull()
   const message = fake.commits(REPO)[0].message
   expect(message.split('\n')[0]).toBe('新增「設定同步」')
-  expect(message).toContain('Device: Windows 電腦 · Chrome')
+  expect(message).toContain(`Device: ${await deviceNameOf(page)}`)
   expect(message).toMatch(/App: GitHub Notes \S+/)
   expect(frontmatterOf((await readRepoFile(fake, '設定同步.md'))!).id).toMatch(/^[0-9A-Z]{26}$/)
   void typeLines
