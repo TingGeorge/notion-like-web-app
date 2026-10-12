@@ -314,11 +314,13 @@ test('duplicate creates a copy with a new id next to the original', async ({ pag
   await createPage(page, '原稿', '原稿內容')
   await syncAndWaitForCommit(page, fake)
   const originalId = frontmatterOf((await readRepoFile(fake, '原稿.md'))!).id
+  // Counted before: leaving the original page may already push the copy (SYNC-7).
+  const before = commitCount(fake)
   await pageMenu(page, '複製頁面')
   // The copy has the same title: wait until it is in the sidebar, i.e. written.
   await expect(page.locator('.sidebar .tree-title', { hasText: /^原稿$/ })).toHaveCount(2)
   await expect(page.locator('.breadcrumb-item.is-current')).toContainText('原稿')
-  await syncAndWaitForCommit(page, fake)
+  await syncAndWaitForCommit(page, fake, before)
   const copyPath = pagePaths(fake).find((p) => p !== '原稿.md' && p.startsWith('原稿'))!
   expect(copyPath).toBe('原稿 (2).md')
   const copy = (await readRepoFile(fake, copyPath))!
