@@ -485,6 +485,10 @@ export const t = {
   },
 
   device: {
+    iphone: 'iPhone',
+    ipad: 'iPad',
+    mac: 'Mac',
+    android: 'Android',
     computer: '電腦',
     windows: 'Windows 電腦',
     linux: 'Linux 電腦',

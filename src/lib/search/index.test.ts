@@ -146,7 +146,7 @@ describe('SearchIndex (UI-9)', () => {
       times.push(performance.now() - t0)
       expect(r.length).toBeGreaterThan(0)
     }
-    console.log(`search latency over 5000 pages (ms): ${queries.map((q, i) => `${q}=${times[i].toFixed(1)}`).join(', ')}`)
+    console.warn(`search latency over 5000 pages (ms): ${queries.map((q, i) => `${q}=${times[i].toFixed(1)}`).join(', ')}`)
     expect(Math.max(...times)).toBeLessThanOrEqual(100)
   }, 120_000)
 })
