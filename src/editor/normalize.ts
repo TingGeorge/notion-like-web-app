@@ -5,7 +5,7 @@ import { schema } from '../lib/schema'
 import { joinAdjacentLists, needsTrailingParagraph } from './blocks'
 
 /** True when the transaction only typed or deleted text inside one text block. */
-function isSimpleTextEdit(tr: Transaction): boolean {
+export function isSimpleTextEdit(tr: Transaction): boolean {
   return tr.steps.every((step, i) => {
     if (!(step instanceof ReplaceStep)) return false
     const slice = step.slice

@@ -8,7 +8,7 @@ import { chainCommands } from 'prosemirror-commands'
 import { redo, undo } from 'prosemirror-history'
 import { undoInputRule } from 'prosemirror-inputrules'
 import { toggleMark } from 'prosemirror-commands'
-import { Plugin, PluginKey, type Command } from 'prosemirror-state'
+import { NodeSelection, Plugin, PluginKey, type Command } from 'prosemirror-state'
 import type { EditorView } from 'prosemirror-view'
 import { schema } from '../lib/schema'
 import { turnIntoAtSelection, type BlockKind } from './blocks'
@@ -190,6 +190,8 @@ export function handleEditorKeyDown(view: EditorView, event: KeyboardEvent, ctx:
       return run(chainCommands(undoInputRule, backspaceToText(ctx.onExitTop), baseBackspace))
     case 'Tab': {
       if (event.metaKey || event.ctrlKey || event.altKey) return false
+      // With a block selected (after Esc) Tab leaves the editor, so the keyboard is never trapped.
+      if (view.state.selection instanceof NodeSelection) return false
       if (view.state.selection.$from.parent.type.name.startsWith('table_')) return run(tabInTable(event.shiftKey ? -1 : 1))
       if (event.shiftKey) run(outdentListItem)
       else run(indentListItem)

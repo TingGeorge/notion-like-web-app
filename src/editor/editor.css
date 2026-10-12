@@ -22,6 +22,7 @@
   -webkit-user-select: text;
   user-select: text;
   padding-bottom: 1px;
+  min-height: 96px;
 }
 .gn-prose p,
 .gn-prose h1,
@@ -785,7 +786,7 @@ body.gn-dragging * {
   display: flex;
   align-items: center;
   gap: 2px;
-  padding: 4px;
+  padding: 2px 4px;
   background: var(--bg-elevated);
   border-radius: var(--radius-m);
   box-shadow: var(--shadow-popover);

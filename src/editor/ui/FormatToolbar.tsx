@@ -56,7 +56,7 @@ export function FormatToolbar() {
   const WIDTH = 330
   const centre = (Math.min(a.left, b.left) + Math.max(a.right, b.right)) / 2
   const left = Math.max(vp.left + 8 + WIDTH / 2, Math.min(centre, vp.left + vp.width - 8 - WIDTH / 2))
-  const aboveTop = Math.min(a.top, b.top) - 44
+  const aboveTop = Math.min(a.top, b.top) - 40
   const placeBelow = aboveTop < vp.top + 4
   const top = placeBelow ? Math.max(a.bottom, b.bottom) + 8 : aboveTop
 

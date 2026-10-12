@@ -134,9 +134,9 @@ const services: EditorServices = {
     return { href: `/_assets/2026/10/${encodeURIComponent(file.name)}`, name: file.name, isImage: file.type.startsWith('image/') }
   },
   async resolveAsset(href) {
+    if (href.includes('offline')) return null
     if (href.endsWith('.svg') || href.includes('whiteboard')) return whiteboard
     if (href.endsWith('.png') || href.endsWith('.jpg')) return whiteboard
-    if (href.includes('offline')) return null
     return URL.createObjectURL(new Blob(['demo'], { type: 'application/octet-stream' }))
   },
   async createChildPage() {

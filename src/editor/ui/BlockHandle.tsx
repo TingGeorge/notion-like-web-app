@@ -179,8 +179,8 @@ export function BlockHandle({ root }: { root: HTMLElement }) {
           }
         }
       } else if (commit) {
-        // A click: open the block menu.
-        ctx.ui.set({ blockMenu: { pos: srcPos, anchor: grip } })
+        // A click: open the block menu (or close it again).
+        ctx.ui.set({ blockMenu: ctx.ui.getSnapshot().blockMenu ? null : { pos: srcPos, anchor: grip } })
       }
     }
     const onUp = (ev: MouseEvent) => {

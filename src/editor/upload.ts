@@ -122,7 +122,7 @@ function showUploadError(view: EditorView, id: string, message: string) {
   dom.className = 'upload-placeholder is-error'
   dom.contentEditable = 'false'
   dom.setAttribute('role', 'alert')
-  dom.textContent = `${t.editor.uploadFailed}：${message}`
+  dom.textContent = message === t.editor.uploadFailed ? message : t.editor.uploadFailedWith(message)
   const replacement = Decoration.widget(widget.from, dom, { id, side: (widget.spec as { side?: number }).side ?? 0, key: `${id}-err`, ignoreSelection: true } as Record<string, unknown>)
   view.dispatch(view.state.tr.setMeta(uploadKey, { remove: id } satisfies UploadMeta))
   view.dispatch(view.state.tr.setMeta(uploadKey, { add: [replacement] } satisfies UploadMeta))

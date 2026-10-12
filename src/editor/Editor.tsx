@@ -21,7 +21,7 @@ import { buildInputRules } from './inputRules'
 import { runInsertItem } from './insert'
 import { openLink } from './links'
 import { createNodeViews, pageLinkViews } from './nodeViews'
-import { normalizePlugin, withTrailingParagraph } from './normalize'
+import { isSimpleTextEdit, normalizePlugin, withTrailingParagraph } from './normalize'
 import { pasteProps } from './paste'
 import { shortcutsPlugin } from './shortcuts'
 import { slashPlugin } from './slash'
@@ -62,6 +62,24 @@ function linkClickPlugin(ctx: EditorContext): Plugin {
         auxclick(view, event) {
           if (anchorOf(view, event.target)) event.preventDefault()
           return false
+        },
+        // A click below the last block puts the caret there, adding a paragraph if needed (as in Notion).
+        mousedown(view, event) {
+          if (event.target !== view.dom || !view.editable || event.button !== 0) return false
+          const last = view.dom.lastElementChild
+          const bottom = last ? last.getBoundingClientRect().bottom : view.dom.getBoundingClientRect().top
+          if (event.clientY <= bottom + 2) return false
+          event.preventDefault()
+          const { doc } = view.state
+          const tr = view.state.tr
+          const lastNode = doc.lastChild
+          if (!(lastNode && lastNode.type === schema.nodes.paragraph && lastNode.content.size === 0)) {
+            tr.insert(doc.content.size, schema.nodes.paragraph.create())
+          }
+          tr.setSelection(Selection.atEnd(tr.doc))
+          view.dispatch(tr.scrollIntoView())
+          view.focus()
+          return true
         },
       },
     },
@@ -160,7 +178,8 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor(prop
         const next = v.state.apply(tr)
         v.updateState(next)
         if (tr.docChanged) {
-          if (ctx.hover.pos !== null) ctx.hover.pos = tr.mapping.map(ctx.hover.pos)
+          // The block handle hides while text is typed and returns on the next mouse move.
+          if (ctx.hover.pos !== null) ctx.hover.pos = isSimpleTextEdit(tr) ? null : tr.mapping.map(ctx.hover.pos)
           if (!tr.getMeta('gn-ui-only') && !tr.getMeta('gn-silent')) {
             if (v.composing) pendingChange = true
             else latest.current.onChange(next.doc)

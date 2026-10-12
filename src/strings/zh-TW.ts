@@ -354,6 +354,7 @@ export const t = {
     imageCaption: '加入說明…',
     uploading: '上傳中…',
     uploadFailed: '上傳失敗',
+    uploadFailedWith: (reason: string) => `上傳失敗：${reason}`,
     fileTooLarge: '檔案超過 25 MB，無法上傳。',
     rawLabel: 'Markdown',
     rawHint: '這段 Markdown 編輯器還不支援，會原封不動地保留。',
