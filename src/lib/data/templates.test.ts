@@ -40,7 +40,8 @@ describe('templates (UI-10, SETUP-9)', () => {
 
   it('the welcome page covers the basics and uses only §3.4 constructs', () => {
     for (const word of ['Markdown', '「/」', '同步', '離線', '連結新裝置', '垃圾桶']) expect(WELCOME_PAGE_BODY).toContain(word)
-    expect(WELCOME_PAGE_BODY.startsWith('# ')).toBe(true)
+    // DATA-10: the title is not repeated as a heading in the body.
+    expect(WELCOME_PAGE_BODY.startsWith('# ')).toBe(false)
     expect(WELCOME_PAGE_BODY).toContain('> [!TIP]')
     expect(WELCOME_PAGE_BODY).toContain('<details>\n<summary>')
     expect(WELCOME_PAGE_BODY).toContain('</details>')

@@ -8,3 +8,4 @@ blob-report/
 *.tsbuildinfo
 .DS_Store
 .vite/
+.claude/worktrees/

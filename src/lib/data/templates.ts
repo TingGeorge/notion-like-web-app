@@ -61,9 +61,7 @@ export const WELCOME_PAGE_PATH = '歡迎使用.md'
 export const WELCOME_PAGE_TITLE = '歡迎使用'
 
 /** SETUP-9: body of `歡迎使用.md` (without frontmatter). */
-export const WELCOME_PAGE_BODY = `# 歡迎使用 GitHub Notes
-
-這裡是你的筆記本。每一頁都是你自己 GitHub repo 裡的一個 Markdown 檔，沒有伺服器，也不用註冊。
+export const WELCOME_PAGE_BODY = `這裡是你的筆記本。每一頁都是你自己 GitHub repo 裡的一個 Markdown 檔，沒有伺服器，也不用註冊。
 
 > [!TIP]
 > 想看看筆記長什麼樣子，可以到 GitHub 打開這個 repo，你會看到一個叫「歡迎使用.md」的檔案，就是這一頁。
@@ -109,7 +107,7 @@ export const WELCOME_PAGE_BODY = `# 歡迎使用 GitHub Notes
 - 你的修改會先存在這台裝置上，停止輸入幾秒後自動同步到 GitHub
 - 沒有網路也能閱讀、編輯，連上網路後會自動補上
 - 兩台裝置改到同一段文字時，會請你選擇要保留哪一個版本，不會悄悄覆蓋
-- 左下角的狀態會告訴你目前是「已同步」、「同步中」還是「離線」
+- 右上角的狀態會告訴你目前是「已同步」、「同步中」還是「離線」
 
 ## 連結另一台裝置
 
