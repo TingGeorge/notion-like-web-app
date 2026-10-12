@@ -22,19 +22,19 @@ import './dialogs.css'
 type Section = 'github' | 'appearance' | 'shortcuts' | 'sync' | 'export'
 
 const NAV: { group: string; items: { id: Section; label: string; icon: ReactNode }[] }[] = [
-  { group: t.settings.sections.connection, items: [{ id: 'github', label: t.settings.github, icon: <Link2 size={17} /> }] },
+  { group: t.settings.sections.connection, items: [{ id: 'github', label: t.settings.github, icon: <Link2 size={18} /> }] },
   {
     group: t.settings.sections.preferences,
     items: [
-      { id: 'appearance', label: t.settings.appearance, icon: <Sun size={17} /> },
-      { id: 'shortcuts', label: t.settings.shortcuts, icon: <Type size={17} /> },
+      { id: 'appearance', label: t.settings.appearance, icon: <Sun size={18} /> },
+      { id: 'shortcuts', label: t.settings.shortcuts, icon: <Type size={18} /> },
     ],
   },
   {
     group: t.settings.sections.data,
     items: [
-      { id: 'sync', label: t.settings.syncStorage, icon: <RefreshCw size={17} /> },
-      { id: 'export', label: t.settings.export, icon: <Download size={17} /> },
+      { id: 'sync', label: t.settings.syncStorage, icon: <RefreshCw size={18} /> },
+      { id: 'export', label: t.settings.export, icon: <Download size={18} /> },
     ],
   },
 ]
@@ -401,7 +401,7 @@ export function SettingsDialog({ section: initial }: { section?: string }) {
   }
 
   return (
-    <Modal open onClose={closeOverlay} title={t.settings.title} width={834} className="settings-modal" closeButton>
+    <Modal open onClose={closeOverlay} title={t.settings.title} width={1000} className="settings-modal" closeButton>
       <div className="settings">
         <nav className="settings-nav">
           <div className="settings-account">

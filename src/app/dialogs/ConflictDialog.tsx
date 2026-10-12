@@ -141,7 +141,7 @@ export function ConflictDialog({ path }: { path: string }) {
     )
   }
   return (
-    <Modal open onClose={closeOverlay} title={t.conflict.title(title)} showTitle width={468} className="conflict-modal">
+    <Modal open onClose={closeOverlay} title={t.conflict.title(title)} showTitle width={560} className="conflict-modal">
       {intro}
       {boxes}
       <div className="conflict-actions">

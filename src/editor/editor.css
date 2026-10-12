@@ -995,6 +995,10 @@ body.gn-dragging * {
 .gn-sheet {
   position: relative;
 }
+/* M06: a fixed-height sheet; the block list scrolls inside it. */
+.sheet.gn-insert-sheet {
+  height: min(560px, 92vh);
+}
 .gn-sheet:focus-visible {
   outline: none;
 }

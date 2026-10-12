@@ -75,23 +75,17 @@ export function SearchDialog({ initialQuery = '' }: { initialQuery?: string }) {
     [ui.recent, pages],
   )
 
-  const rows: { key: string; title: string; icon: string | null; sub: React.ReactNode; titleRanges: [number, number][] }[] = query.trim()
-    ? results.map((r) => {
-        const parent = parentTitle(r.key)
-        return {
+  const rows: { key: string; title: string; icon: string | null; titleRanges: [number, number][]; parent: string | null; snippet: React.ReactNode }[] =
+    query.trim()
+      ? results.map((r) => ({
           key: r.key,
           title: r.title,
           icon: pagesCache.byKey.get(r.key)?.icon ?? null,
           titleRanges: r.titleHighlights,
-          sub: (
-            <>
-              {parent ? `${parent} · ` : ''}
-              {r.snippet.text ? <Highlighted text={r.snippet.text} ranges={r.snippet.highlights} /> : null}
-            </>
-          ),
-        }
-      })
-    : recent.map((p) => ({ key: p!.key, title: p!.title, icon: p!.icon, titleRanges: [], sub: parentTitle(p!.key) ?? '' }))
+          parent: parentTitle(r.key),
+          snippet: r.snippet.text ? <Highlighted text={r.snippet.text} ranges={r.snippet.highlights} /> : null,
+        }))
+      : recent.map((p) => ({ key: p!.key, title: p!.title, icon: p!.icon, titleRanges: [], parent: parentTitle(p!.key), snippet: null }))
 
   const open = (key: string, newTab: boolean) => {
     if (newTab) {
@@ -192,12 +186,23 @@ export function SearchDialog({ initialQuery = '' }: { initialQuery?: string }) {
             onMouseMove={() => setSelected(i)}
             onClick={(e) => open(row.key, e.metaKey || e.ctrlKey)}
           >
-            <PageIcon icon={row.icon} size={mobile ? 24 : 20} />
+            <PageIcon icon={row.icon} size={24} />
             <span className="search-row-text">
               <span className="search-row-title">
                 <Highlighted text={row.title} ranges={row.titleRanges} />
               </span>
-              {row.sub ? <span className="search-row-sub">{row.sub}</span> : null}
+              {mobile ? (
+                // M07: where the page is (頁面 at the top level), then one line of the match.
+                <>
+                  <span className="search-row-parent">{row.parent ?? t.search.pages}</span>
+                  {row.snippet ? <span className="search-row-sub">{row.snippet}</span> : null}
+                </>
+              ) : row.parent || row.snippet ? (
+                <span className="search-row-sub">
+                  {row.parent && row.snippet ? `${row.parent} · ` : row.parent}
+                  {row.snippet}
+                </span>
+              ) : null}
             </span>
             {!mobile && i === selected && <span className="search-row-enter">Enter</span>}
           </button>
@@ -240,7 +245,7 @@ export function SearchDialog({ initialQuery = '' }: { initialQuery?: string }) {
     )
   }
   return (
-    <Modal open onClose={closeOverlay} title={t.nav.search} width={532} top className="search-modal">
+    <Modal open onClose={closeOverlay} title={t.nav.search} width={640} top className="search-modal">
       {body}
     </Modal>
   )

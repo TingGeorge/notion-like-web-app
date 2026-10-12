@@ -127,9 +127,9 @@
 /* Switch (自動同步) */
 .switch {
   position: relative;
-  width: 30px;
-  height: 18px;
-  border-radius: 9px;
+  width: 36px;
+  height: 20px;
+  border-radius: 10px;
   background: var(--border-strong);
   transition: background-color 150ms var(--ease);
   flex: none;
@@ -141,15 +141,28 @@
   position: absolute;
   top: 2px;
   left: 2px;
-  width: 14px;
-  height: 14px;
+  width: 16px;
+  height: 16px;
   border-radius: 50%;
   background: var(--switch-thumb);
   box-shadow: var(--shadow-thumb);
   transition: transform 150ms var(--ease);
 }
+/* M17: the iOS size on the phone. */
+.is-mobile .switch {
+  width: 51px;
+  height: 31px;
+  border-radius: 16px;
+}
+.is-mobile .switch-thumb {
+  width: 27px;
+  height: 27px;
+}
+.is-mobile .switch.is-on .switch-thumb {
+  transform: translateX(20px);
+}
 .switch.is-on .switch-thumb {
-  transform: translateX(12px);
+  transform: translateX(16px);
 }
 
 .kbd {

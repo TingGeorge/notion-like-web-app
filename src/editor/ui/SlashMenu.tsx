@@ -7,6 +7,8 @@ import { ITEM_ICONS, useEditorUI, useViewportTick, visibleViewport } from './sha
 import { runInsertItem } from '../insert'
 
 const MENU_WIDTH = 270
+/** D03: about eleven rows, then the list scrolls. */
+const MENU_MAX_HEIGHT = 420
 
 /** UI-7 / D03: the `/` menu at the caret. */
 export function SlashMenu() {
@@ -32,8 +34,8 @@ export function SlashMenu() {
   const spaceBelow = vp.top + vp.height - caret.bottom
   const above = spaceBelow < 260 && caret.top - vp.top > spaceBelow
   const style: React.CSSProperties = above
-    ? { left, bottom: window.innerHeight - caret.top + 6, maxHeight: Math.min(330, caret.top - vp.top - 16) }
-    : { left, top: caret.bottom + 6, maxHeight: Math.min(330, spaceBelow - 16) }
+    ? { left, bottom: window.innerHeight - caret.top + 6, maxHeight: Math.min(MENU_MAX_HEIGHT, caret.top - vp.top - 16) }
+    : { left, top: caret.bottom + 6, maxHeight: Math.min(MENU_MAX_HEIGHT, spaceBelow - 16) }
 
   const choose = (item: SlashItem) => runInsertItem(view, item.id, ctx, { from: st.from, to: view.state.selection.head })
 

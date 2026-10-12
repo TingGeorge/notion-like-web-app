@@ -225,7 +225,7 @@
   padding-right: 4px;
 }
 .tree-row:hover .tree-actions,
-.tree-row:focus-within .tree-actions {
+.tree-row:has(:focus-visible) .tree-actions {
   display: flex;
 }
 .tree-action {

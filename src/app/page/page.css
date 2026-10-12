@@ -83,7 +83,7 @@
   transition: opacity 120ms;
 }
 .page-header:hover .page-head-buttons,
-.page-head-buttons:focus-within,
+.page-header:focus-within .page-head-buttons,
 .page.is-mobile .page-head-buttons {
   opacity: 1;
 }
@@ -157,7 +157,10 @@
   font-size: 14px;
 }
 
-/* D11 「或從這裡開始」 */
+/* D11 「或從這裡開始」: right under the empty first line. */
+.page-content:has(.page-starters) .gn-prose {
+  min-height: 0;
+}
 .page-starters {
   display: flex;
   flex-direction: column;
