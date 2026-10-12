@@ -79,23 +79,43 @@ const handleInlineCode = Object.assign(
 )
 
 /**
- * Text: every backslash is written escaped (`\\\\` for `\\`). to-markdown leaves a backslash alone when
- * the next character is not punctuation, but that character may afterwards become a character
- * reference (`&#x20;` next to emphasis), which would turn the backslash into an escape.
+ * Text. Two things to-markdown's own text handler gets wrong, handled here:
+ * - Every backslash is written escaped (as two backslashes). to-markdown leaves a backslash
+ *   alone when the next character is not punctuation, but that character may afterwards become
+ *   a character reference (`&#x20;` next to emphasis), which would turn the backslash into an
+ *   escape.
+ * - Each line is escaped on its own. to-markdown's line-start escapes (`+ `, `# `, `1. `…) miss
+ *   a line when the previous line also needed one (its pattern consumes the line break).
+ * A line break is written as is, or as `&#xA;` next to another line break or at the start or
+ * end of the paragraph (where it would make a blank line or be stripped), and always in
+ * headings and table cells.
  */
 const handleText = ((node: { value: string }, parent: Parameters<Handle>[1], state: State, info: Info) => {
   const value = node.value
-  if (!value.includes('\\')) return defaultHandlers.text(node as never, parent, state, info)
-  const parts = value.split('\\')
+  if (!/[\\\n]/.test(value)) return defaultHandlers.text(node as never, parent, state, info)
+  const pieces = value.split(/(\\|\n)/)
+  const isEol = (c: string | undefined) => c === '\n' || c === '\r'
+  // Headings and table cells are one line.
+  const oneLine = state.stack.includes('headingAtx') || state.stack.includes('tableCell' as never)
   let out = ''
-  parts.forEach((part, i) => {
-    if (i > 0) out += '\\\\'
-    if (part === '') return
-    out += state.safe(part, {
-      ...info,
-      before: i === 0 ? info.before : '\\',
-      after: i === parts.length - 1 ? info.after : '\\',
-    })
+  let pos = 0
+  pieces.forEach((piece, k) => {
+    if (piece === '') return
+    if (piece === '\\') {
+      out += '\\\\'
+    } else if (piece === '\n') {
+      const before = pos === 0 ? info.before.slice(-1) : value[pos - 1]
+      const after = pos === value.length - 1 ? info.after.charAt(0) : value[pos + 1]
+      out += isEol(before) || isEol(after) || oneLine ? '&#xA;' : '\n'
+    } else {
+      // Pieces alternate text / separator, so the next piece is a backslash or a line break.
+      out += state.safe(piece, {
+        ...info,
+        before: out === '' ? info.before : out.slice(-1),
+        after: pieces[k + 1] ?? info.after,
+      })
+    }
+    pos += piece.length
   })
   return out
 }) as Handle
@@ -162,7 +182,7 @@ function serializeDoc(doc: PMNode, state: State): string {
 /** The bullet (`-`) or number delimiter (`.`) a raw block's list uses, if it is a list. */
 function rawListMarker(node: PMNode | undefined): string | null {
   if (!node || node.type !== nodes.raw) return null
-  const m = /^ {0,3}(?:([-+*])|\d{1,9}([.)]))(?:[ \t]|$)/.exec(node.textContent)
+  const m = /^ {0,3}(?:([-+*])|\d{1,9}([.)]))(?:[ \t\n]|$)/.exec(node.textContent)
   return m ? (m[1] ?? m[2]) : null
 }
 
@@ -259,16 +279,18 @@ type InlineKind = 'paragraph' | 'heading' | 'cell'
 
 /**
  * The Markdown of a paragraph's, heading's or table cell's inline content (a heading includes
- * its `#` sequence). With two or more emphasis/strong/strikethrough spans, CommonMark's
- * delimiter rules can defeat even to-markdown's choice of markers, so the result is parsed back
- * and compared; if it differs, those spans are written as `<strong>`, `<em>`, `<del>` instead
- * (the parser reads those as the same marks).
+ * its `#` sequence). Where emphasis/strong/strikethrough spans touch (one right after another,
+ * or one at the edge of another), CommonMark's delimiter rules can defeat even to-markdown's
+ * choice of markers, so the result is parsed back and compared; if it differs, those spans are
+ * written as `<strong>`, `<em>`, `<del>` instead (the parser reads those as the same marks).
+ * (Spans with text between them pair as intended: no failure in tens of thousands of random
+ * paragraphs, and the round-trip tests cover them.)
  */
 function inlineMarkdown(node: PMNode, state: State, kind: InlineKind): string {
   const children = toPhrasing(node)
   if (session.forceHtml.has(node)) return renderInline(node, state, kind, htmlAttention(children))
   const md = renderInline(node, state, kind, children)
-  if (countAttention(children) >= 2) session.pending.push({ kind, md, node })
+  if (attentionTouches(children)) session.pending.push({ kind, md, node })
   return md
 }
 
@@ -304,13 +326,20 @@ function renderInline(node: PMNode, state: State, kind: InlineKind, children: Ph
 
 const ATTENTION_TAGS: Partial<Record<string, string>> = { strong: 'strong', emphasis: 'em', delete: 'del' }
 
-function countAttention(children: readonly PhrasingContent[]): number {
-  let n = 0
-  for (const c of children) {
-    if (ATTENTION_TAGS[c.type]) n++
-    if ('children' in c) n += countAttention(c.children)
+/** Whether two emphasis-like spans are next to each other, or one is at the edge of another. */
+function attentionTouches(children: readonly PhrasingContent[]): boolean {
+  for (let i = 0; i < children.length; i++) {
+    const c = children[i]
+    if (!('children' in c)) continue
+    if (ATTENTION_TAGS[c.type]) {
+      const next = children[i + 1]
+      const kids = c.children
+      if (next && ATTENTION_TAGS[next.type]) return true
+      if (kids.length > 0 && (ATTENTION_TAGS[kids[0].type] || ATTENTION_TAGS[kids[kids.length - 1].type])) return true
+    }
+    if (attentionTouches(c.children)) return true
   }
-  return n
+  return false
 }
 
 /** The same phrasing with emphasis, strong and strikethrough as HTML tags. */
@@ -360,21 +389,17 @@ function isParagraphLike(node: PMNode): boolean {
   return node.type === nodes.paragraph || isAloneBlock(node)
 }
 
-/** Whether `node` written on the line after a paragraph starts a new block (no blank line). */
-function canInterruptParagraph(node: PMNode): boolean {
-  if (node.type === nodes.bullet_list || node.type === nodes.ordered_list) {
-    if (node.type === nodes.ordered_list && node.attrs.start !== 1) return false
-    const item = node.firstChild
-    const text = item?.firstChild
-    // An item whose first line is blank cannot interrupt a paragraph.
-    return Boolean(item && (item.attrs.checked !== null || (text && text.content.size > 0) || (item.childCount > 1 && isAloneBlock(item.child(1)))))
-  }
-  return (
-    node.type === nodes.heading ||
-    node.type === nodes.code_block ||
-    node.type === nodes.blockquote ||
-    node.type === nodes.toggle
-  )
+/**
+ * Whether a nested list can start on the line right after a paragraph (it interrupts the
+ * paragraph): a numbered list only from 1, and not when its first item starts with an empty
+ * line (`-` alone, which after text would even read as a setext heading underline).
+ */
+function listCanFollowText(node: PMNode): boolean {
+  if (node.type === nodes.ordered_list && node.attrs.start !== 1) return false
+  const item = node.firstChild
+  if (!item) return false
+  const text = item.firstChild
+  return item.attrs.checked !== null || Boolean(text && text.content.size > 0) || (item.childCount > 1 && isAloneBlock(item.child(1)))
 }
 
 function list(node: PMNode, state: State, marker?: string): string {
@@ -414,7 +439,7 @@ function listItem(item: PMNode, marker: string, state: State): string {
     if (prev === null) {
       // Empty first line (`-`): the block starts on the next line, inside the item.
       body += `\n${text}`
-    } else if (isParagraphLike(prev) && (child.type === nodes.bullet_list || child.type === nodes.ordered_list) && canInterruptParagraph(child)) {
+    } else if (isParagraphLike(prev) && (child.type === nodes.bullet_list || child.type === nodes.ordered_list) && listCanFollowText(child)) {
       body += `\n${text}`
     } else {
       body += `\n\n${text}`
@@ -481,35 +506,33 @@ function table(node: PMNode, state: State): string {
 // ---------------------------------------------------------------------------------------------
 // Inline content → mdast phrasing, marks nested in the fixed DATA-14 order.
 
-interface InlineItem {
-  node: PMNode
-}
-
-/** Mark types by nesting level, outermost first (the schema's mark order). */
-const LEVELS = MARK_LEVELS
-
 function markAt(node: PMNode, level: number): Mark | null {
-  return LEVELS[level].isInSet(node.marks) ?? null
+  return MARK_LEVELS[level].isInSet(node.marks) ?? null
 }
 
 function sameMark(a: Mark | null, b: Mark | null): boolean {
   return a === b || (a !== null && b !== null && a.eq(b))
 }
 
+/**
+ * Inline nodes → mdast phrasing. Level by level in the DATA-14 order (outermost mark type
+ * first), consecutive nodes that share that level's mark go into one span; so every text's marks
+ * are nested in the fixed order, and neighbours share the spans they have in common.
+ */
 function toPhrasing(parent: PMNode): PhrasingContent[] {
-  const items: InlineItem[] = []
-  parent.forEach((node) => items.push({ node }))
+  const items: PMNode[] = []
+  parent.forEach((node) => items.push(node))
   return group(items, 0)
 }
 
-function group(items: InlineItem[], level: number): PhrasingContent[] {
-  if (level === LEVELS.length) return items.map(leaf)
+function group(items: PMNode[], level: number): PhrasingContent[] {
+  if (level === MARK_LEVELS.length) return items.map(leaf)
   const out: PhrasingContent[] = []
   let i = 0
   while (i < items.length) {
-    const mark = markAt(items[i].node, level)
+    const mark = markAt(items[i], level)
     let j = i + 1
-    while (j < items.length && sameMark(markAt(items[j].node, level), mark)) j++
+    while (j < items.length && sameMark(markAt(items[j], level), mark)) j++
     const inner = group(items.slice(i, j), level + 1)
     if (mark === null) out.push(...inner)
     else out.push(...wrap(mark, inner))
@@ -543,10 +566,10 @@ function wrap(mark: Mark, inner: PhrasingContent[]): PhrasingContent[] {
   }
 }
 
-function leaf(item: InlineItem): PhrasingContent {
-  const node = item.node
+function leaf(node: PMNode): PhrasingContent {
   if (node.type === nodes.hard_break) return { type: 'break' }
   const text = node.text ?? ''
   if (marks.code.isInSet(node.marks)) return { type: 'inlineCode', value: text }
   return { type: 'text', value: text }
 }
+

@@ -39,7 +39,7 @@ function excerptOf(plain: string): string {
 // ---------------------------------------------------------------------------------------------
 // Links
 
-const NAMED_REFS: Record<string, string> = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ' }
+const NAMED_REFS: Record<string, string> = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: '\u00a0' }
 
 /** Backslash escapes and (common) character references, as in a link destination. */
 function decodeDestination(s: string): string {
@@ -48,7 +48,7 @@ function decodeDestination(s: string): string {
     if (esc !== undefined) return esc as string
     if (name !== undefined) return NAMED_REFS[name as string] ?? all
     const code = hex !== undefined ? parseInt(hex as string, 16) : parseInt(dec as string, 10)
-    return code > 0 && code <= 0x10ffff ? String.fromCodePoint(code) : '�'
+    return code > 0 && code <= 0x10ffff ? String.fromCodePoint(code) : '\ufffd'
   })
 }
 

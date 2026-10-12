@@ -57,7 +57,7 @@ export function escapeHtmlText(text: string): string {
   return text.replace(/[&<>\n]/g, (c) => (c === '&' ? '&amp;' : c === '<' ? '&lt;' : c === '>' ? '&gt;' : '&#10;'))
 }
 
-const NAMED: Record<string, string> = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ' }
+const NAMED: Record<string, string> = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: '\u00a0' }
 
 /** Decode the character references the summary may contain; null if it has an unknown one. */
 export function decodeHtmlText(text: string): string | null {
@@ -69,7 +69,7 @@ export function decodeHtmlText(text: string): string | null {
       return v ?? all
     }
     const code = hex !== undefined ? parseInt(hex as string, 16) : parseInt(dec as string, 10)
-    if (code === 0 || code > 0x10ffff || (code >= 0xd800 && code <= 0xdfff)) return '�'
+    if (code === 0 || code > 0x10ffff || (code >= 0xd800 && code <= 0xdfff)) return '\ufffd'
     return String.fromCodePoint(code)
   })
   return ok ? out : null
@@ -89,9 +89,12 @@ export function parseDetailsOpen(html: string): string | null {
   return decodeHtmlText(m[1])
 }
 
-/** True for anything that starts like a `<details>` block (used to pair nested toggles). */
+/**
+ * True for an HTML block that opens a `<details>` without closing it (used to pair nested
+ * toggles; an invalid one makes the whole toggle raw).
+ */
 export function looksLikeDetailsOpen(html: string): boolean {
-  return /^[ \t]*<details[\s>]/i.test(html)
+  return /^[ \t]*<details[\s>]/i.test(html) && !/<\/details\s*>/i.test(html)
 }
 
 export function isDetailsClose(html: string): boolean {

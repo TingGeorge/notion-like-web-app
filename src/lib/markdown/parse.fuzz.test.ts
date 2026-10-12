@@ -9,7 +9,7 @@ import { describe, expect, it } from 'vitest'
 import { canonicalize, parseMarkdown, serializeMarkdown } from './index'
 import { parseBody } from './parse'
 import { firstDifference } from './testing/diff'
-import { prng } from './testing/randomDoc'
+import { prng, randomDoc } from './testing/randomDoc'
 
 const env = (globalThis as { process?: { env: Record<string, string | undefined> } }).process?.env ?? {}
 const ITERATIONS = Number(env.MD_PARSE_FUZZ_ITERATIONS ?? 1200)
@@ -30,6 +30,33 @@ const LINES = [
   '[](https://x.com)', '[]( /a.md )', '[x](</a b.md>)',
 ]
 
+/** Markdown written by the serializer, then edited by hand: random lines inserted. */
+function editedMarkdown(seed: number): string {
+  const rand = prng(seed)
+  const lines = serializeMarkdown(randomDoc(seed, { maxBlocks: 4 })).split('\n')
+  const edits = 1 + Math.floor(rand() * 4)
+  for (let i = 0; i < edits; i++) {
+    lines.splice(Math.floor(rand() * (lines.length + 1)), 0, LINES[Math.floor(rand() * LINES.length)])
+  }
+  return lines.join('\n')
+}
+
+function checkStable(md: string, seed: number): void {
+  const parsed = parseMarkdown(md)
+  parsed.check()
+  expect(canonicalize(parsed).eq(parsed), `not canonical, seed ${seed}: ${JSON.stringify(md)}`).toBe(true)
+  parsed.forEach((block) => {
+    if (block.type.name === 'raw') {
+      expect(md.includes(block.textContent), `raw is not a slice, seed ${seed}: ${JSON.stringify(md)}`).toBe(true)
+    }
+  })
+  const out = serializeMarkdown(parsed)
+  const again = parseMarkdown(out)
+  const diff = firstDifference(parsed, again)
+  if (diff) throw new Error(`seed ${seed}\ninput: ${JSON.stringify(md)}\noutput: ${JSON.stringify(out)}\n${diff}`)
+  expect(serializeMarkdown(again)).toBe(out)
+}
+
 function randomMarkdown(seed: number): string {
   const rand = prng(seed)
   const n = 1 + Math.floor(rand() * 25)
@@ -40,22 +67,11 @@ function randomMarkdown(seed: number): string {
 
 describe('parsing arbitrary Markdown', () => {
   it(`is stable for ${ITERATIONS} random inputs`, () => {
-    for (let seed = 1; seed <= ITERATIONS; seed++) {
-      const md = randomMarkdown(seed)
-      const parsed = parseMarkdown(md)
-      parsed.check()
-      expect(canonicalize(parsed).eq(parsed), `not canonical, seed ${seed}: ${JSON.stringify(md)}`).toBe(true)
-      parsed.forEach((block) => {
-        if (block.type.name === 'raw') {
-          expect(md.includes(block.textContent), `raw is not a slice, seed ${seed}: ${JSON.stringify(md)}`).toBe(true)
-        }
-      })
-      const out = serializeMarkdown(parsed)
-      const again = parseMarkdown(out)
-      const diff = firstDifference(parsed, again)
-      if (diff) throw new Error(`seed ${seed}\ninput: ${JSON.stringify(md)}\noutput: ${JSON.stringify(out)}\n${diff}`)
-      expect(serializeMarkdown(again)).toBe(out)
-    }
+    for (let seed = 1; seed <= ITERATIONS; seed++) checkStable(randomMarkdown(seed), seed)
+  }, 120_000)
+
+  it(`is stable for ${Math.round(ITERATIONS / 4)} hand-edited serializer outputs`, () => {
+    for (let seed = 1; seed <= ITERATIONS / 4; seed++) checkStable(editedMarkdown(seed), seed)
   }, 120_000)
 
   it('gives the same document whether long bodies are parsed whole or in chunks', () => {

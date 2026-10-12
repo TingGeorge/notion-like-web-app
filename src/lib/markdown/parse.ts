@@ -9,7 +9,7 @@ import { CALLOUT_KINDS, schema, type CalloutKind } from '../schema'
 import { canonicalize } from './canonicalize'
 import { aloneLinkKind } from './hrefs'
 import { isDetailsClose, looksLikeDetailsOpen, parseDetailsOpen, parseIconComment, parseInlineTag, type InlineTagName } from './html'
-import { parseMdastPiece, parseTopLevel } from './mdast'
+import { parseMdastPiece, parseTopLevel, type TopNode } from './mdast'
 
 const nodes = schema.nodes
 const marks = schema.marks
@@ -34,7 +34,7 @@ const unsupported = (): never => {
 
 /** Normalise line endings and NUL the way the serializer and micromark see them. */
 export function normalizeSource(text: string): string {
-  return text.replace(/\r\n?/g, '\n').replace(/\0/g, '�')
+  return text.replace(/\r\n?/g, '\n').replace(/\0/g, '\ufffd')
 }
 
 interface Ctx {
@@ -75,45 +75,79 @@ function lineStart(text: string, offset: number): number {
 export function parseBody(body: string, chunkTarget?: number): PMNode {
   const text = normalizeSource(body)
   try {
-    const top = parseTopLevel(text, false, chunkTarget)
-    const blocks: PMNode[] = []
-    let i = 0
-    while (i < top.length) {
-      const { node, base } = top[i]
-      const ctx: Ctx = { text, base }
-      if (node.type === 'html' && looksLikeDetailsOpen(node.value)) {
-        const close = findDetailsClose(
-          top.map((t) => t.node),
-          i,
-        )
-        if (close !== -1) {
-          const closeCtx: Ctx = { text, base: top[close].base }
-          try {
-            // Each node keeps its own chunk offset.
-            const inner = top.slice(i + 1, close)
-            blocks.push(convertToggle(node.value, inner.map((t) => ({ node: t.node, ctx: { text, base: t.base } }))))
-          } catch (e) {
-            if (!(e instanceof Unsupported)) throw e
-            blocks.push(rawNode(text.slice(lineStart(text, startOf(node, ctx)), endOf(top[close].node, closeCtx))))
-          }
-          i = close + 1
-          continue
-        }
-      }
-      try {
-        blocks.push(convertBlock(node, ctx, true))
-      } catch (e) {
-        if (!(e instanceof Unsupported)) throw e
-        blocks.push(rawNode(text.slice(lineStart(text, startOf(node, ctx)), endOf(node, ctx))))
-      }
-      i++
-    }
+    const blocks = convertTopLevel(text, parseTopLevel(text, false, chunkTarget))
     return canonicalize(nodes.doc.create(null, blocks.length > 0 ? blocks : [emptyParagraph()]))
   } catch {
     // Last resort (a bug): keep the whole body as one Markdown block rather than lose it.
     const trimmed = text.replace(/\s+$/, '')
     return nodes.doc.create(null, trimmed ? [rawNode(trimmed)] : [emptyParagraph()])
   }
+}
+
+/**
+ * Convert top-level nodes. A raw block is written between blank lines, so it must read the same
+ * on its own; when micromark read it differently in context (its handling of lazy lines and of
+ * `-` after indented code depends on the neighbouring lines), the block is converted from its
+ * own parse instead, so that the result is what reading it back gives.
+ */
+function convertTopLevel(text: string, top: readonly TopNode[]): PMNode[] {
+  const out: PMNode[] = []
+  let i = 0
+  while (i < top.length) {
+    const { node, base } = top[i]
+    const ctx: Ctx = { text, base }
+    let last = i
+    let converted: PMNode | null = null
+    try {
+      if (node.type === 'html' && looksLikeDetailsOpen(node.value)) {
+        const close = findDetailsClose(
+          top.map((t) => t.node),
+          i,
+        )
+        if (close !== -1) {
+          last = close
+          // Each node keeps its own chunk offset.
+          const inner = top.slice(i + 1, close)
+          converted = convertToggle(node.value, inner.map((t) => ({ node: t.node, ctx: { text, base: t.base } })))
+        }
+      }
+      converted ??= convertBlock(node, ctx, true)
+    } catch (e) {
+      if (!(e instanceof Unsupported)) throw e
+    }
+    if (converted) {
+      out.push(converted)
+    } else {
+      const start = lineStart(text, absStart(top, i))
+      const end = absEnd(top, last)
+      const alone = parseMdastPiece(text.slice(start, end)).children
+      if (sameNodes(alone, start, top, i, last)) out.push(rawNode(text.slice(start, end)))
+      else out.push(...convertTopLevel(text, alone.map((n) => ({ node: n, base: start }))))
+    }
+    i = last + 1
+  }
+  return out
+}
+
+function absStart(top: readonly TopNode[], i: number): number {
+  return top[i].base + (top[i].node.position?.start.offset ?? 0)
+}
+
+function absEnd(top: readonly TopNode[], i: number): number {
+  return top[i].base + (top[i].node.position?.end.offset ?? 0)
+}
+
+/** Whether `alone` (parsed from the text at `start`) are the nodes first…last of `top`. */
+function sameNodes(alone: readonly RootContent[], start: number, top: readonly TopNode[], first: number, last: number): boolean {
+  if (alone.length !== last - first + 1) return false
+  return alone.every((n, k) => {
+    const orig = first + k
+    return (
+      n.type === top[orig].node.type &&
+      (n.position?.start.offset ?? 0) + start === absStart(top, orig) &&
+      (n.position?.end.offset ?? 0) + start === absEnd(top, orig)
+    )
+  })
 }
 
 /** Index of the `</details>` that closes the `<details>` at `open` among siblings, or -1. */
@@ -175,10 +209,10 @@ function located(children: readonly RootContent[], ctx: Ctx): Located[] {
 function convertBlock(node: RootContent, ctx: Ctx, top: boolean): PMNode {
   switch (node.type) {
     case 'paragraph':
-      return convertParagraph(node, ctx)
+      return convertParagraph(node)
     case 'heading':
       if (node.depth > 3) unsupported()
-      return nodes.heading.create({ level: node.depth }, convertInline(node.children, ctx, false))
+      return nodes.heading.create({ level: node.depth }, convertInline(node.children, false))
     case 'thematicBreak':
       return nodes.horizontal_rule.create()
     case 'code': {
@@ -190,7 +224,7 @@ function convertBlock(node: RootContent, ctx: Ctx, top: boolean): PMNode {
     case 'list':
       return convertList(node, ctx)
     case 'table':
-      return convertTable(node, ctx)
+      return convertTable(node)
     default:
       // html (other than toggles), math, footnote and link definitions, …
       return unsupported()
@@ -215,12 +249,12 @@ function aloneBlock(children: readonly PhrasingContent[]): PMNode | null {
   return null
 }
 
-function convertParagraph(node: Paragraph, ctx: Ctx): PMNode {
-  return aloneBlock(node.children) ?? nodes.paragraph.create(null, convertInline(node.children, ctx, true))
+function convertParagraph(node: Paragraph): PMNode {
+  return aloneBlock(node.children) ?? nodes.paragraph.create(null, convertInline(node.children, true))
 }
 
 /** Inline content → text nodes with marks. Inline HTML may only be the mark tags. */
-function convertInline(children: readonly PhrasingContent[], _ctx: Ctx, allowBreak: boolean): PMNode[] {
+function convertInline(children: readonly PhrasingContent[], allowBreak: boolean): PMNode[] {
   const out: PMNode[] = []
   /** Marks opened by `<u>` / `<span>` tags, innermost last. */
   const open: { tag: InlineTagName; marks: Mark[] }[] = []
@@ -319,7 +353,7 @@ function convertCallout(node: Blockquote, ctx: Ctx): PMNode | null {
       ...first.children.slice(1),
     ]
     if (inline.length > 0) {
-      content.push(aloneBlock(inline) ?? nodes.paragraph.create(null, convertInline(inline, ctx, true)))
+      content.push(aloneBlock(inline) ?? nodes.paragraph.create(null, convertInline(inline, true)))
     }
   } else {
     if (first.children.length !== 1) return null
@@ -361,14 +395,14 @@ function convertListItem(item: ListItem, ctx: Ctx): PMNode {
     } else {
       const alone = aloneBlock(head.children)
       if (alone) content.push(alone)
-      else first = nodes.paragraph.create(null, convertInline(head.children, ctx, true))
+      else first = nodes.paragraph.create(null, convertInline(head.children, true))
     }
   }
   content.push(...convertFlow(located(rest, ctx)))
   return nodes.list_item.create({ checked }, [first, ...content])
 }
 
-function convertTable(node: Table, ctx: Ctx): PMNode {
+function convertTable(node: Table): PMNode {
   const width = node.children[0]?.children.length ?? 0
   if (width === 0) unsupported()
   const rows = node.children.map((row, r) => {
@@ -378,34 +412,22 @@ function convertTable(node: Table, ctx: Ctx): PMNode {
     for (let c = 0; c < width; c++) {
       const cell = row.children[c]
       const type = r === 0 ? nodes.table_header : nodes.table_cell
-      cells.push(type.create({ align: node.align?.[c] ?? null }, cell ? convertInline(cell.children, ctx, false) : []))
+      cells.push(type.create({ align: node.align?.[c] ?? null }, cell ? convertInline(cell.children, false) : []))
     }
     return nodes.table_row.create(null, cells)
   })
   return nodes.table.create(null, rows)
 }
 
+type InlineKind = 'paragraph' | 'heading' | 'cell'
+
 /**
  * The inline content that `md` — one paragraph, one heading line, or one table cell's content —
  * reads back as, or null if it does not read back as that one container. Used by the
  * serializer to check its output.
  */
-export function inlineFromMarkdown(kind: 'paragraph' | 'heading' | 'cell', md: string): PMNode[] | null {
-  const source = kind === 'cell' ? `| ${md} |\n| --- |` : md
-  try {
-    const root = parseMdastPiece(source)
-    if (root.children.length !== 1) return null
-    const block = root.children[0]
-    const ctx: Ctx = { text: source, base: 0 }
-    if (kind === 'paragraph' && block.type === 'paragraph') return convertInline(block.children, ctx, true)
-    if (kind === 'heading' && block.type === 'heading') return convertInline(block.children, ctx, false)
-    if (kind === 'cell' && block.type === 'table') {
-      return convertInline(block.children[0]?.children[0]?.children ?? [], ctx, false)
-    }
-    return null
-  } catch {
-    return null
-  }
+export function inlineFromMarkdown(kind: InlineKind, md: string): PMNode[] | null {
+  return inlineContentsFromMarkdown([{ kind, md }])?.[0] ?? null
 }
 
 /**
@@ -413,24 +435,21 @@ export function inlineFromMarkdown(kind: 'paragraph' | 'heading' | 'cell', md: s
  * one after the other, separated by blank lines. Null if they do not read back as as many
  * top-level blocks.
  */
-export function inlineContentsFromMarkdown(
-  items: readonly { kind: 'paragraph' | 'heading' | 'cell'; md: string }[],
-): (PMNode[] | null)[] | null {
+export function inlineContentsFromMarkdown(items: readonly { kind: InlineKind; md: string }[]): (PMNode[] | null)[] | null {
   const source = items.map((it) => (it.kind === 'cell' ? `| ${it.md} |\n| --- |` : it.md)).join('\n\n')
   try {
     const root = parseMdastPiece(source)
     if (root.children.length !== items.length) return null
-    const ctx: Ctx = { text: source, base: 0 }
     return items.map((it, i) => {
       const block = root.children[i]
       try {
-        if (it.kind === 'paragraph' && block.type === 'paragraph') return convertInline(block.children, ctx, true)
-        if (it.kind === 'heading' && block.type === 'heading') return convertInline(block.children, ctx, false)
+        if (it.kind === 'paragraph' && block.type === 'paragraph') return convertInline(block.children, true)
+        if (it.kind === 'heading' && block.type === 'heading') return convertInline(block.children, false)
         if (it.kind === 'cell' && block.type === 'table') {
-          return convertInline(block.children[0]?.children[0]?.children ?? [], ctx, false)
+          return convertInline(block.children[0]?.children[0]?.children ?? [], false)
         }
       } catch {
-        // unsupported: does not read back
+        // Something unsupported: it does not read back.
       }
       return null
     })

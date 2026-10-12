@@ -66,10 +66,15 @@ export interface PageFile {
   hadFrontmatter: boolean
 }
 
-/** Everything the index and search need from a page file, from a single parse. */
+/** Everything the index and search need from a page file, from a single pass. */
 export interface PageAnalysis {
   meta: PageMeta
-  /** Root-relative link targets (DATA-17), decoded, without the leading `/`, without `#fragment`. */
+  /**
+   * Root-relative link targets (DATA-17), decoded, without the leading `/`, without `#fragment`,
+   * deduplicated: inline links, images and reference definitions. A superset — link syntax
+   * inside code spans and code blocks is counted too — so no page that needs a DATA-17 rewrite
+   * is missed (`rewriteLinks` only ever changes real links). Relative links are not included.
+   */
   links: string[]
   /** Text of the headings, in order. */
   headings: string[]
@@ -84,9 +89,13 @@ export function analyzePage(text: string): PageAnalysis {
 }
 
 export interface LinkRef {
-  /** The destination exactly as written, e.g. `/工作/專案%20A.md#x`. */
+  /**
+   * The destination as written, e.g. `/工作/專案%20A.md#x` (Markdown backslash escapes and
+   * character references decoded, `<…>` removed; percent-encoding untouched). For a reference
+   * link it is its definition's destination (`[x]: /a.md`), reported once per definition.
+   */
   href: string
-  /** The link text (plain text) or image alt. */
+  /** The link text (plain text), image alt, or definition label. */
   text: string
   /** True for a link that is alone in its paragraph (a `page_link` / `file` block). */
   alone: boolean
@@ -96,8 +105,9 @@ export interface LinkRef {
 /**
  * DATA-17: rewrite link and image destinations in a page body. `map` returns a new destination
  * (and, for links that are alone in a paragraph — page link blocks — optionally new link text),
- * or null to keep the link. Everything else stays byte-for-byte the same. Links inside `raw`
- * constructs (HTML, code) are never touched.
+ * or null to keep the link. Everything else stays byte-for-byte the same. Link syntax inside
+ * code, math and HTML (where it is not a link) is never touched; real Markdown links are
+ * rewritten wherever they are, also inside blocks the editor keeps as `raw`.
  */
 export function rewriteLinks(body: string, map: (link: LinkRef) => { href: string; text?: string } | null): string {
   return rewrite(body, map)

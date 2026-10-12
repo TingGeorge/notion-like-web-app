@@ -58,6 +58,12 @@
  *     cells, a run of backslashes right before `|` is made even (GFM cannot write an odd run
  *     there inside code).
  * 17. Colour / background marks with a colour outside DATA-11 are removed.
+ *
+ * Scope: a `raw` block is expected to hold what the parser put there — complete Markdown blocks
+ * the editor does not understand. Text typed into a raw block is simply read again as Markdown
+ * on the next parse (it may become other blocks, which is how a user turns Markdown into
+ * blocks), and a raw block that is a list placed right after a list with the same marker is
+ * read as one list with it; neither is normalised here.
  */
 import { Fragment, type Mark, type Node as PMNode } from 'prosemirror-model'
 import { CALLOUT_KINDS, isNotionColor, schema } from '../schema'
@@ -72,7 +78,7 @@ const MAX_ORDINAL = 999_999_999
 export const MARK_LEVELS = [marks.bg, marks.color, marks.link, marks.bold, marks.italic, marks.strike, marks.underline]
 
 function normalizeText(text: string): string {
-  return /[\r\0]/.test(text) ? text.replace(/\r\n?/g, '\n').replace(/\0/g, '�') : text
+  return /[\r\0]/.test(text) ? text.replace(/\r\n?/g, '\n').replace(/\0/g, '\ufffd') : text
 }
 
 export function canonicalize(doc: PMNode): PMNode {

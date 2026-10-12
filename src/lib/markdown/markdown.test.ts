@@ -405,6 +405,37 @@ describe('DATA-15 unknown Markdown is kept byte-for-byte', () => {
     expectSameDoc(parseMarkdown(out), parsed)
   })
 
+  it('a list next to a raw list with the same marker uses another marker', () => {
+    const md = '+ 一\n- 二 <br>\n'
+    const parsed = parseMarkdown(md)
+    expectSameDoc(parsed, doc(ul(li(p('一'))), raw('- 二 <br>')))
+    const out = serializeMarkdown(parsed)
+    expect(out).toBe('* 一\n\n- 二 <br>\n')
+    expectSameDoc(parseMarkdown(out), parsed)
+    expect(serializeMarkdown(doc(ol(1, li(p('a'))), raw('1. b $x$')))).toBe('1) a\n\n1. b $x$\n')
+    expect(serializeMarkdown(doc(raw('-\n- b <br>'), ul(li(p('c')))))).toBe('-\n- b <br>\n\n* c\n')
+  })
+
+  it('a block micromark reads differently in context is read as it reads on its own', () => {
+    // micromark reads `-` right after an indented code block as text, and an HTML line right
+    // after a list item as part of it only when another list follows. Written back between
+    // blank lines these read differently, so the parse already uses that reading.
+    const md = '    code\n-\n$x$ math\n'
+    const parsed = parseMarkdown(md)
+    expectSameDoc(parsed, doc(code('', 'code'), ul(li(p())), raw('$x$ math')))
+    expectSameDoc(parseMarkdown(serializeMarkdown(parsed)), parsed)
+    const md2 = '- item\n<img src="x.png">\n* star\n'
+    const parsed2 = parseMarkdown(md2)
+    expectSameDoc(parseMarkdown(serializeMarkdown(parsed2)), parsed2)
+    expect(serializeMarkdown(parsed2)).toContain('<img src="x.png">')
+  })
+
+  it('a raw block placed right after a list loses its first-line indentation', () => {
+    const d = doc(ul(li(p('a'))), raw('  <div>x</div>'))
+    expect(serializeMarkdown(d)).toBe('- a\n\n<div>x</div>\n')
+    expectSameDoc(parseMarkdown(serializeMarkdown(d)), canonicalize(d))
+  })
+
   it('a block that contains anything unknown becomes one raw block', () => {
     const md = '- a\n- b <!-- c -->\n  - d\n'
     expectSameDoc(parseMarkdown(md), doc(raw('- a\n- b <!-- c -->\n  - d')))
