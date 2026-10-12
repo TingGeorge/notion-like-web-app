@@ -173,3 +173,19 @@ export function ancestorDirs(path: string): string[] {
 export function isInside(path: string, dir: string): boolean {
   return path === dir || path.startsWith(`${dir}/`)
 }
+
+/**
+ * DATA-22: where a trashed page lives. The page file goes to `.notes/trash/<entryId>/<name>.md`
+ * and its child folder to `.notes/trash/<entryId>/<name>/…`.
+ */
+export function trashPathFor(entryId: string, originalPath: string): string {
+  return `${TRASH_DIR}${entryId}/${basename(originalPath)}`
+}
+
+/** The trash entry id a trashed path belongs to, or null. */
+export function trashEntryIdOf(path: string): string | null {
+  if (!path.startsWith(TRASH_DIR)) return null
+  const rest = path.slice(TRASH_DIR.length)
+  const i = rest.indexOf('/')
+  return i === -1 ? null : rest.slice(0, i)
+}
