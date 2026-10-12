@@ -361,7 +361,10 @@ function PageHeader({ page, readOnly, mobile, onEnter }: { page: PageRow; readOn
 }
 
 function TitleInput({ page, readOnly, onEnter }: { page: PageRow; readOnly: boolean; onEnter: () => void }) {
-  const [value, setValue] = useState(page.title === t.common.untitled ? '' : page.title)
+  const initial = page.title === t.common.untitled ? '' : page.title
+  const [value, setValue] = useState(initial)
+  /** The latest typed value and whether the user changed it since the last commit. */
+  const typed = useRef({ value: initial, dirty: false })
   const focused = useRef(false)
   const ref = useRef<HTMLTextAreaElement>(null)
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -370,7 +373,10 @@ function TitleInput({ page, readOnly, onEnter }: { page: PageRow; readOnly: bool
 
   // Follow renames from elsewhere while not editing.
   useEffect(() => {
-    if (!focused.current) setValue(page.title === t.common.untitled ? '' : page.title)
+    if (focused.current || typed.current.dirty) return
+    const next = page.title === t.common.untitled ? '' : page.title
+    typed.current.value = next
+    setValue(next)
   }, [page.title])
 
   useEffect(() => {
@@ -387,13 +393,16 @@ function TitleInput({ page, readOnly, onEnter }: { page: PageRow; readOnly: bool
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  // Uses only refs, never the DOM: it also runs on unmount, after React has detached `ref`.
   const commit = useCallback(async () => {
     if (timer.current) {
       clearTimeout(timer.current)
       timer.current = null
     }
+    if (!typed.current.dirty) return
+    typed.current.dirty = false
     const current = pageRef.current
-    const title = (ref.current?.value ?? '').replace(/\s*\n\s*/g, ' ')
+    const title = typed.current.value.replace(/\s*\n\s*/g, ' ')
     const effective = title.trim() === '' ? t.common.untitled : title
     if (effective === current.title) return
     const newKey = await renamePage(current.key, effective)
@@ -419,7 +428,9 @@ function TitleInput({ page, readOnly, onEnter }: { page: PageRow; readOnly: bool
         void commit()
       }}
       onChange={(e) => {
-        setValue(e.target.value.replace(/\n/g, ''))
+        const next = e.target.value.replace(/\n/g, '')
+        typed.current = { value: next, dirty: true }
+        setValue(next)
         if (timer.current) clearTimeout(timer.current)
         timer.current = setTimeout(() => void commit(), 1200)
       }}

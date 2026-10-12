@@ -28,6 +28,8 @@ export function localChange(): void {
 }
 
 export async function newPage(parentKey: string | null = null, body?: string): Promise<string> {
+  // Keystrokes typed while the page is being created must not land in the page being left.
+  ;(document.activeElement as HTMLElement | null)?.blur?.()
   const key = await createPage({ parentKey, body })
   localChange()
   navigate({ name: 'page', key })
