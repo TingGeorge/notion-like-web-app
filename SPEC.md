@@ -45,7 +45,7 @@ Modules inside the app:
 
 ```
 ┌──────────────── Device (iPhone / PC) ────────────────┐
-│  UI (React) ── Editor (Milkdown)                      │
+│  UI (React) ── Editor (ProseMirror)                   │
 │     │                                                 │
 │  Store (IndexedDB / Dexie): config, files, index      │──▶ works offline
 │     │                                                 │
@@ -58,6 +58,8 @@ Modules inside the app:
    GitHub Pages                    api.github.com ──▶ user's private repo
    tinggeorge.github.io/notion-like-web-app/
 ```
+
+The editor is built directly on ProseMirror, the engine Milkdown wraps, with remark (mdast) for parsing and `mdast-util-to-markdown` for writing. The Markdown mapping in §3.4 is custom (toggles, callouts, colours, byte-for-byte unknown blocks), so the app owns that layer instead of adapting Milkdown's presets.
 
 - **ARCH-1** The app is static files served from GitHub Pages.
   - It is built with a relative base (`base: "./"`), so the same build works under `/notion-like-web-app/` or at the root of a custom domain (SEC-6).

@@ -287,8 +287,9 @@ export function Menu({ items, onClose, className }: { items: (MenuItem | 'separa
             className={cx('menu-row', item.danger && 'is-danger')}
             disabled={item.disabled}
             onClick={() => {
-              item.onSelect()
+              // Close first: the action may open another overlay.
               onClose?.()
+              item.onSelect()
             }}
           >
             {item.icon && <span className="menu-icon">{item.icon}</span>}

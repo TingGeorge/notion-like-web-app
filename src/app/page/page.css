@@ -1,0 +1,246 @@
+/* D02 / M03 page layout. Content column is 708 px on desktop (Figma). */
+.page {
+  --page-pad: max(24px, calc((100% - var(--page-width)) / 2));
+  padding-bottom: 30vh;
+  min-height: 100%;
+}
+.page.is-mobile {
+  --page-pad: 20px;
+  padding-bottom: 40vh;
+}
+
+.page-header {
+  position: relative;
+}
+.page-cover {
+  position: relative;
+  height: 180px;
+  background-size: cover;
+  background-position: center;
+  background-color: var(--bg-input);
+}
+.page.is-mobile .page-cover {
+  height: 120px;
+}
+.page-cover-actions {
+  position: absolute;
+  right: var(--page-pad);
+  bottom: 10px;
+  display: flex;
+  gap: 4px;
+  opacity: 0;
+  transition: opacity 120ms;
+}
+.page-cover:hover .page-cover-actions,
+.page-cover:focus-within .page-cover-actions {
+  opacity: 1;
+}
+.page-cover-btn {
+  padding: 4px 8px;
+  border-radius: var(--radius-s);
+  font-size: 12px;
+  background: var(--bg-elevated);
+  color: var(--text-secondary);
+  box-shadow: 0 0 0 1px var(--border-default);
+}
+.page-cover-btn:hover {
+  background: var(--bg-input);
+}
+
+.page-head-inner {
+  padding: 0 var(--page-pad);
+  position: relative;
+}
+.page-header:not(.has-cover) .page-head-inner {
+  padding-top: 72px;
+}
+.page.is-mobile .page-header:not(.has-cover) .page-head-inner {
+  padding-top: 20px;
+}
+.page-big-icon {
+  display: block;
+  margin-top: 24px;
+  margin-bottom: 4px;
+  margin-left: -4px;
+  padding: 4px;
+  border-radius: var(--radius-m);
+  line-height: 1;
+}
+.page-header.has-cover .page-big-icon {
+  margin-top: -42px;
+}
+.page.is-mobile .page-header.has-cover .page-big-icon {
+  margin-top: -32px;
+}
+.page-big-icon:hover:not(:disabled) {
+  background: var(--bg-hover);
+}
+.page-head-buttons {
+  display: flex;
+  gap: 4px;
+  margin: 8px 0 4px -6px;
+  opacity: 0;
+  transition: opacity 120ms;
+}
+.page-header:hover .page-head-buttons,
+.page-head-buttons:focus-within,
+.page.is-mobile .page-head-buttons {
+  opacity: 1;
+}
+.page-head-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 6px;
+  border-radius: var(--radius-s);
+  font-size: 13px;
+  color: var(--text-tertiary);
+}
+.page-head-btn:hover {
+  background: var(--bg-hover);
+  color: var(--text-secondary);
+}
+
+.page-title-input {
+  display: block;
+  width: 100%;
+  margin: 6px 0 4px;
+  padding: 0;
+  border: 0;
+  outline: none;
+  resize: none;
+  overflow: hidden;
+  background: transparent;
+  color: var(--text-primary);
+  font-family: var(--font-ui);
+  font-size: 40px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+.page-title-input::placeholder {
+  color: var(--text-tertiary);
+  opacity: 0.8;
+}
+.page.is-mobile .page-title-input {
+  font-size: 30px;
+  line-height: 1.25;
+}
+
+.page-content {
+  padding: 4px var(--page-pad) 0;
+}
+
+.page-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 12px var(--page-pad) 0;
+  padding: 8px 12px;
+  border-radius: var(--radius-m);
+  background: var(--palette-bg-yellow);
+  color: var(--text-primary);
+  font-size: 14px;
+}
+.page-banner span {
+  flex: 1;
+}
+.page-banner svg {
+  color: var(--status-warning);
+  flex: none;
+}
+
+.page-virtual-hint {
+  margin: 8px var(--page-pad) 0;
+  color: var(--text-tertiary);
+  font-size: 14px;
+}
+
+/* D11 「或從這裡開始」 */
+.page-starters {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  margin-top: 24px;
+}
+.page-starters-label {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-bottom: 6px;
+}
+.page-starter {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 30px;
+  padding: 0 6px;
+  margin-left: -6px;
+  border-radius: var(--radius-s);
+  font-size: 14px;
+  color: var(--text-primary);
+}
+.page-starter:hover {
+  background: var(--bg-hover);
+}
+
+/* UI-6 反向連結 */
+.backlinks {
+  margin: 48px var(--page-pad) 0;
+  padding-top: 16px;
+  border-top: 1px solid var(--border-default);
+}
+.backlinks-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 6px;
+}
+.backlinks ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.backlinks a {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 6px;
+  margin-left: -6px;
+  border-radius: var(--radius-s);
+  text-decoration: none;
+  color: var(--text-primary);
+  font-size: 14px;
+}
+.backlinks a:hover {
+  background: var(--bg-hover);
+}
+
+.page-loading {
+  height: 100%;
+}
+.page-not-found {
+  max-width: 420px;
+  margin: 18vh auto 0;
+  text-align: center;
+  padding: 0 24px;
+}
+.page-not-found h1 {
+  font-size: 22px;
+  margin-bottom: 8px;
+}
+.page-not-found p {
+  color: var(--text-secondary);
+  margin-bottom: 20px;
+}
+
+@media print {
+  .page {
+    --page-pad: 0px;
+    padding-bottom: 0;
+  }
+  .page-cover {
+    display: none;
+  }
+}

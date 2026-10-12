@@ -112,3 +112,21 @@ function getRoute(): Route {
 export function useRoute(): Route {
   return useSyncExternalStore(subscribe, getRoute)
 }
+
+/**
+ * A page's key changed under the open view (it received an id, DATA-9). Replace the URL without
+ * remounting the page, so the editor keeps its caret.
+ */
+const follows = new Map<string, string>()
+
+export function followKey(from: string, to: string): void {
+  if (from === to) return
+  follows.set(to, from)
+  const route = parseHash(location.hash)
+  if (route.name === 'page' && route.key === from) navigate({ name: 'page', key: to }, { replace: true })
+}
+
+/** True when `to` replaced `from` through `followKey`. */
+export function isFollow(from: string, to: string): boolean {
+  return follows.get(to) === from
+}
