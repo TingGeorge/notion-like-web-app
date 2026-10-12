@@ -1,4 +1,4 @@
-import { REPO, expect, setupWorkspace, test } from './fixtures'
+import { REPO, expect, modKey, setupWorkspace, test } from './fixtures'
 
 test('leaving a page never renames it (title committed only when edited)', async ({ page, fake, isMobile }) => {
   test.skip(isMobile, 'uses the desktop sidebar')
@@ -7,7 +7,7 @@ test('leaving a page never renames it (title committed only when edited)', async
   await page.locator('.sidebar').getByText('京都旅行計畫').click()
   await expect(page.getByText('清水寺')).toBeVisible()
   // Leave the page in several ways.
-  await page.keyboard.press('Control+Alt+n')
+  await page.keyboard.press(`${await modKey(page)}+Alt+n`)
   await page.locator('.page-title-input:focus').waitFor()
   await page.keyboard.type('新頁')
   await page.keyboard.press('Enter')

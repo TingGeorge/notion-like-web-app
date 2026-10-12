@@ -58,6 +58,11 @@ export async function setupWorkspace(page: Page): Promise<void> {
   await expect(page.locator('.sidebar, .home').first()).toBeVisible()
 }
 
+/** The app's shortcut modifier for the emulated device: ⌘ on a Mac or iPhone user agent, Ctrl elsewhere. */
+export async function modKey(page: Page): Promise<'Meta' | 'Control'> {
+  return (await page.evaluate(() => /Macintosh|iPhone|iPad/.test(navigator.userAgent))) ? 'Meta' : 'Control'
+}
+
 export const test = base.extend<{ fake: FakeGitHub }>({
   // `auto`: every test is routed to the fake, even one that never asks for it (TEST-2).
   fake: [
