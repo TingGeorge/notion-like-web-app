@@ -40,7 +40,8 @@ export async function toggleFavorite(key: string, on: boolean): Promise<void> {
   const id = await setFavorite(key, on)
   localChange()
   toast(on ? t.toast.addedFavorite : t.toast.removedFavorite)
-  if (id !== key && location.hash === pageHash(key)) navigate({ name: 'page', key: id }, { replace: true })
+  // A page without an id just got one (DATA-9): the open view follows it without remounting.
+  followKey(key, id)
 }
 
 /** 複製連結: an in-app link `#/p/<pageKey>` (M08). */

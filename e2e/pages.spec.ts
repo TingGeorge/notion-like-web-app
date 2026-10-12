@@ -315,6 +315,8 @@ test('duplicate creates a copy with a new id next to the original', async ({ pag
   await syncAndWaitForCommit(page, fake)
   const originalId = frontmatterOf((await readRepoFile(fake, '原稿.md'))!).id
   await pageMenu(page, '複製頁面')
+  // The copy has the same title: wait until it is in the sidebar, i.e. written.
+  await expect(page.locator('.sidebar .tree-title', { hasText: /^原稿$/ })).toHaveCount(2)
   await expect(page.locator('.breadcrumb-item.is-current')).toContainText('原稿')
   await syncAndWaitForCommit(page, fake)
   const copyPath = pagePaths(fake).find((p) => p !== '原稿.md' && p.startsWith('原稿'))!
@@ -356,4 +358,18 @@ test('a page survives a reload with its title, body and sidebar entry', async ({
   // The edit left on the device is pushed when the app starts again (SYNC-4).
   await syncAndWaitForCommit(page, fake, before)
   expect(await readRepoFile(fake, '重新整理.md')).toContain('重新整理後還在')
+})
+
+test('favouriting a page that has no id yet keeps the open page as it is (no reload)', async ({ page, fake }) => {
+  // Written on github.com: no frontmatter, so no id until an action needs one (DATA-9).
+  await fake.commit(REPO, { files: { '沒有 id.md': '從 GitHub 來的內容\n' }, message: 'seed' })
+  await setupDevice(page)
+  await openFromSidebar(page, '沒有 id')
+  await expect(editor(page)).toContainText('從 GitHub 來的內容')
+  await editor(page).evaluate((el) => el.setAttribute('data-mark', 'same'))
+  await page.locator('.topbar').getByRole('button', { name: '加入我的最愛' }).click()
+  await expect(page.getByText('已加入我的最愛')).toBeVisible()
+  // The route now uses the new id, and it is still the same editor.
+  await expect(page).toHaveURL(/#\/p\/[0-9A-Z]{26}$/)
+  await expect(editor(page)).toHaveAttribute('data-mark', 'same')
 })
