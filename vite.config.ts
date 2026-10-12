@@ -76,6 +76,8 @@ export default defineConfig({
   build: {
     target: 'es2022',
     sourcemap: true,
+    // The editor, Markdown parser and sync engine are one interactive core; setup and QR are split out.
+    chunkSizeWarningLimit: 1600,
   },
   test: {
     include: ['src/**/*.test.{ts,tsx}', 'test/**/*.test.{ts,tsx}'],
