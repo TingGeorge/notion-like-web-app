@@ -118,6 +118,12 @@ export interface ConflictInfo {
   /** ms since epoch: last local edit. */
   localAt: number
   detectedAt: number
+  /**
+   * The common ancestor the failed merge used (the old `baseText`). The row's `baseText` /
+   * `baseSha` already describe the remote version, so a later remote change is merged again
+   * against this (SYNC-6, last bullet).
+   */
+  mergeBase?: string | null
 }
 
 /** STORE-1 `uploads`: attachments not yet pushed. Never evicted. */
@@ -173,8 +179,13 @@ export interface SyncState {
   lastPushAt: number | null
   lastPushStartedAt: number | null
   lastError: SyncError | null
-  /** Snapshot of the head tree from the last pull: path → { sha, mode, type }. */
+  /**
+   * Snapshot of the head tree after the last pull or push: path → { sha, mode, type }.
+   * Only files (`blob`, and `commit` for submodules); folders are implied by the paths.
+   */
   tree: Record<string, TreeItem> | null
+  /** ms since epoch while a pull or push runs in some tab (SYNC-11 「同步中…」), else null. */
+  syncingSince?: number | null
 }
 
 export interface TreeItem {
@@ -209,6 +220,8 @@ export type SyncStatus =
   | { state: 'synced' }
   | { state: 'syncing' }
   | { state: 'offline'; pending: number }
+  /** Online, no error, but N pages are waiting for the next push (or 「自動同步」 is off). */
+  | { state: 'pending'; pending: number }
   | { state: 'error'; error: SyncError }
 
 /** DATA-21 `.notes/settings.json`. */
