@@ -12,7 +12,7 @@ import './dialogs.css'
 
 export function MoveDialog({ pageKey }: { pageKey: string }) {
   const page = usePage(pageKey)
-  const pages = usePages() ?? []
+  const pages = usePages()
   const mobile = useIsMobile()
   const [query, setQuery] = useState('')
   const candidates = useMemo(() => {

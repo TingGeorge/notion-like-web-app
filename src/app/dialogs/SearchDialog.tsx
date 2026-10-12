@@ -35,7 +35,7 @@ function parentTitle(key: string): string | null {
 
 export function SearchDialog({ initialQuery = '' }: { initialQuery?: string }) {
   const mobile = useIsMobile()
-  const pages = usePages() ?? []
+  const pages = usePages()
   const [ui] = useUi()
   const [query, setQuery] = useState(initialQuery)
   const [titleOnly, setTitleOnly] = useState(false)

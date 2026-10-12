@@ -3,7 +3,9 @@
  * start the sync session and show the desktop or iPhone layout.
  */
 import { useCallback, useEffect, useState } from 'react'
-import { isIOS, isStandalone } from '../lib/data/device'
+import { deviceName, isIOS, isStandalone } from '../lib/data/device'
+import { WELCOME_PAGE_BODY } from '../lib/data/templates'
+import { db } from '../lib/store/db'
 import type { DeviceInfo, Workspace } from '../lib/types'
 import { toast } from '../ui/toast'
 import { Toaster } from '../ui/toast'
@@ -12,12 +14,13 @@ import { DesktopShell, MobileShell } from './layout/Shells'
 import { OverlayHost } from './OverlayHost'
 import { registerServiceWorker } from './pwa'
 import { navigate, useRoute } from './router'
-import { createClient, loadDevice, loadWorkspace, onNotice, saveWorkspace, session, startSession, updateUi } from './session'
+import { createClient, loadDevice, loadUi, loadWorkspace, onNotice, saveWorkspace, session, startSession, updateUi } from './session'
 import { SetupFlow } from './setup/SetupFlow'
 import { useTheme } from './shortcuts'
 import { runInitialSync } from './workspaceAdmin'
 
-type Boot = { state: 'loading' } | { state: 'ready'; workspace: Workspace | null; device: DeviceInfo }
+type Resume = { token: string; tokenExpiresOn: string }
+type Boot = { state: 'loading' } | { state: 'ready'; workspace: Workspace | null; device: DeviceInfo; resume: Resume | null; safariAccepted: boolean }
 
 export function App() {
   const [boot, setBoot] = useState<Boot>({ state: 'loading' })
@@ -26,12 +29,13 @@ export function App() {
 
   useEffect(() => {
     void (async () => {
-      const [workspace, device] = await Promise.all([loadWorkspace(), loadDevice()])
+      const [workspace, device, resumeRow, prefs] = await Promise.all([loadWorkspace(), loadDevice(), db().config.get('resume'), loadUi()])
       if (workspace) {
         const s = startSession(workspace, device)
         s.engine.start()
       }
-      setBoot({ state: 'ready', workspace, device })
+      const resume = resumeRow && resumeRow.key === 'resume' ? resumeRow.value : null
+      setBoot({ state: 'ready', workspace, device, resume, safariAccepted: prefs.safariTabModeAccepted ?? false })
     })()
     void registerServiceWorker()
     return onNotice((message) => toast(message, { duration: 6000 }))
@@ -50,7 +54,7 @@ function Main({ boot, onWorkspace }: { boot: Extract<Boot, { state: 'ready' }>; 
   const route = useRoute()
   const mobile = useIsMobile()
   const [setupActive, setSetupActive] = useState(!boot.workspace)
-  const { workspace, device } = boot
+  const { workspace, device, resume } = boot
 
   // SETUP-1: without a workspace the main UI is not reachable.
   useEffect(() => {
@@ -61,6 +65,7 @@ function Main({ boot, onWorkspace }: { boot: Extract<Boot, { state: 'ready' }>; 
   const onWorkspaceReady = useCallback(
     async (ws: Workspace) => {
       await saveWorkspace(ws)
+      await db().config.delete('resume')
       startSession(ws, device)
     },
     [device],
@@ -86,8 +91,11 @@ function Main({ boot, onWorkspace }: { boot: Extract<Boot, { state: 'ready' }>; 
           isIOS: isIOS(),
           isStandalone: isStandalone(),
           acceptSafariTab: () => void updateUi({ safariTabModeAccepted: true }),
+          safariTabAccepted: boot.safariAccepted,
           today: () => new Date(),
-          existingWorkspace: workspace,
+          welcomePage: WELCOME_PAGE_BODY,
+          deviceName: deviceName().split(' · ')[0],
+          resume,
         }}
       />
     )

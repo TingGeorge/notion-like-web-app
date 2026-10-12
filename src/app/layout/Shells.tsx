@@ -110,7 +110,7 @@ function TabBar({ active }: { active: 'home' | 'search' | 'pages' }) {
 }
 
 function AllPagesScreen() {
-  const pages = usePages() ?? []
+  const pages = usePages()
   const settings = useSettings()
   const [ui, setUi] = useUi()
   const tree = useMemo(() => buildTree(pages, settings), [pages, settings])
@@ -154,7 +154,7 @@ function AllPagesScreen() {
 
 function MobilePage({ routeKey }: { routeKey: string }) {
   const { page, mountId } = usePageRoute(routeKey)
-  const pages = usePages() ?? []
+  const pages = usePages()
   const parent = page?.parentKey ? pages.find((p) => p.key === page.parentKey) : undefined
   const [editing, setEditing] = useState(false)
   const ref = useRef<HTMLDivElement>(null)

@@ -26,7 +26,7 @@ export function Topbar({
   editedAt?: number | null
   isNew?: boolean
 }) {
-  const pages = usePages() ?? []
+  const pages = usePages()
   const settings = useSettings()
   const now = useNow()
   const tree = buildTree(pages, settings)

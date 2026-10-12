@@ -30,7 +30,7 @@ export function Avatar({ ws, size = 22 }: { ws: Workspace; size?: number }) {
 
 export function Sidebar({ workspace, onCollapse }: { workspace: Workspace; onCollapse: () => void }) {
   const route = useRoute()
-  const pages = usePages() ?? []
+  const pages = usePages()
   const settings = useSettings()
   const [ui, setUi] = useUi()
   const [width, setWidth] = useState(ui.sidebarWidth)

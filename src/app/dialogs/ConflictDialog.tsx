@@ -66,7 +66,7 @@ function Segments({ segments }: { segments: [string, boolean][] }) {
 
 export function ConflictDialog({ path }: { path: string }) {
   const file = useFile(path)
-  const pages = usePages() ?? []
+  const pages = usePages()
   const mobile = useIsMobile()
   const [busy, setBusy] = useState(false)
   const conflict = file?.conflict

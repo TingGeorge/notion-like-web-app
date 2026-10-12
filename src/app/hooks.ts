@@ -20,12 +20,15 @@ function updateCache(pages: PageRow[]) {
   pagesCache.byPath = new Map(pages.map((p) => [p.path, p]))
 }
 
-export function usePages(): PageRow[] | undefined {
+const NO_PAGES: PageRow[] = []
+
+/** All pages (empty while loading). */
+export function usePages(): PageRow[] {
   const pages = useLiveQuery(() => db().pages.toArray(), [])
   useEffect(() => {
     if (pages) updateCache(pages)
   }, [pages])
-  return pages
+  return pages ?? NO_PAGES
 }
 
 /** The page for a route key; resolves `path:` keys of pages that have since received an id. */

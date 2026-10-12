@@ -40,12 +40,28 @@ export function SetupFlow({ step, navigate, deps, mockSafariToolbar }: SetupFlow
   const [scanNotice, setScanNotice] = useState<string | undefined>()
   const [repoName, setRepoName] = useState('')
   const [safariAccepted, setSafariAccepted] = useState(deps.safariTabAccepted ?? false)
+  // SETUP-12 更換 repo: reuse the token and go straight to choosing a repo.
+  const [resuming, setResuming] = useState(!!deps.resume)
+  useEffect(() => {
+    const resume = deps.resume
+    if (!resume) return
+    const client = deps.createClient(resume.token)
+    Promise.all([client.getUser(), client.listRepos()])
+      .then(([user, repos]) => {
+        setConnected({ client, token: resume.token, tokenExpiresOn: resume.tokenExpiresOn, user, repos })
+        navigate('repo')
+      })
+      .catch(() => navigate('connect'))
+      .finally(() => setResuming(false))
+    // Only once, on mount.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   let current: SetupStep = STEPS.includes(step ?? '') ? (step as SetupStep) : 'welcome'
   // SETUP-2: on iOS outside the home-screen app, show M16 first.
   if (current === 'welcome' && deps.isIOS && !deps.isStandalone && !safariAccepted) current = 'add-to-home'
   // Steps that need in-flow state fall back when it is gone (for example after a reload).
-  const missing = (current === 'repo' && !connected) || (current === 'code' && !payload)
+  const missing = !resuming && ((current === 'repo' && !connected) || (current === 'code' && !payload))
   const fallback: SetupStep = current === 'repo' ? 'connect' : 'scan'
 
   useEffect(() => {
@@ -57,7 +73,7 @@ export function SetupFlow({ step, navigate, deps, mockSafariToolbar }: SetupFlow
   const welcomePage = deps.welcomePage ?? WELCOME_PLACEHOLDER
   const now = deps.now ?? (() => new Date())
 
-  if (missing) return null
+  if (missing || resuming) return null
 
   switch (current) {
     case 'add-to-home':

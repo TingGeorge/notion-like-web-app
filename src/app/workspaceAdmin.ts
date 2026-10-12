@@ -65,8 +65,11 @@ async function clearNotes(): Promise<void> {
 
 /** 更換 repo: clear the notes and go back to choosing a repo (D13). The token stays. */
 export async function changeRepo(): Promise<void> {
+  const s = session()
   stopSession()
   await clearNotes()
+  if (s) await db().config.put({ key: 'resume', value: { token: s.workspace.token, tokenExpiresOn: s.workspace.tokenExpiresOn } })
+  await db().config.delete('workspace')
   notifyWorkspaceChanged()
 }
 

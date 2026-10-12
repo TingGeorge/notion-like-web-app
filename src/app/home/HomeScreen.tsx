@@ -41,7 +41,7 @@ function ListGroup({ pages }: { pages: PageRow[] }) {
 }
 
 export function HomeScreen({ workspace, mobile }: { workspace: Workspace; mobile: boolean }) {
-  const pages = usePages() ?? []
+  const pages = usePages()
   const settings = useSettings()
   const [ui] = useUi()
   const now = useNow(60_000)

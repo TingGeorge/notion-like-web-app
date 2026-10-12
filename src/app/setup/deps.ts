@@ -42,6 +42,8 @@ export interface SetupDeps {
   linkCrypto?: LinkCrypto
   /** Defaults to `() => new Date()`; used for `linkedAt`. */
   now?(): Date
+  /** SETUP-12 更換 repo: a token already in use; setup starts at choosing a repo. */
+  resume?: { token: string; tokenExpiresOn: string } | null
 }
 
 /** Placeholder until `WELCOME_PAGE` from `src/lib/data/templates.ts` is available. */
