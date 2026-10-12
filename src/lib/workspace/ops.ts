@@ -9,6 +9,7 @@ import {
   dirname,
   isInside,
   isPagePath,
+  isUntitledTitle,
   pageNameOf,
   pagePathFor,
   trashEntryIdOf,
@@ -261,7 +262,7 @@ export async function discardIfEmptyNew(key: string): Promise<boolean> {
   const { frontmatter, body } = splitPageFile(row.text)
   const meta = readPageMeta(frontmatter)
   const title = meta.title ?? pageNameOf(page.path)
-  const untitled = title === UNTITLED || /^未命名 \(\d+\)$/.test(title) || title.trim() === ''
+  const untitled = isUntitledTitle(title)
   if (body.trim() !== '' || !untitled || meta.icon || meta.cover) return false
   await tx(() => deleteFile(page.path))
   await reindexPaths([page.path])

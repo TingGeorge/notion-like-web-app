@@ -13,7 +13,7 @@ import {
 } from 'react'
 import { createPortal } from 'react-dom'
 import { X } from 'lucide-react'
-import { t } from '../strings/zh-TW'
+import { t } from '../strings'
 import './primitives.css'
 
 export function cx(...classes: (string | false | null | undefined)[]): string {

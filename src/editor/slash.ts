@@ -7,7 +7,7 @@
  */
 import { Plugin, PluginKey, TextSelection } from 'prosemirror-state'
 import type { EditorView } from 'prosemirror-view'
-import { t } from '../strings/zh-TW'
+import { t } from '../strings'
 import { isComposingEvent } from './shortcuts'
 
 export type InsertItemId =

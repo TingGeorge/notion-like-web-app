@@ -8,7 +8,7 @@ import { InvalidPayloadError, splitLinkText, WrongPairingCodeError } from '../..
 import type { GitHubUser } from '../../lib/github/client'
 import type { LinkData } from '../../lib/link/crypto'
 import type { Workspace } from '../../lib/types'
-import { t } from '../../strings/zh-TW'
+import { t } from '../../strings'
 import { Button, Spinner } from '../../ui/primitives'
 import { activateRepo, errorMessage, type SetupDeps } from '../setup/deps'
 import { formatExpiry } from '../setup/token'

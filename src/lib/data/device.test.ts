@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { t } from '../../strings/zh-TW'
+import { t } from '../../strings'
 import { deviceName, isApplePlatform, isIOS, isSafariTab, isStandalone, shortcutLabel, usesCommandKey, type DeviceEnv } from './device'
 
 const UA = {

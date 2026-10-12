@@ -1,6 +1,6 @@
 import { useEffect, useReducer, useRef, useState } from 'react'
 import { GripVertical, Plus } from 'lucide-react'
-import { t } from '../../strings/zh-TW'
+import { t } from '../../strings'
 import { schema } from '../../lib/schema'
 import { addParagraphBelowTr, handleBlockAt, moveBlockToTr } from '../blocks'
 import { insertSlashAtSelection } from '../slash'

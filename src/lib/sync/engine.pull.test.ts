@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import { gitBlobSha } from '../github/encoding'
 import { GitHubError } from '../github/client'
-import { t } from '../../strings/zh-TW'
+import { t } from '../../strings'
 import type { FakeGitHub } from '../../../test/fake-github'
 import { Device, FULL, makeGitHub, page } from './testHarness'
 import type { InitialSyncProgress } from './engine'

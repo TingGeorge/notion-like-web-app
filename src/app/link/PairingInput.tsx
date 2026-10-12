@@ -4,7 +4,7 @@
  */
 import { useEffect, useRef } from 'react'
 import { PAIRING_ALPHABET } from '../../lib/link/crypto'
-import { t } from '../../strings/zh-TW'
+import { t } from '../../strings'
 import { cx } from '../../ui/primitives'
 import './link.css'
 

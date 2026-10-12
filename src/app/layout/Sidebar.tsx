@@ -2,7 +2,7 @@
 import { ChevronDown, ChevronsLeft, Home, Plus, Search, Settings2, SquarePen, Trash2 } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { Workspace } from '../../lib/types'
-import { t } from '../../strings/zh-TW'
+import { t } from '../../strings'
 import { cx, IconButton, Menu, Popover } from '../../ui/primitives'
 import { newPage } from '../actions'
 import { usePages, useSettings, useUi } from '../hooks'

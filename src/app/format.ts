@@ -1,4 +1,4 @@
-import { t } from '../strings/zh-TW'
+import { t } from '../strings'
 
 const pad = (n: number) => String(n).padStart(2, '0')
 

@@ -5,7 +5,7 @@ import { useState, type ReactNode } from 'react'
 import { shortcutLabel } from '../../lib/data/device'
 import { db } from '../../lib/store/db'
 import type { ThemePref, Workspace } from '../../lib/types'
-import { t } from '../../strings/zh-TW'
+import { language, setLanguage, t, type Language } from '../../strings'
 import { Button, cx, Modal, Switch, TextInput } from '../../ui/primitives'
 import { toast } from '../../ui/toast'
 import { CloudCheck, statusLabel, useSyncStatus } from '../layout/SyncStatus'
@@ -227,9 +227,14 @@ export function SettingsDialog({ section: initial }: { section?: string }) {
     ['light', t.settings.themeLight],
     ['dark', t.settings.themeDark],
   ]
+  // Each language is named in itself.
+  const languageOptions: [Language, string][] = [
+    ['zh-TW', t.settings.languageZh],
+    ['en', t.settings.languageEn],
+  ]
 
   const storageRow = (
-    <Row title={t.settings.storage} sub={`${ws.owner}/${ws.repo}（${ws.private === false ? 'public' : 'private'}）`}>
+    <Row title={t.settings.storage} sub={t.settings.repoWithVisibility(`${ws.owner}/${ws.repo}`, ws.private === false)}>
       <Button onClick={() => void doChangeRepo()}>{t.settings.changeRepo}</Button>
     </Row>
   )
@@ -272,7 +277,15 @@ export function SettingsDialog({ section: initial }: { section?: string }) {
             ))}
           </div>
         </Row>
-        <Row title={t.settings.language} sub={t.settings.languageZh} />
+        <Row title={t.settings.language}>
+          <div className="segmented" role="radiogroup" aria-label={t.settings.language}>
+            {languageOptions.map(([value, label]) => (
+              <button key={value} type="button" role="radio" aria-checked={language === value} lang={value} className={cx('segmented-item', language === value && 'is-active')} onClick={() => setLanguage(value)}>
+                {label}
+              </button>
+            ))}
+          </div>
+        </Row>
       </>
     ),
     shortcuts: (
@@ -361,7 +374,7 @@ export function SettingsDialog({ section: initial }: { section?: string }) {
           </>,
         )}
         {group(
-          '同步',
+          t.settings.sections.sync,
           <>
             {mrow(<CloudCheck size={20} />, t.settings.syncStatus, sync?.lastPullAt ? `${statusLabel(status)} · ${hhmm(sync.lastPullAt)}` : statusLabel(status))}
             <div className="m-row">
@@ -375,7 +388,7 @@ export function SettingsDialog({ section: initial }: { section?: string }) {
           </>,
         )}
         {group(
-          '外觀',
+          t.settings.sections.appearance,
           <>
             {mrow(
               <Sun size={20} />,
@@ -383,7 +396,7 @@ export function SettingsDialog({ section: initial }: { section?: string }) {
               themeOptions.find(([v]) => v === ui.theme)?.[1],
               () => setUi({ theme: ui.theme === 'system' ? 'light' : ui.theme === 'light' ? 'dark' : 'system' }),
             )}
-            {mrow(<Keyboard size={20} />, t.settings.language, t.settings.languageZh)}
+            {mrow(<Keyboard size={20} />, t.settings.language, languageOptions.find(([v]) => v === language)?.[1], () => setLanguage(language === 'en' ? 'zh-TW' : 'en'))}
           </>,
         )}
         {group(

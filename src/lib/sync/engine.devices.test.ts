@@ -6,7 +6,7 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import { parseSettings, parseTrashIndex } from '../data/notesFiles'
 import { readPageMeta, splitPageFile } from '../markdown/frontmatter'
-import { t } from '../../strings/zh-TW'
+import { t } from '../../strings'
 import type { FakeGitHub } from '../../../test/fake-github'
 import { SETTINGS_PATH, TRASH_INDEX_PATH } from '../types'
 import { Device, FULL, ManualClock, makeGitHub, page } from './testHarness'

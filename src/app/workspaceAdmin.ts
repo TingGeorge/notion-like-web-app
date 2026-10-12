@@ -5,7 +5,7 @@ import { db } from '../lib/store/db'
 import type { InitialSyncProgress } from '../lib/sync/engine'
 import type { Workspace } from '../lib/types'
 import { reindexAll, resetSearchIndex } from '../lib/workspace/indexer'
-import { t } from '../strings/zh-TW'
+import { t } from '../strings'
 import { notifyWorkspaceChanged } from './actions'
 import { createClient, loadDevice, saveWorkspace, session, startSession, stopSession } from './session'
 

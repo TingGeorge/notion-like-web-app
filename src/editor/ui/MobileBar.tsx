@@ -21,7 +21,7 @@ import {
 import { undo } from 'prosemirror-history'
 import { TextSelection } from 'prosemirror-state'
 import { schema } from '../../lib/schema'
-import { t } from '../../strings/zh-TW'
+import { t } from '../../strings'
 import { Sheet, cx } from '../../ui/primitives'
 import { activeColors, blockAtSelection, canTurnInto, type BlockKind } from '../blocks'
 import { focusKey } from '../decorations'

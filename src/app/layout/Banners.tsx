@@ -5,7 +5,7 @@
 import { useState } from 'react'
 import { isApplePlatform, isIOS, isSafariTab } from '../../lib/data/device'
 import type { Workspace } from '../../lib/types'
-import { t } from '../../strings/zh-TW'
+import { t } from '../../strings'
 import { daysUntil } from '../format'
 import { useSyncState } from '../hooks'
 import { openOverlay } from '../overlays'

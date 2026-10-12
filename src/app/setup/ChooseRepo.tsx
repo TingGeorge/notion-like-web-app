@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { GitHubClient, GitHubUser, RepoSummary } from '../../lib/github/client'
 import type { Workspace } from '../../lib/types'
-import { t } from '../../strings/zh-TW'
+import { t } from '../../strings'
 import { Button, Modal, cx } from '../../ui/primitives'
 import { activateRepo, errorMessage } from './deps'
 import { SetupPage } from './parts'

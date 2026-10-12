@@ -1,7 +1,7 @@
 /** The page menu (UI-4 `…`, M08): the same items on desktop and iPhone. */
 import { ArrowRightToLine, Copy, Download, History, Link2, Printer, Star, StarOff, Trash2 } from 'lucide-react'
 import type { MenuItem } from '../../ui/primitives'
-import { t } from '../../strings/zh-TW'
+import { t } from '../../strings'
 import { copyPageLink, duplicate, exportMarkdown, printPage, toggleFavorite, trashPage } from '../actions'
 import { openOverlay } from '../overlays'
 

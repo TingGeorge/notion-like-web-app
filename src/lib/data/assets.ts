@@ -2,7 +2,7 @@
  * Attachments (DATA-18, DATA-19): where an upload is stored, and image preparation.
  * The path functions are pure; `prepareImage` needs a browser (createImageBitmap + canvas).
  */
-import { t } from '../../strings/zh-TW'
+import { t } from '../../strings'
 import { ASSETS_DIR } from '../types'
 
 /** DATA-19: any file over this is rejected. */

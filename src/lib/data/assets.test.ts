@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { t } from '../../strings/zh-TW'
+import { t } from '../../strings'
 import {
   FileTooLargeError,
   MAX_UPLOAD_BYTES,

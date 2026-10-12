@@ -33,7 +33,7 @@ A Notion-like notes app that runs entirely in the browser (a PWA) and stores eve
 | iPhone: iOS 17+ home-screen web app | Importing a Notion export (the file format is kept compatible so it can be added) |
 | Offline reading and writing, automatic sync | Android-specific polish (it should work, but it is not tested) |
 | Notion-style editing, shortcuts, colours, search | Encryption of notes inside the repo |
-| Traditional Chinese UI | Other UI languages (strings live in one file, ready for later) |
+| Traditional Chinese UI, and English (NFR-4) | Other UI languages (each is one strings file) |
 
 ## 2. Architecture
 
@@ -554,7 +554,7 @@ Each Figma frame is the visual spec for its screen. This section adds the behavi
 - **UI-15** Settings sections:
   - **連結**: GitHub 連結, 儲存位置 / 更換 repo, GitHub token / 更換 token and the expiry date, 連結新裝置.
   - **同步與儲存**: 同步狀態 / 立即同步, 自動同步, 離線資料, 中斷連結.
-  - **外觀與語言**: theme 跟隨系統 / 淺色 / 深色; language 繁體中文, the only option in v1.
+  - **外觀與語言**: theme 跟隨系統 / 淺色 / 深色; language 繁體中文 (default) / English, per device. Changing the language reloads the app.
   - **鍵盤快捷鍵**: the list in §7.1.
   - **匯出**: download the whole workspace as `.zip` (bundled fflate).
 - **UI-16** Printing: 「列印／存成 PDF」 in the page menu calls `window.print()`. A print stylesheet hides the app chrome. `⌘P` stays bound to search, as in Notion.
@@ -648,7 +648,9 @@ Markdown shortcuts, applied only after composition ends:
   - WCAG AA contrast in light and dark;
   - `prefers-reduced-motion` respected;
   - VoiceOver labels on icon-only buttons.
-- **NFR-4** All UI strings live in one `zh-TW` strings file.
+- **NFR-4** All UI strings live in `src/strings/`: one file per language (`zh-TW.ts`, the reference, and `en.ts`, with the same keys).
+  - The device's choice is kept in localStorage (it is needed before the app starts) and read once at startup.
+  - Content the app writes into the repo follows the device's language: the welcome page and its path (`歡迎使用.md` / `Welcome.md`), the starter pages, new-page titles (未命名 / Untitled) and commit messages (SYNC-9). An empty new page counts as untitled in either language (UI-10).
 
 ## 10. Testing and acceptance
 

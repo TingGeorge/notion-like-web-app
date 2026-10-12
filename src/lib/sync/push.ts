@@ -2,14 +2,12 @@
  * SYNC-8 steps 2 to 4: which rows go into the next commit, as `POST /git/trees` entries.
  * Pure planning; the engine does the requests and records the result (step 7).
  */
-import { UNTITLED, ancestorDirs, pageNameOf } from '../data/names'
+import { ancestorDirs, isUntitledTitle, pageNameOf } from '../data/names'
 import { readPageMeta, splitPageFile } from '../markdown/frontmatter'
 import type { FileRow, TreeItem, UploadRow } from '../types'
 import type { NewTreeEntry } from '../github/client'
 import type { PushChange } from './commitMessage'
 import { isDirty } from './working'
-
-const UNTITLED_NAME = new RegExp(`^${UNTITLED}( \\(\\d+\\))?$`)
 
 /**
  * SYNC-7 / UI-10: a new page whose title and body are both empty (title 未命名) is never pushed.
@@ -23,8 +21,9 @@ export function isEmptyNewPage(row: FileRow, hasChildren = false): boolean {
   const meta = hadFrontmatter ? readPageMeta(frontmatter) : null
   if (meta?.icon || meta?.cover) return false
   const title = meta?.title ?? null
-  if (title !== null && title.trim() !== '' && title.trim() !== UNTITLED) return false
-  return UNTITLED_NAME.test(pageNameOf(row.path))
+  if (title !== null && !isUntitledTitle(title.trim())) return false
+  const name = pageNameOf(row.path)
+  return name.trim() !== '' && isUntitledTitle(name)
 }
 
 /** A row that is part of the next push: what exactly is pushed. */

@@ -5,7 +5,7 @@
 import { Plugin, PluginKey, type EditorState } from 'prosemirror-state'
 import { Decoration, DecorationSet, type EditorView } from 'prosemirror-view'
 import { schema } from '../lib/schema'
-import { t } from '../strings/zh-TW'
+import { t } from '../strings'
 import { blockAtPos, blockAtSelection, isEmptyBlock } from './blocks'
 import type { EditorContext } from './context'
 import { icons } from './icons'

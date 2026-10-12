@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { ArrowLeft, Copy, FileText, FolderInput, Palette, Repeat2, Search, Trash2 } from 'lucide-react'
 import { schema } from '../../lib/schema'
-import { t } from '../../strings/zh-TW'
+import { t } from '../../strings'
 import { serializeMarkdown } from '../../lib/markdown'
 import { Popover, cx } from '../../ui/primitives'
 import {

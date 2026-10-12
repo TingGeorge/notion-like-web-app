@@ -1,5 +1,5 @@
 /** The page menu: a popover on desktop (UI-4 `…`), a sheet on iPhone (M08). */
-import { t } from '../../strings/zh-TW'
+import { t } from '../../strings'
 import { Menu, Popover, Sheet, cx } from '../../ui/primitives'
 import { relativeTime } from '../format'
 import { useFile, useIsMobile, usePage, useSettings } from '../hooks'

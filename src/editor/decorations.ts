@@ -5,7 +5,7 @@
 import { Plugin, PluginKey, TextSelection } from 'prosemirror-state'
 import { Decoration, DecorationSet } from 'prosemirror-view'
 import { schema } from '../lib/schema'
-import { t } from '../strings/zh-TW'
+import { t } from '../strings'
 import type { EditorContext } from './context'
 
 const N = schema.nodes

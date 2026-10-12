@@ -5,7 +5,7 @@
  * Everything takes an optional `DeviceEnv` so it can be tested with real user-agent strings;
  * without one it reads `navigator` and `matchMedia`.
  */
-import { t } from '../../strings/zh-TW'
+import { t } from '../../strings'
 
 export interface DeviceEnv {
   userAgent: string

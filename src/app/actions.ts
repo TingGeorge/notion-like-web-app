@@ -17,7 +17,7 @@ import {
   restorePage,
   setFavorite,
 } from '../lib/workspace/ops'
-import { t } from '../strings/zh-TW'
+import { t } from '../strings'
 import { toast, toastWithUndo } from '../ui/toast'
 import { followKey, navigate, pageHash, parseHash } from './router'
 import { broadcast, flushEditors, session } from './session'

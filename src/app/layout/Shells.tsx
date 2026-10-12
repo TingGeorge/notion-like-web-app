@@ -3,7 +3,7 @@ import { ChevronLeft, FileText, Home, MoreHorizontal, Search, SquarePen, Trash2 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { buildTree } from '../../lib/data/tree'
 import type { PageRow, Workspace } from '../../lib/types'
-import { t } from '../../strings/zh-TW'
+import { t } from '../../strings'
 import { cx, IconButton } from '../../ui/primitives'
 import { newPage } from '../actions'
 import { useFile, usePage, usePages, useSettings, useUi } from '../hooks'

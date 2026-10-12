@@ -6,7 +6,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Lock } from 'lucide-react'
 import jsQR from 'jsqr'
 import { PAYLOAD_PREFIX } from '../../lib/link/crypto'
-import { t } from '../../strings/zh-TW'
+import { t } from '../../strings'
 import { Button } from '../../ui/primitives'
 import './link.css'
 

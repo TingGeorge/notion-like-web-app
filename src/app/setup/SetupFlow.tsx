@@ -10,7 +10,7 @@
  */
 import { useEffect, useState } from 'react'
 import * as realCrypto from '../../lib/link/crypto'
-import { t } from '../../strings/zh-TW'
+import { t } from '../../strings'
 import { PairingCodeScreen } from '../link/PairingCodeScreen'
 import { ScanScreen } from '../link/ScanScreen'
 import { AddToHome } from './AddToHome'

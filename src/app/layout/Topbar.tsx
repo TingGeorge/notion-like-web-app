@@ -2,7 +2,7 @@
 import { ChevronsRight, History, Menu as MenuIcon, MoreHorizontal, Star } from 'lucide-react'
 import { Fragment } from 'react'
 import type { PageRow } from '../../lib/types'
-import { t } from '../../strings/zh-TW'
+import { t } from '../../strings'
 import { IconButton } from '../../ui/primitives'
 import { toggleFavorite } from '../actions'
 import { relativeTime } from '../format'

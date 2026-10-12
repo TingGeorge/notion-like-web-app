@@ -35,6 +35,29 @@ test('dark mode: Ctrl+Shift+L toggles it, the choice is kept, and settings can s
   await expect.poll(() => theme(page)).toBe('light')
 })
 
+test('設定 → 外觀與語言 switches the UI between 繁體中文 and English, and the choice is kept', async ({ page }) => {
+  await setupDevice(page)
+  expect(await page.evaluate(() => document.documentElement.lang)).toBe('zh-Hant-TW')
+  await openSettings(page, '外觀與語言')
+  await expect(page.getByRole('radio', { name: '繁體中文' })).toHaveAttribute('aria-checked', 'true')
+  // Choosing English reloads the app in English.
+  await page.getByRole('radio', { name: 'English' }).click()
+  await expect(page.locator('.sidebar').getByRole('button', { name: 'Search' })).toBeVisible()
+  await expect(page.locator('.sidebar .sb-footer').getByRole('button', { name: 'New page' })).toBeVisible()
+  expect(await page.evaluate(() => document.documentElement.lang)).toBe('en')
+  // Kept across a reload; the page menu is in English too.
+  await page.reload()
+  await page.locator('.sidebar .tree-link').first().click()
+  await page.locator('.topbar').getByRole('button', { name: 'Page menu' }).click()
+  await expect(page.getByRole('menuitem', { name: 'Print / Save as PDF' })).toBeVisible()
+  await page.keyboard.press('Escape')
+  // And back.
+  await page.locator('.sidebar .sb-nav-row', { hasText: 'Settings' }).click()
+  await page.locator('.settings-nav-row', { hasText: 'Appearance & language' }).click()
+  await page.getByRole('radio', { name: '繁體中文' }).click()
+  await expect(page.locator('.sidebar').getByRole('button', { name: '搜尋' })).toBeVisible()
+})
+
 test('the print stylesheet hides the app chrome and keeps the page', async ({ page }) => {
   await setupDevice(page)
   await createPage(page, '要列印的頁面', '列印的內容')
