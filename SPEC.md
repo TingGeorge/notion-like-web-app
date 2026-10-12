@@ -446,13 +446,14 @@ The editor document is converted to and from Markdown (CommonMark 0.31 + GFM) as
     - the payload `ghnotes:1:<salt>.<iv>.<ciphertext>`, all base64url.
   - The ciphertext is AES-GCM of the UTF-8 JSON `{"o","r","b","t","e"}` (owner, repo, branch, token, `tokenExpiresOn`).
   - The key is PBKDF2-SHA-256 of the pairing code, 600,000 iterations, 16-byte salt.
+  - The QR code carries the payload followed by `.` and the pairing code (`ghnotes:1:<salt>.<iv>.<ciphertext>.<CODE>`), so scanning needs nothing typed. The setup code (LINK-2) is the payload alone.
   - QR error correction is level M.
 - **LINK-2** On the source device: 設定 → 連結新裝置 → 「顯示 QR code」.
-  - The QR code and the pairing code appear only after that click.
-  - Both hide after 60 s and when the window is hidden. 「重新產生」 makes a new salt and code.
-  - 「複製設定碼」 copies the same encrypted payload as text, with a warning that clipboard history and Universal Clipboard can keep it.
+  - The QR code appears only after that click, with the warning 「QR code 等於你的 token，不要給別人看或拍下來。」
+  - It hides after 60 s and when the window is hidden. 「重新產生」 makes a new salt and code.
+  - 「複製設定碼」 copies the encrypted payload (without the pairing code) as text, with a warning that clipboard history and Universal Clipboard can keep it. Only then is the pairing code shown, for typing on the new device.
 - **LINK-3** On the new device: 「用 QR code 從另一台裝置連結」 opens the camera (`getUserMedia`, rear camera, M15). Frames are decoded with jsQR.
-  1. A `ghnotes:1:` payload leads to M22, where the user enters the pairing code.
+  1. A `ghnotes:1:` payload leads to M22. A QR code's own pairing code decrypts it at once; a pasted setup code asks the user for the pairing code. A QR code whose pairing code does not decrypt it shows 「這不是 GitHub Notes 的 QR code」.
   2. After decryption, M22 shows the owner, repo, GitHub login (`GET /user`) and expiry date, and asks for confirmation.
   3. Then SETUP-8's write probe runs, and the app goes to D14/M14.
   - Any other QR content shows 「這不是 GitHub Notes 的 QR code」.
@@ -628,7 +629,7 @@ Markdown shortcuts, applied only after composition ends:
   - QR linking copies the same token to every device, so revoking it on github.com locks all of them. Each device then needs 更換 token, or a fresh QR link from a device that already has the new token.
   - Users who prefer separate tokens per device can skip QR linking and paste a different token on each device.
   - A lost device: revoke the token. The notes remain in the repo.
-- **SEC-8** The QR code and the setup code are encrypted with the pairing code (LINK-1). Neither one alone reveals the token. The new device always shows which account and repo it is about to link to (LINK-3), so a planted QR code cannot silently point it at someone else's repo.
+- **SEC-8** The QR code alone links a device: it carries the pairing code with the payload (LINK-1), so anyone who photographs it while it is shown can read the token. That is why it appears only on request, hides after 60 s or when the window is hidden, and carries a warning (LINK-2). The setup code is text that clipboard history can keep, so it stays encrypted with a pairing code shown only on the source device. The new device always shows which account and repo it is about to link to (LINK-3), so a planted QR code cannot silently point it at someone else's repo.
 
 ## 9. Non-functional requirements
 
