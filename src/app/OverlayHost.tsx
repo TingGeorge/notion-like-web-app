@@ -1,4 +1,4 @@
-import { LinkDeviceDialog } from './link/LinkDeviceDialog'
+import { lazy, Suspense } from 'react'
 import { ConflictDialog } from './dialogs/ConflictDialog'
 import { HistoryDialog } from './dialogs/HistoryDialog'
 import { MoveDialog } from './dialogs/MoveDialog'
@@ -8,6 +8,8 @@ import { SettingsDialog } from './dialogs/SettingsDialog'
 import { TrashPanel } from './dialogs/TrashPanel'
 import { closeOverlay, useOverlay } from './overlays'
 import { session } from './session'
+
+const LinkDeviceDialog = lazy(() => import('./link/LinkDeviceDialog').then((m) => ({ default: m.LinkDeviceDialog })))
 
 export function OverlayHost() {
   const overlay = useOverlay()
@@ -29,7 +31,11 @@ export function OverlayHost() {
       return <PageMenuOverlay pageKey={overlay.pageKey} anchor={overlay.anchor} />
     case 'link-device': {
       const s = session()
-      return s ? <LinkDeviceDialog open onClose={closeOverlay} workspace={s.workspace} /> : null
+      return s ? (
+        <Suspense fallback={null}>
+          <LinkDeviceDialog open onClose={closeOverlay} workspace={s.workspace} />
+        </Suspense>
+      ) : null
     }
   }
 }

@@ -2,7 +2,7 @@
  * Boot: load the device config; without a workspace show setup (SETUP-1, SETUP-2), otherwise
  * start the sync session and show the desktop or iPhone layout.
  */
-import { useCallback, useEffect, useState } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useState } from 'react'
 import { deviceName, isIOS, isStandalone } from '../lib/data/device'
 import { WELCOME_PAGE_BODY } from '../lib/data/templates'
 import { db } from '../lib/store/db'
@@ -15,9 +15,11 @@ import { OverlayHost } from './OverlayHost'
 import { registerServiceWorker } from './pwa'
 import { navigate, useRoute } from './router'
 import { createClient, loadDevice, loadUi, loadWorkspace, onNotice, saveWorkspace, session, startSession, updateUi } from './session'
-import { SetupFlow } from './setup/SetupFlow'
 import { useTheme } from './shortcuts'
 import { runInitialSync } from './workspaceAdmin'
+
+// First run only: keeps the camera/QR code out of the main bundle.
+const SetupFlow = lazy(() => import('./setup/SetupFlow').then((m) => ({ default: m.SetupFlow })))
 
 type Resume = { token: string; tokenExpiresOn: string }
 type Boot = { state: 'loading' } | { state: 'ready'; workspace: Workspace | null; device: DeviceInfo; resume: Resume | null; safariAccepted: boolean }
@@ -73,31 +75,33 @@ function Main({ boot, onWorkspace }: { boot: Extract<Boot, { state: 'ready' }>; 
 
   if (!workspace || (setupActive && route.name === 'setup')) {
     return (
-      <SetupFlow
-        step={route.name === 'setup' ? route.step : null}
-        navigate={(step) => navigate({ name: 'setup', step })}
-        deps={{
-          createClient,
-          onWorkspaceReady,
-          runInitialSync,
-          onFinished: () => {
-            const s = session()
-            if (!s) return
-            s.engine.start()
-            setSetupActive(false)
-            onWorkspace(s.workspace)
-            navigate({ name: 'home' }, { replace: true })
-          },
-          isIOS: isIOS(),
-          isStandalone: isStandalone(),
-          acceptSafariTab: () => void updateUi({ safariTabModeAccepted: true }),
-          safariTabAccepted: boot.safariAccepted,
-          today: () => new Date(),
-          welcomePage: WELCOME_PAGE_BODY,
-          deviceName: deviceName().split(' · ')[0],
-          resume,
-        }}
-      />
+      <Suspense fallback={<div className="boot" />}>
+        <SetupFlow
+          step={route.name === 'setup' ? route.step : null}
+          navigate={(step) => navigate({ name: 'setup', step })}
+          deps={{
+            createClient,
+            onWorkspaceReady,
+            runInitialSync,
+            onFinished: () => {
+              const s = session()
+              if (!s) return
+              s.engine.start()
+              setSetupActive(false)
+              onWorkspace(s.workspace)
+              navigate({ name: 'home' }, { replace: true })
+            },
+            isIOS: isIOS(),
+            isStandalone: isStandalone(),
+            acceptSafariTab: () => void updateUi({ safariTabModeAccepted: true }),
+            safariTabAccepted: boot.safariAccepted,
+            today: () => new Date(),
+            welcomePage: WELCOME_PAGE_BODY,
+            deviceName: deviceName().split(' · ')[0],
+            resume,
+          }}
+        />
+      </Suspense>
     )
   }
 

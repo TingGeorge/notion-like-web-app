@@ -1,5 +1,4 @@
 /** Changing the setup (SETUP-11, SETUP-12) and the first sync (SETUP-10). */
-import { strToU8, zipSync } from 'fflate'
 import { GitHubError } from '../lib/github/client'
 import { classifyPath } from '../lib/data/names'
 import { db } from '../lib/store/db'
@@ -105,6 +104,7 @@ export async function runInitialSync(onProgress: (p: InitialSyncProgress) => voi
 
 /** UI-15 匯出: the whole workspace as a .zip (pages, settings and the attachments available). */
 export async function exportZip(): Promise<Blob> {
+  const { strToU8, zipSync } = await import('fflate')
   const s = session()
   const entries: Record<string, Uint8Array> = {}
   const rows = await db().files.toArray()

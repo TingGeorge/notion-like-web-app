@@ -13,6 +13,7 @@ const all = [
   { name: 'webkit-phone', use: { ...devices['iPhone 15'], ...phone } },
 ]
 const wanted = process.env.PW_PROJECTS?.split(',').map((s) => s.trim())
+const port = Number(process.env.PW_PORT ?? 4173)
 
 export default defineConfig({
   testDir: './e2e',
@@ -23,7 +24,7 @@ export default defineConfig({
   retries: process.env.CI ? 1 : 0,
   reporter: process.env.CI ? [['github'], ['html', { open: 'never' }]] : 'list',
   use: {
-    baseURL: 'http://localhost:4173/',
+    baseURL: `http://localhost:${port}/`,
     trace: 'retain-on-failure',
     locale: 'zh-TW',
     timezoneId: 'Asia/Taipei',
@@ -32,8 +33,8 @@ export default defineConfig({
   },
   projects: wanted ? all.filter((p) => wanted.includes(p.name)) : all,
   webServer: {
-    command: 'npm run build && npx vite preview --port 4173 --strictPort',
-    url: 'http://localhost:4173/',
+    command: `npm run build && npx vite preview --port ${port} --strictPort`,
+    url: `http://localhost:${port}/`,
     reuseExistingServer: !process.env.CI,
     timeout: 180_000,
   },
