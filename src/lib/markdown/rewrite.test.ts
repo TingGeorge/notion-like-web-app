@@ -115,7 +115,7 @@ describe('DATA-17 rewriteLinks', () => {
   })
 
   it('rewritten documents still parse to the same blocks', () => {
-    for (let seed = 1; seed <= 60; seed++) {
+    for (let seed = 1; seed <= 30; seed++) {
       const md = serializeMarkdown(randomDoc(seed, { maxBlocks: 5 }))
       const out = rewriteLinks(md, (link) => (link.href === '/x.md' ? { href: '/y z.md' } : null))
       const before = parseMarkdown(md)

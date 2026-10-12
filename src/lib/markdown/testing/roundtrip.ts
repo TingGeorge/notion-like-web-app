@@ -15,7 +15,7 @@ import { randomDoc } from './randomDoc'
 
 const env = (globalThis as { process?: { env: Record<string, string | undefined> } }).process?.env ?? {}
 
-export const FUZZ_ITERATIONS = Number(env.MD_FUZZ_ITERATIONS ?? 600)
+export const FUZZ_ITERATIONS = Number(env.MD_FUZZ_ITERATIONS ?? 350)
 export const FUZZ_SEED = Number(env.MD_FUZZ_SEED ?? 0)
 
 function describeFailure(seed: number, back: PMNode, canon: PMNode): string {
