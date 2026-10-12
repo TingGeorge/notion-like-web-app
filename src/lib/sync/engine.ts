@@ -235,14 +235,19 @@ export class SyncEngine {
     )
   }
 
-  /** SETUP-10: the first full download, with progress. Throws on failure. */
-  async initialSync(onProgress: (p: InitialSyncProgress) => void): Promise<void> {
+  /**
+   * SETUP-10: the first full download, with progress. Throws on failure.
+   * With `notifyFilesChanged: false` the caller rebuilds the index itself (for example with
+   * `reindexAll`), so `onFilesChanged` is not called with every path.
+   */
+  async initialSync(onProgress: (p: InitialSyncProgress) => void, options: { notifyFilesChanged?: boolean } = {}): Promise<void> {
     await this.recording(() =>
       this.exclusive('pull', async () => {
         onProgress({ phase: 'list', done: 0, total: 0 })
         await this.pullLocked({
           onDownload: (done, total) => onProgress({ phase: 'download', done, total }),
           onIndex: (total) => onProgress({ phase: 'index', done: 0, total }),
+          notify: options.notifyFilesChanged !== false,
         })
         onProgress({ phase: 'done', done: 1, total: 1 })
       }),
@@ -524,7 +529,9 @@ export class SyncEngine {
   // ---------------------------------------------------------------------------------------------
   // Pull (SYNC-5)
 
-  private async pullLocked(hooks: { onDownload?: (done: number, total: number) => void; onIndex?: (total: number) => void } = {}): Promise<void> {
+  private async pullLocked(
+    hooks: { onDownload?: (done: number, total: number) => void; onIndex?: (total: number) => void; notify?: boolean } = {},
+  ): Promise<void> {
     const { client, workspace: ws, db } = this.options
     const state = await this.state()
     let ref
@@ -581,12 +588,12 @@ export class SyncEngine {
   }
 
   /** Trash retention, SYNC-14 warnings, then `onFilesChanged`. */
-  private async afterPull(changed: string[], hooks: { onIndex?: (total: number) => void }): Promise<void> {
+  private async afterPull(changed: string[], hooks: { onIndex?: (total: number) => void; notify?: boolean }): Promise<void> {
     const purged = await this.purgeExpiredTrash()
     const all = [...new Set([...changed, ...purged])]
     await this.checkLimits(all)
     hooks.onIndex?.(all.length)
-    if (all.length > 0) await this.options.onFilesChanged(all)
+    if (all.length > 0 && hooks.notify !== false) await this.options.onFilesChanged(all)
     if (purged.length > 0 && this.running !== 'push') this.notifyLocalChange()
   }
 

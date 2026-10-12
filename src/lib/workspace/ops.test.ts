@@ -216,6 +216,51 @@ describe('duplicate', () => {
   })
 })
 
+describe('a save that races a move (the pages index still has the old path)', () => {
+  const ID = '01J0000000000000000000RACE'
+
+  it('writes to where a pushed page moved, without bringing the old path back', async () => {
+    await remoteFile('a.md', `---\nid: ${ID}\n---\nold\n`)
+    await reindexAll()
+    await db().transaction('rw', db().files, async () => moveFile('a.md', 'b.md'))
+    await savePageBody(ID, 'typed\n')
+    expect(await row('a.md')).toMatchObject({ deleted: true, movedTo: 'b.md' })
+    expect(await text('b.md')).toBe(`---\nid: ${ID}\n---\ntyped\n`)
+    expect((await row('b.md'))?.movedFrom).toBe('a.md')
+  })
+
+  it('finds a never-pushed page by id after it moved', async () => {
+    const id = await createPage({ title: '舊', body: 'x\n' })
+    await db().transaction('rw', db().files, async () => moveFile('舊.md', '新.md'))
+    await savePageBody(id, 'y\n')
+    expect(await row('舊.md')).toBeUndefined()
+    expect(splitPageFile((await text('新.md'))!).body).toBe('y\n')
+  })
+
+  it('keeps typing for a page that was just deleted in its trash copy', async () => {
+    await remoteFile('a.md', `---\nid: ${ID}\n---\nold\n`)
+    await reindexAll()
+    await db().transaction('rw', db().files, async () => {
+      await moveFile('a.md', '.notes/trash/T/a.md')
+      await db().files.update('.notes/trash/T/a.md', { kind: 'trash' })
+    })
+    await savePageBody(ID, 'last words\n')
+    expect(await row('a.md')).toMatchObject({ deleted: true })
+    expect(await row('.notes/trash/T/a.md')).toMatchObject({ kind: 'trash', text: `---\nid: ${ID}\n---\nlast words\n` })
+  })
+
+  it('renames from where the page is now', async () => {
+    await remoteFile('a.md', `---\nid: ${ID}\n---\nold\n`)
+    await reindexAll()
+    await db().transaction('rw', db().files, async () => moveFile('a.md', 'b.md', `---\nid: ${ID}\n---\nnewer\n`))
+    await renamePage(ID, 'c')
+    expect(await row('b.md')).toBeUndefined()
+    expect(await text('c.md')).toBe(`---\nid: ${ID}\n---\nnewer\n`)
+    expect((await row('c.md'))?.movedFrom).toBe('a.md')
+    expect((await row('a.md'))?.movedTo).toBe('c.md')
+  })
+})
+
 describe('moveFile pointers (types.ts conventions)', () => {
   it('follows unpushed moves back to the original path', async () => {
     await remoteFile('a.md', 'x\n')

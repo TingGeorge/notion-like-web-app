@@ -11,6 +11,7 @@ import { readPageId } from '../markdown/frontmatter'
 import { t } from '../../strings/zh-TW'
 import { SETTINGS_PATH, TRASH_DIR, type ConflictInfo, type FileKind, type FileRow, type TreeItem } from '../types'
 import { titleOfText } from './commitMessage'
+import { rewriteLocalLinks } from './links'
 import { mergePageText, mergeSettingsText, mergeTrashIndexText } from './merge'
 import {
   WorkingSet,
@@ -171,6 +172,8 @@ export function planPull(input: PullInput): PullPlan {
     }
   }
   const moveTargets = new Set(moveTarget.values())
+  /** Paths the engine moves on its own (old → new), for DATA-17 link rewriting at the end. */
+  const linkMap = new Map<string, string>()
 
   // ---- helpers --------------------------------------------------------------------------------
 
@@ -198,6 +201,7 @@ export function planPull(input: PullInput): PullPlan {
     work.remove(path)
     work.put({ ...local, path: next, text, dirty: true, updatedAt: now })
     relink(local, path, next)
+    linkMap.set(path, next)
     // Unpushed children move along, unless the remote already has that folder.
     const oldDir = childDirOf(path)
     const newDir = childDirOf(next)
@@ -208,6 +212,7 @@ export function planPull(input: PullInput): PullPlan {
         work.remove(row.path)
         work.put({ ...row, path: moved, updatedAt: now })
         relink(row, row.path, moved)
+        linkMap.set(row.path, moved)
       }
     }
   }
@@ -376,6 +381,7 @@ export function planPull(input: PullInput): PullPlan {
       work.remove(row.path)
       work.put({ ...row, path: dest, updatedAt: now })
       relink(row, row.path, dest)
+      linkMap.set(row.path, dest)
     }
   }
 
@@ -490,6 +496,13 @@ export function planPull(input: PullInput): PullPlan {
       work.put({ ...row, baseSha: null, dirty: true })
     }
   }
+
+  // DATA-17: links this device added to pages that moved (here or on another device) follow them.
+  for (const [p, q] of moveTarget) {
+    const occupied = remote.has(p) || (work.get(p) && !work.get(p)!.deleted)
+    if (!occupied && !linkMap.has(p)) linkMap.set(p, q)
+  }
+  rewriteLocalLinks(work, linkMap, now)
 
   settleDeletedConflicts(work)
 

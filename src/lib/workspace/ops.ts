@@ -17,7 +17,7 @@ import {
 } from '../data/names'
 import { parseSettings, parseTrashIndex, serializeSettings, serializeTrashIndex } from '../data/notesFiles'
 import { isUlid, ulid } from '../data/ulid'
-import { emptyFrontmatter, joinPageFile, readPageMeta, rewriteLinks, splitPageFile } from '../markdown'
+import { emptyFrontmatter, joinPageFile, readPageId, readPageMeta, rewriteLinks, splitPageFile } from '../markdown'
 import { db } from '../store/db'
 import {
   SETTINGS_PATH,
@@ -73,6 +73,33 @@ async function requirePage(key: string): Promise<PageRow> {
 async function takenNames(dir: string, exceptPath?: string): Promise<string[]> {
   const all = await db().pages.toArray()
   return all.filter((p) => dirname(p.path) === dir && p.path !== exceptPath).map((p) => pageNameOf(p.path))
+}
+
+/**
+ * Where a page's file is now. Call inside the operation's transaction: the `pages` index is only
+ * updated after an operation (or a pull) has finished, so it can still show a path the file has
+ * just left. Follows `movedTo` (also into the trash), or finds a never-pushed file by its id.
+ */
+async function currentPath(page: PageRow): Promise<string> {
+  let path = page.path
+  let row = await db().files.get(path)
+  for (let hops = 0; row?.deleted && row.movedTo && hops < 20; hops++) {
+    path = row.movedTo
+    row = await db().files.get(path)
+  }
+  if (row || page.virtual || !isUlid(page.key)) return path
+  const id = page.key
+  const found = await db()
+    .files.where('kind')
+    .anyOf('page', 'trash')
+    .filter((r) => !r.deleted && r.text !== null && r.text.includes(id) && readPageId(r.text) === id)
+    .first()
+  return found?.path ?? path
+}
+
+/** The row kind for a page file at `path` (a page still being edited after it went to the trash). */
+function textKind(path: string): 'page' | 'trash' {
+  return path.startsWith(TRASH_DIR) ? 'trash' : 'page'
 }
 
 async function childDirFor(parentKey: string | null): Promise<string> {
@@ -139,12 +166,17 @@ export async function ensureId(key: string): Promise<string> {
     await reindexPaths([page.path])
     return id
   }
-  const text = (await readText(page.path)) ?? ''
-  const { text: next, id } = withIdentity(text)
-  if (next !== text) {
-    await tx(() => writeText(page.path, 'page', next))
-    await reindexPaths([page.path])
-  }
+  let id = ''
+  let path = page.path
+  let wrote = false
+  await tx(async () => {
+    path = await currentPath(page)
+    const text = (await readText(path)) ?? ''
+    const next = withIdentity(text)
+    id = next.id
+    if (next.text !== text) wrote = await writeText(path, textKind(path), next.text)
+  })
+  if (wrote) await reindexPaths([path])
   return id
 }
 
@@ -166,26 +198,38 @@ export async function createPage(options: { parentKey?: string | null; title?: s
 /** Save the editor body of a page (STORE-3). Writes `id`/`created` the first time (DATA-9). */
 export async function savePageBody(key: string, body: string): Promise<string> {
   const page = await requirePage(key)
-  const current = page.virtual ? '' : ((await readText(page.path)) ?? '')
-  const { frontmatter, body: oldBody } = splitPageFile(current)
-  if (oldBody.replace(/\n+$/, '') === body.replace(/\n+$/, '') && !page.virtual) return page.key
-  const { text, id } = withIdentity(joinPageFile(frontmatter, body))
-  await tx(() => writeText(page.path, 'page', text))
-  await reindexPaths([page.path])
+  let id = page.key
+  let path = page.path
+  let wrote = false
+  await tx(async () => {
+    path = await currentPath(page)
+    const current = (await readText(path)) ?? ''
+    const { frontmatter, body: oldBody } = splitPageFile(current)
+    if (oldBody.replace(/\n+$/, '') === body.replace(/\n+$/, '') && !page.virtual) return
+    const next = withIdentity(joinPageFile(frontmatter, body))
+    id = next.id
+    wrote = await writeText(path, textKind(path), next.text)
+  })
+  if (wrote) await reindexPaths([path])
   return id
 }
 
 /** Set (or clear) a frontmatter field the app manages: icon or cover. */
 export async function setPageField(key: string, field: 'icon' | 'cover', value: string | null): Promise<string> {
   const page = await requirePage(key)
-  const current = page.virtual ? '' : ((await readText(page.path)) ?? '')
-  const { frontmatter, body } = splitPageFile(current)
-  frontmatter.set(field, value)
-  const { text, id } = withIdentity(joinPageFile(frontmatter, body))
-  if (text !== current || page.virtual) {
-    await tx(() => writeText(page.path, 'page', text))
-    await reindexPaths([page.path])
-  }
+  let id = page.key
+  let path = page.path
+  let wrote = false
+  await tx(async () => {
+    path = await currentPath(page)
+    const current = (await readText(path)) ?? ''
+    const { frontmatter, body } = splitPageFile(current)
+    frontmatter.set(field, value)
+    const next = withIdentity(joinPageFile(frontmatter, body))
+    id = next.id
+    if (next.text !== current || page.virtual) wrote = await writeText(path, textKind(path), next.text)
+  })
+  if (wrote) await reindexPaths([path])
   return id
 }
 
@@ -283,17 +327,20 @@ async function relocate(page: PageRow, newPath: string, newText?: string): Promi
 /** Rename a page by title (DATA-4 to DATA-7). Returns the page key. */
 export async function renamePage(key: string, title: string): Promise<string> {
   const id = await ensureId(key)
-  const page = await requirePage(id)
-  const oldTitle = page.title
+  const indexed = await requirePage(id)
+  const oldTitle = indexed.title
   if (title === oldTitle) return id
-  const dir = dirname(page.path)
-  const { path: newPath, titleInFrontmatter } = pagePathFor(title, dir, await takenNames(dir, page.path))
-  const text = (await readText(page.path)) ?? ''
-  const { frontmatter, body } = splitPageFile(text)
-  frontmatter.set('title', titleInFrontmatter ? title : null)
-  const newText = joinPageFile(frontmatter, body)
   const changed: string[] = []
   await tx(async () => {
+    // Read the file inside the transaction: an editor save may have landed since the lookup.
+    const page = { ...indexed, path: await currentPath(indexed) }
+    if (page.path.startsWith(TRASH_DIR)) return // deleted meanwhile
+    const dir = dirname(page.path)
+    const { path: newPath, titleInFrontmatter } = pagePathFor(title, dir, await takenNames(dir, page.path))
+    const text = (await readText(page.path)) ?? ''
+    const { frontmatter, body } = splitPageFile(text)
+    frontmatter.set('title', titleInFrontmatter ? title : null)
+    const newText = joinPageFile(frontmatter, body)
     if (newPath === page.path) {
       await writeText(page.path, 'page', newText)
       changed.push(page.path)
@@ -321,13 +368,15 @@ async function isSelfOrDescendant(page: PageRow, candidateKey: string | null): P
  */
 export async function movePage(key: string, newParentKey: string | null, index?: number): Promise<string> {
   const id = await ensureId(key)
-  const page = await requirePage(id)
-  if (await isSelfOrDescendant(page, newParentKey)) throw new Error('cannot move a page into itself')
+  const indexed = await requirePage(id)
+  if (await isSelfOrDescendant(indexed, newParentKey)) throw new Error('cannot move a page into itself')
   const parentId = newParentKey ? await ensureId(newParentKey) : null
   const newDir = await childDirFor(parentId)
-  const oldParentKey = page.parentKey
+  const oldParentKey = indexed.parentKey
   const changed: string[] = []
   await tx(async () => {
+    const page = { ...indexed, path: await currentPath(indexed) }
+    if (page.path.startsWith(TRASH_DIR)) return // deleted meanwhile
     if (dirname(page.path) !== newDir) {
       const { path: newPath } = pagePathFor(page.title, newDir, await takenNames(newDir))
       const text = (await readText(page.path)) ?? ''
@@ -390,11 +439,13 @@ export async function setFavorite(key: string, on: boolean): Promise<string> {
 /** Move a page and its child folder to `.notes/trash/<id>/`. Returns the trash entry id. */
 export async function deletePage(key: string): Promise<string> {
   const id = await ensureId(key)
-  const page = await requirePage(id)
-  const parent = page.parentKey ? await getPage(page.parentKey) : undefined
+  const indexed = await requirePage(id)
+  const parent = indexed.parentKey ? await getPage(indexed.parentKey) : undefined
   const changed: string[] = []
   let entryId = id
   await tx(async () => {
+    const page = { ...indexed, path: await currentPath(indexed) }
+    if (page.path.startsWith(TRASH_DIR)) return // already deleted
     const trash = await readTrash()
     if (trash.entries.some((e) => e.id === entryId)) entryId = ulid()
     const target = trashPathFor(entryId, page.path)
