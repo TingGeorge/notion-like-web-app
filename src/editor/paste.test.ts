@@ -80,12 +80,25 @@ describe('sliceFromText', () => {
     expect(slice.content.firstChild!.childCount).toBe(3)
   })
 
-  it('falls back to paragraphs when the Markdown parser is not available', () => {
-    // parseMarkdown is a stub that throws until the converter lands; the paste must still work.
+  it('parses pasted Markdown into blocks (UI-18)', () => {
     const slice = sliceFromText('# Title\n\n- a\n- b')
-    expect(slice.content.childCount).toBeGreaterThan(0)
-    expect(slice.content.firstChild!.type.name).toBe('paragraph')
-    expect(slice.content.textBetween(0, slice.content.size, ' ')).toContain('Title')
+    expect(slice.content.firstChild!.type.name).toBe('heading')
+    expect(slice.content.lastChild!.type.name).toBe('bullet_list')
+  })
+
+  it('falls back to paragraphs when the Markdown parser fails', async () => {
+    const markdown = await import('../lib/markdown')
+    const spy = vi.spyOn(markdown, 'parseMarkdown').mockImplementation(() => {
+      throw new Error('boom')
+    })
+    try {
+      const slice = sliceFromText('# Title\n\n- a\n- b')
+      expect(slice.content.childCount).toBeGreaterThan(0)
+      expect(slice.content.firstChild!.type.name).toBe('paragraph')
+      expect(slice.content.textBetween(0, slice.content.size, ' ')).toContain('Title')
+    } finally {
+      spy.mockRestore()
+    }
   })
 })
 

@@ -186,7 +186,8 @@ async function indexOne(path: string, change: Change, known?: FileRow): Promise<
 async function rebuildStructure(): Promise<void> {
   const pages = db().pages
   const all = await pages.toArray()
-  const real = all.filter((p) => !p.virtual)
+  // Copies: `all` keeps the stored values to compare against.
+  const real = all.filter((p) => !p.virtual).map((p) => ({ ...p }))
   const byPath = new Map<string, PageRow>(real.map((p) => [p.path, p]))
   const virtualWanted = new Map<string, PageRow>()
   for (const p of real) {

@@ -44,8 +44,13 @@ export function isoLocal(date = new Date()): string {
   )
 }
 
+/**
+ * One local operation = one transaction (the sync engine must never push half of it).
+ * The callback must be an `async` function: Dexie only keeps the transaction alive across native
+ * `await`s inside async callbacks, not for a plain function returning a promise.
+ */
 function tx<T>(fn: () => Promise<T>): Promise<T> {
-  return db().transaction('rw', [db().files, db().pages, db().sync], fn)
+  return db().transaction('rw', [db().files, db().pages, db().sync], async () => await fn())
 }
 
 // --- Lookups ---------------------------------------------------------------------------------
@@ -104,10 +109,8 @@ async function writeTrash(index: TrashIndex): Promise<void> {
 function withIdentity(text: string): { text: string; id: string } {
   const { frontmatter, body } = splitPageFile(text)
   const meta = readPageMeta(frontmatter)
-  if (meta.id) {
-    if (!meta.created) frontmatter.set('created', isoLocal())
-    return { text: meta.created ? text : joinPageFile(frontmatter, body), id: meta.id }
-  }
+  // A page that already has an id is never rewritten just for identity (DATA-9).
+  if (meta.id) return { text, id: meta.id }
   const id = ulid()
   // New keys go first so `id` leads the block in files the app creates.
   const fresh = emptyFrontmatter()
@@ -373,12 +376,12 @@ export async function reorderChildren(parentKey: string | null, orderedKeys: str
 
 export async function setFavorite(key: string, on: boolean): Promise<string> {
   const id = await ensureId(key)
-  await tx(() =>
-    updateSettings((s) => {
+  await tx(async () => {
+    await updateSettings((s) => {
       s.favorites = s.favorites.filter((k) => k !== id)
       if (on) s.favorites.push(id)
-    }),
-  )
+    })
+  })
   return id
 }
 
