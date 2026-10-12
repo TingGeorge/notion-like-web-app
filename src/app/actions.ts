@@ -20,7 +20,7 @@ import {
 import { t } from '../strings/zh-TW'
 import { toast, toastWithUndo } from '../ui/toast'
 import { navigate, pageHash } from './router'
-import { broadcast, session } from './session'
+import { broadcast, flushEditors, session } from './session'
 
 /** Tell the sync engine a local change happened (SYNC-7). */
 export function localChange(): void {
@@ -68,6 +68,8 @@ export async function trashPage(key: string, currentKey: string | null): Promise
   const page = await getPage(key)
   if (!page) return
   const parentKey = page.parentKey
+  // Save the last keystrokes first, so they go to the trash with the page.
+  await flushEditors()
   const entryId = await deletePage(key)
   localChange()
   if (currentKey && (currentKey === key || currentKey === page.key)) {

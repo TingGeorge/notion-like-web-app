@@ -42,8 +42,8 @@ export async function replaceToken(input: string, expiresOn: string): Promise<vo
   if (state?.lastError?.kind === 'unauthorized') await db().sync.update('state', { lastError: null })
   stopSession()
   const next = startSession(workspace, await loadDevice())
+  // start() pulls and pushes the edits kept while read-only.
   next.engine.start()
-  void next.engine.syncNow()
   notifyWorkspaceChanged()
 }
 
