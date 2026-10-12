@@ -135,4 +135,12 @@ created: 2026-10-11T10:00:00+08:00
     expect(copy.toString()).toBe('a: 1\nc: 3')
     expect(fm.toString()).toBe('a: 1\nb:\n  - x')
   })
+
+  it('keeps a block that is not a key/value map (it is content, never dropped)', () => {
+    const text = '---\nnot a mapping\n---\nbody\n'
+    const { frontmatter, body, hadFrontmatter } = splitPageFile(text)
+    expect(hadFrontmatter).toBe(true)
+    expect(frontmatter.isEmpty()).toBe(false)
+    expect(joinPageFile(frontmatter, body)).toBe(text)
+  })
 })

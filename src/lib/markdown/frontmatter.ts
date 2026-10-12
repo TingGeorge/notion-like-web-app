@@ -145,8 +145,9 @@ class FrontmatterImpl implements Frontmatter {
     }
   }
 
+  /** True when there is nothing but blank lines (comments and any other text are content). */
   isEmpty(): boolean {
-    return this.entries.every((e) => e.raw.trim() === '' && e.lead.every((l) => !l.trim().startsWith('#')))
+    return this.entries.every((e) => e.raw.trim() === '' && e.lead.every((l) => l.trim() === ''))
   }
 
   clone(): Frontmatter {
