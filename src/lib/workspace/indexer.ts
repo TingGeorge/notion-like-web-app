@@ -110,9 +110,29 @@ export async function reindexPaths(paths: Iterable<string>): Promise<void> {
   const change: Change = { removedKeys: [], upserts: [] }
   await db().transaction('rw', db().files, db().pages, async () => {
     for (const path of unique) await indexOne(path, change)
+    await promoteFreedIds(change)
     await rebuildStructure()
   })
   await applySearch(change)
+}
+
+/**
+ * DATA-9a: a page that lost a duplicated id to a smaller path is keyed `path:…`. Once no live page
+ * holds that id any more (the other file moved, was deleted or got a new id), it gets it back.
+ */
+async function promoteFreedIds(change: Change): Promise<void> {
+  const freed = new Set<string>()
+  for (const key of change.removedKeys) if (!key.startsWith('path:') && !(await db().pages.get(key))) freed.add(key)
+  if (freed.size === 0) return
+  const demoted = await db()
+    .pages.filter((p) => p.key.startsWith('path:') && !p.virtual)
+    .toArray()
+  for (const p of demoted.sort((a, b) => (a.path < b.path ? -1 : 1))) {
+    const file = await db().files.get(p.path)
+    if (!isLivePage(file)) continue
+    const id = readPageMeta(splitPageFile(file.text).frontmatter).id
+    if (id && freed.has(id) && !(await db().pages.get(id))) await indexOne(p.path, change, file)
+  }
 }
 
 /** Rebuild the whole `pages` table and the search index from `files`. */

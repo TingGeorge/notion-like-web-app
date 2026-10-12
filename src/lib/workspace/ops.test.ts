@@ -5,7 +5,7 @@ import { readPageMeta, splitPageFile } from '../markdown'
 import { NotesDB, setDb, db } from '../store/db'
 import { SETTINGS_PATH, TRASH_INDEX_PATH, type FileRow } from '../types'
 import { moveFile } from './files'
-import { reindexAll } from './indexer'
+import { reindexAll, reindexPaths } from './indexer'
 import {
   createPage,
   deletePage,
@@ -213,6 +213,40 @@ describe('duplicate', () => {
     expect(copy.icon).toBe('🚀')
     const child = readPageMeta(splitPageFile((await text('A (2)/B.md'))!).frontmatter)
     expect(child.id).not.toBe('01J00000000000000000000BBB')
+  })
+})
+
+describe('DATA-9a duplicate ids', () => {
+  const K = '01J00000000000000000000DUP'
+
+  beforeEach(async () => {
+    await remoteFile('a.md', `---\nid: ${K}\n---\na\n`)
+    await remoteFile('b.md', `---\nid: ${K}\n---\nb\n`)
+    await reindexAll()
+  })
+
+  it('the smaller path keeps the id; the other page gets a new one when it needs one', async () => {
+    expect((await getPage(K))?.path).toBe('a.md')
+    const id = await ensureId('path:b.md')
+    expect(id).not.toBe(K)
+    expect(readPageMeta(splitPageFile((await text('b.md'))!).frontmatter).id).toBe(id)
+    expect(await text('a.md')).toBe(`---\nid: ${K}\n---\na\n`)
+    expect((await getPage(id))?.path).toBe('b.md')
+  })
+
+  it('operations on the page without the id act on that page, not on the holder', async () => {
+    await renamePage('path:b.md', 'c')
+    expect(await text('a.md')).toBe(`---\nid: ${K}\n---\na\n`)
+    expect((await row('b.md'))?.movedTo).toBe('c.md')
+    const saved = await savePageBody('path:a.md', 'x\n').catch(() => null)
+    expect(saved).toBe(K)
+  })
+
+  it('the other page gets the id back once the holder is gone', async () => {
+    await db().files.delete('a.md')
+    await reindexPaths(['a.md'])
+    expect((await getPage(K))?.path).toBe('b.md')
+    expect(await db().pages.where('path').equals('b.md').count()).toBe(1)
   })
 })
 

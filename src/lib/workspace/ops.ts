@@ -102,6 +102,25 @@ function textKind(path: string): 'page' | 'trash' {
   return path.startsWith(TRASH_DIR) ? 'trash' : 'page'
 }
 
+/**
+ * `withIdentity` for a page being written. DATA-9a: a page keyed `path:…` whose file carries an id
+ * that another file holds (a copy made on github.com, or the same page created on two devices)
+ * gets a new id the next time it is saved, so operations never act on the other page.
+ */
+async function identityFor(page: PageRow, text: string): Promise<{ text: string; id: string }> {
+  const { frontmatter, body } = splitPageFile(text)
+  const id = readPageMeta(frontmatter).id
+  if (id && page.key.startsWith('path:')) {
+    const holder = await db().pages.get(id)
+    if (holder && holder.path !== page.path) {
+      const fresh = ulid()
+      frontmatter.set('id', fresh)
+      return { text: joinPageFile(frontmatter, body), id: fresh }
+    }
+  }
+  return withIdentity(text)
+}
+
 async function childDirFor(parentKey: string | null): Promise<string> {
   if (!parentKey) return ''
   const parent = await requirePage(parentKey)
@@ -172,7 +191,7 @@ export async function ensureId(key: string): Promise<string> {
   await tx(async () => {
     path = await currentPath(page)
     const text = (await readText(path)) ?? ''
-    const next = withIdentity(text)
+    const next = await identityFor(page, text)
     id = next.id
     if (next.text !== text) wrote = await writeText(path, textKind(path), next.text)
   })
@@ -206,7 +225,7 @@ export async function savePageBody(key: string, body: string): Promise<string> {
     const current = (await readText(path)) ?? ''
     const { frontmatter, body: oldBody } = splitPageFile(current)
     if (oldBody.replace(/\n+$/, '') === body.replace(/\n+$/, '') && !page.virtual) return
-    const next = withIdentity(joinPageFile(frontmatter, body))
+    const next = await identityFor(page, joinPageFile(frontmatter, body))
     id = next.id
     wrote = await writeText(path, textKind(path), next.text)
   })
@@ -225,7 +244,7 @@ export async function setPageField(key: string, field: 'icon' | 'cover', value: 
     const current = (await readText(path)) ?? ''
     const { frontmatter, body } = splitPageFile(current)
     frontmatter.set(field, value)
-    const next = withIdentity(joinPageFile(frontmatter, body))
+    const next = await identityFor(page, joinPageFile(frontmatter, body))
     id = next.id
     if (next.text !== current || page.virtual) wrote = await writeText(path, textKind(path), next.text)
   })

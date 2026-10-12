@@ -22,6 +22,7 @@ import {
   namesInDir,
   removeTrashEntries,
   settleDeletedConflicts,
+  withNewId,
   withFrontmatter,
 } from './working'
 
@@ -197,7 +198,12 @@ export function planPull(input: PullInput): PullPlan {
     const title = titleOfText(path, local.text)
     const taken = namesInDir(dir, remote, work)
     const { path: next, titleInFrontmatter } = pagePathFor(title, dir, taken)
-    const text = titleInFrontmatter ? withFrontmatter(local.text, { title }) : local.text
+    let text = titleInFrontmatter ? withFrontmatter(local.text, { title }) : local.text
+    // The same page created again on both sides (a restore here, a kept edit there): the renamed
+    // version is a copy now and gets an id of its own (DATA-9a).
+    const id = readPageId(local.text)
+    const item = remote.get(path)
+    if (id && item && readPageId(remoteText(path)) === id) text = withNewId(text, newId())
     work.remove(path)
     work.put({ ...local, path: next, text, dirty: true, updatedAt: now })
     relink(local, path, next)

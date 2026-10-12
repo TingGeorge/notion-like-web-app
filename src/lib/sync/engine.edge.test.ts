@@ -66,6 +66,21 @@ describe('DATA-17: links follow pages the engine moves', () => {
     expect(d.changed.flat()).toContain('首頁.md')
   })
 
+  it('rule 5 with the same page on both sides: the renamed version gets its own id (DATA-9a)', async () => {
+    const gh = await makeGitHub({ 'README.md': 'x\n' })
+    const d = device(gh, 'A')
+    await d.engine.pull()
+    await d.edit('b.md', page(ID_A, '這台\n'))
+    await gh.commit(FULL, { files: { 'b.md': page(ID_A, '另一台\n') } })
+    await d.engine.pull()
+    expect(await d.text('b.md')).toBe(page(ID_A, '另一台\n'))
+    const renamed = (await d.text('b (2).md'))!
+    const meta = readPageMeta(splitPageFile(renamed).frontmatter)
+    expect(meta.id).not.toBe(ID_A)
+    expect(meta.title).toBe('b')
+    expect(splitPageFile(renamed).body).toBe('這台\n')
+  })
+
   it('an unpushed child that follows a folder moved elsewhere keeps its inbound links', async () => {
     const gh = await makeGitHub({ '專案.md': page(ID_A, '專案\n'), '首頁.md': '首頁\n' })
     const d = device(gh, 'A')
