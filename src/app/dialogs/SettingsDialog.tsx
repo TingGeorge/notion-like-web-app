@@ -1,12 +1,12 @@
 /** 設定 (UI-15, §6.6, D08 / M17). */
 import { useLiveQuery } from 'dexie-react-hooks'
-import { ChevronLeft, ChevronRight, Clock, Download, FileText, Keyboard, Link2, Lock, LogOut, RefreshCw, Sun, Trash2, Type } from 'lucide-react'
+import { Check, ChevronLeft, ChevronRight, Clock, Download, FileText, Keyboard, Link2, Lock, LogOut, RefreshCw, Sun, Trash2, Type } from 'lucide-react'
 import { useState, type ReactNode } from 'react'
 import { shortcutLabel } from '../../lib/data/device'
 import { db } from '../../lib/store/db'
 import type { ThemePref, Workspace } from '../../lib/types'
 import { language, setLanguage, t, type Language } from '../../strings'
-import { Button, cx, Modal, Switch, TextInput } from '../../ui/primitives'
+import { Button, cx, Modal, Sheet, Switch, TextInput } from '../../ui/primitives'
 import { toast } from '../../ui/toast'
 import { CloudCheck, statusLabel, useSyncStatus } from '../layout/SyncStatus'
 import { Avatar } from '../layout/Sidebar'
@@ -185,6 +185,7 @@ export function SettingsDialog({ section: initial }: { section?: string }) {
   const offline = useOfflineSummary()
   const [tokenOpen, setTokenOpen] = useState(false)
   const [busy, setBusy] = useState<string | null>(null)
+  const [picker, setPicker] = useState<'theme' | 'language' | null>(null)
   const { guard, dialog } = useGuarded()
   if (!s) return null
   const ws = s.workspace
@@ -390,13 +391,8 @@ export function SettingsDialog({ section: initial }: { section?: string }) {
         {group(
           t.settings.sections.appearance,
           <>
-            {mrow(
-              <Sun size={20} />,
-              t.settings.theme,
-              themeOptions.find(([v]) => v === ui.theme)?.[1],
-              () => setUi({ theme: ui.theme === 'system' ? 'light' : ui.theme === 'light' ? 'dark' : 'system' }),
-            )}
-            {mrow(<Keyboard size={20} />, t.settings.language, languageOptions.find(([v]) => v === language)?.[1], () => setLanguage(language === 'en' ? 'zh-TW' : 'en'))}
+            {mrow(<Sun size={20} />, t.settings.theme, themeOptions.find(([v]) => v === ui.theme)?.[1], () => setPicker('theme'))}
+            {mrow(<Keyboard size={20} />, t.settings.language, languageOptions.find(([v]) => v === language)?.[1], () => setPicker('language'))}
           </>,
         )}
         {group(
@@ -406,6 +402,18 @@ export function SettingsDialog({ section: initial }: { section?: string }) {
             {mrow(<Trash2 size={20} />, t.settings.clearDevice, undefined, () => void doClear(), 'danger', false)}
             {mrow(<LogOut size={20} />, t.settings.disconnect, undefined, () => void doDisconnect(), 'danger', false)}
           </>,
+        )}
+        {picker === 'theme' && (
+          <ChoiceSheet
+            title={t.settings.theme}
+            options={themeOptions}
+            value={ui.theme}
+            onChoose={(theme) => setUi({ theme })}
+            onClose={() => setPicker(null)}
+          />
+        )}
+        {picker === 'language' && (
+          <ChoiceSheet title={t.settings.language} options={languageOptions} value={language} onChoose={setLanguage} onClose={() => setPicker(null)} lang />
         )}
         {tokenOpen && <TokenDialog workspace={ws} onClose={() => setTokenOpen(false)} />}
         {dialog}
@@ -441,6 +449,48 @@ export function SettingsDialog({ section: initial }: { section?: string }) {
       {tokenOpen && <TokenDialog workspace={ws} onClose={() => setTokenOpen(false)} />}
       {dialog}
     </Modal>
+  )
+}
+
+/** iPhone: a settings row with a chevron opens its choices, the current one ticked. */
+function ChoiceSheet<T extends string>({
+  title,
+  options,
+  value,
+  onChoose,
+  onClose,
+  lang = false,
+}: {
+  title: string
+  options: [T, string][]
+  value: T
+  onChoose: (value: T) => void
+  onClose: () => void
+  /** Options are language names, each written in its own language. */
+  lang?: boolean
+}) {
+  return (
+    <Sheet open onClose={onClose} title={title} className="choice-sheet">
+      <div className="sheet-group" role="radiogroup" aria-label={title}>
+        {options.map(([v, label]) => (
+          <button
+            key={v}
+            type="button"
+            role="radio"
+            aria-checked={v === value}
+            lang={lang ? v : undefined}
+            className="sheet-row"
+            onClick={() => {
+              onClose()
+              if (v !== value) onChoose(v)
+            }}
+          >
+            <span>{label}</span>
+            {v === value && <Check size={20} className="sheet-row-check" aria-hidden="true" />}
+          </button>
+        ))}
+      </div>
+    </Sheet>
   )
 }
 
