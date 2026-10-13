@@ -19,3 +19,12 @@ test('leaving a page never renames it (title committed only when edited)', async
   expect(await fake.readFile(REPO, '京都旅行計畫.md')).toBe('---\nid: 01JA8Z3K5N6P7Q8R9S0T1V2KYT\n---\n清水寺\n')
   expect(await fake.readFile(REPO, '未命名.md')).toBeNull()
 })
+
+test('opening the app URL without a hash shows the workspace, not a blank page', async ({ page }) => {
+  const errors: string[] = []
+  page.on('pageerror', (e) => errors.push(e.message))
+  await setupWorkspace(page)
+  await page.goto(page.url().split('#')[0])
+  await expect(page.locator('.sidebar, .home').first()).toBeVisible()
+  expect(errors).toEqual([])
+})

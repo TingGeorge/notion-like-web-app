@@ -98,11 +98,13 @@ function subscribe(listener: () => void) {
   return () => window.removeEventListener('hashchange', listener)
 }
 
-let cachedHash = ''
+// useSyncExternalStore needs the same object back while the hash is unchanged, including the empty
+// hash of the bare app URL; a fresh object every call re-renders forever (React error #185).
+let cachedHash: string | null = null
 let cachedRoute: Route = { name: 'home' }
 
 function getRoute(): Route {
-  if (location.hash !== cachedHash || cachedHash === '') {
+  if (location.hash !== cachedHash) {
     cachedHash = location.hash
     cachedRoute = parseHash(location.hash)
   }
