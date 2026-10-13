@@ -29,14 +29,14 @@ Design: Figma file `N3TDXtJeqjUd6wiUBHPzNu` (screens D01–D15 desktop, M01–M2
 | `src/lib/link/` | QR device linking crypto (LINK-1) |
 | `src/editor/` | ProseMirror editor component and plugins |
 | `src/app/`, `src/ui/` | App shell, screens, shared UI primitives |
-| `src/strings/zh-TW.ts` | Every UI string (NFR-4) |
+| `src/strings/` | Every UI string (NFR-4): `zh-TW.ts` (reference) and `en.ts`; code imports `t` from `src/strings` |
 | `test/fake-github/` | In-memory fake GitHub API used by unit and e2e tests (TEST-2) |
 | `e2e/` | Playwright tests |
 
 ## Rules
 
 - Tests never touch real GitHub (TEST-2). Use the fake GitHub.
-- No UI string literals outside `src/strings/zh-TW.ts`.
+- No UI string literals outside `src/strings/`. Add a string to `zh-TW.ts` and `en.ts` together (the type checker enforces the same keys).
 - The token never appears in logs, URLs, errors or exports (SEC-2, STORE-7).
 - Colours only through the CSS custom properties in `src/styles/tokens.css`.
 - No runtime third-party scripts, fonts or network calls other than `api.github.com` (ARCH-3, ARCH-4).

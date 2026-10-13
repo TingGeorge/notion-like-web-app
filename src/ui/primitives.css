@@ -256,6 +256,14 @@
   }
 }
 
+/* UI-16: floating panels and dialogs are never part of a printed page. */
+@media print {
+  .overlay,
+  .popover {
+    display: none !important;
+  }
+}
+
 /* Popover and menu (Menu/Row) */
 .popover {
   position: fixed;

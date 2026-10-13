@@ -9,7 +9,7 @@
 import { basename, childDirOf, dirname, isInside, parentPagePathOf, titleOf, trashEntryIdOf } from '../data/names'
 import { parseTrashIndex } from '../data/notesFiles'
 import { readPageMeta, splitPageFile } from '../markdown/frontmatter'
-import { t } from '../../strings/zh-TW'
+import { t } from '../../strings'
 import { TRASH_INDEX_PATH, type FileKind } from '../types'
 
 export type PushChange =

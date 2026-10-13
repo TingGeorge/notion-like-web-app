@@ -2,7 +2,7 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import { Check, Circle, Lightbulb, RefreshCw } from 'lucide-react'
 import type { InitialSyncProgress } from '../../lib/sync/engine'
-import { t } from '../../strings/zh-TW'
+import { t } from '../../strings'
 import { Button, cx } from '../../ui/primitives'
 import { errorMessage } from './deps'
 import { SetupPage } from './parts'
@@ -75,7 +75,7 @@ export function FirstSync({ repoName, runInitialSync, onFinished, deviceName }: 
         {t.setup.preparingTitle}
       </h1>
       <p className="setup-intro">
-        {deviceName ? t.setup.preparingIntro.replace('這台裝置', `這台 ${deviceName}`) : t.setup.preparingIntro}
+        {deviceName ? t.setup.preparingIntro.replace(t.setup.thisDevice, t.setup.thisNamedDevice(deviceName)) : t.setup.preparingIntro}
       </p>
 
       <div

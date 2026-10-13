@@ -1,7 +1,7 @@
 /** UI-6: 「反向連結」 — the pages that link to this one (from the local index, DATA-17). */
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '../../lib/store/db'
-import { t } from '../../strings/zh-TW'
+import { t } from '../../strings'
 import { PageIcon } from '../PageIcon'
 import { navigate, pageHash } from '../router'
 

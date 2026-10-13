@@ -13,6 +13,19 @@
   justify-content: space-between;
   height: 52px;
 }
+/*
+ * iPhone: the header stays at the top on an opaque background, like the page's top bar. In an
+ * installed app iOS 26 blurs the top edge of the page over whatever scrolls there, and skips that
+ * when a sticky or fixed box with a background covers it.
+ */
+.home.is-mobile .home-header {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  margin: 0 -16px;
+  padding: 0 16px;
+  background: var(--bg-default);
+}
 .home-ws {
   display: inline-flex;
   align-items: center;

@@ -7,7 +7,8 @@ import { GitHubError } from '../../lib/github/client'
 import type { InitialSyncProgress } from '../../lib/sync/engine'
 import type { LinkData } from '../../lib/link/crypto'
 import type { Workspace } from '../../lib/types'
-import { t } from '../../strings/zh-TW'
+import { WELCOME_PAGE_PATH } from '../../lib/data/templates'
+import { t } from '../../strings'
 
 /** The parts of `src/lib/link/crypto.ts` the screens call; injectable so tests and the harness can fake them. */
 export interface LinkCrypto {
@@ -49,7 +50,7 @@ export interface SetupDeps {
 /** Placeholder until `WELCOME_PAGE` from `src/lib/data/templates.ts` is available. */
 export const WELCOME_PLACEHOLDER = '# 歡迎使用\n\n這是你的第一頁。開始輸入，筆記會同步到你的 GitHub。\n'
 
-export const WELCOME_PATH = '歡迎使用.md'
+export const WELCOME_PATH = WELCOME_PAGE_PATH
 
 export interface RepoTarget {
   owner: string

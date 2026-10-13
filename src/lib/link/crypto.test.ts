@@ -10,6 +10,8 @@ import {
   generatePairingCode,
   isLinkPayload,
   normalizePairingCode,
+  qrText,
+  splitLinkText,
   type LinkData,
 } from './crypto'
 
@@ -105,5 +107,27 @@ describe('link payload encryption (LINK-1, SEC-8)', () => {
 
   it('refuses to encrypt with an invalid code', async () => {
     await expect(encryptLinkPayload(data, 'short')).rejects.toThrow()
+  })
+})
+
+describe('QR text (LINK-1)', () => {
+  it('carries the pairing code after the payload, and decrypts without anything typed', async () => {
+    const code = generatePairingCode()
+    const payload = await encryptLinkPayload(data, code)
+    const text = qrText(payload, formatPairingCode(code))
+    expect(text).toBe(`${payload}.${code}`)
+    const split = splitLinkText(`  ${text}\n`)
+    expect(split).toEqual({ payload, code })
+    expect(await decryptLinkPayload(split.payload, split.code!)).toEqual(data)
+  })
+
+  it('leaves a setup code without a pairing code as it is', async () => {
+    const payload = await encryptLinkPayload(data, generatePairingCode())
+    expect(splitLinkText(payload)).toEqual({ payload, code: null })
+  })
+
+  it('does not take a fourth part that cannot be a code as one', () => {
+    expect(splitLinkText('ghnotes:1:a.b.c.O0IL1XYZ')).toEqual({ payload: 'ghnotes:1:a.b.c.O0IL1XYZ', code: null })
+    expect(splitLinkText('hello')).toEqual({ payload: 'hello', code: null })
   })
 })

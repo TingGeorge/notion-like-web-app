@@ -1,5 +1,5 @@
 import { NOTION_COLORS } from '../../lib/schema'
-import { t } from '../../strings/zh-TW'
+import { t } from '../../strings'
 import { CONVERTIBLE_KINDS, type BlockKind } from '../blocks'
 import type { MenuEntry } from './EditorMenu'
 import { ITEM_ICONS } from './shared'

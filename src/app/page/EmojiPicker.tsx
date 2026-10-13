@@ -1,18 +1,19 @@
 /** 加入圖示 (UI-2): a small emoji picker with categories, 隨機 and 移除. */
 import { useState } from 'react'
-import { t } from '../../strings/zh-TW'
+import { t } from '../../strings'
 import { cx } from '../../ui/primitives'
 import './pickers.css'
 
-const CATEGORIES: { name: string; emojis: string }[] = [
-  { name: '常用', emojis: '📝📄📘📗📕📒📓📔📚🗂️📁📌📍✅☑️💡⭐️🔥🚀🎯🧠💬📅🗓️⏰🏠💼🧳✈️🍳🔍🎨🎵💰📈🛒❤️' },
-  { name: '人物', emojis: '😀😃😄😁😆😅😂🙂😉😊😇🥰😍🤩😘😋😜🤓😎🤔🤨😐😴😷🤒🥳😭😤😡👍👎👏🙌🙏💪👀🧑‍💻👩‍🍳👨‍🏫🧑‍🎨' },
-  { name: '自然', emojis: '🌱🌿🍀🌵🌴🌳🌲🍁🍂🌸🌼🌻🌹🌷🌙⭐️🌟☀️⛅️🌧️❄️🌈🌊🔥🐶🐱🐭🐰🦊🐻🐼🐨🐯🦁🐮🐷🐸🐵🐧🐦🦋🐢🐟🐳' },
-  { name: '食物', emojis: '🍎🍊🍋🍌🍉🍇🍓🫐🍒🍑🥭🍍🥝🍅🥑🥦🥕🌽🍞🥐🧀🥚🍳🥞🍔🍟🍕🌭🥪🌮🍜🍝🍣🍱🍙🍚🍛🍲🥗🍰🍪🍩🍫🍿☕️🍵🧋🍺🍷' },
-  { name: '活動', emojis: '⚽️🏀🏈⚾️🎾🏐🏓🏸🥊🎽🏃🚴🏊🧘🎮🎲🧩🎯🎳🎸🎹🎺🎻🥁🎤🎧🎬🎨🖌️📷🎭🏆🥇🎉🎁' },
-  { name: '旅行', emojis: '🚗🚕🚌🚎🚓🚑🚲🛵🚂🚄🚇✈️🛫🛬🚀🛸⛵️🚢🗺️🗾🏔️⛰️🏕️🏖️🏝️🏛️🏯🏰🗼🗽⛩️🏙️🌃🌉🎡🎢🏨🏠🏡🏢🏥🏫' },
-  { name: '物品', emojis: '⌚️📱💻⌨️🖥️🖨️🖱️💾💿📷📹🎥📞☎️📺📻⏰⏳💡🔦🕯️🧯💸💵💳💎⚖️🔧🔨🛠️⚙️🧰🔒🔑🗝️🧪🔬🔭📦📫✏️✒️🖊️🖍️📎📐📏✂️🗑️' },
-  { name: '符號', emojis: '❤️🧡💛💚💙💜🖤🤍🤎💯✔️❌⭕️❗️❓⚠️🚫♻️✳️❇️🔆🔅〽️⚜️🔱📛🔰✅☑️🔘🔴🟠🟡🟢🔵🟣⚫️⚪️🟥🟧🟨🟩🟦🟪⬛️⬜️🔶🔷' },
+// Names come from t.page.emojiCategories, in this order.
+const CATEGORIES: string[] = [
+  '📝📄📘📗📕📒📓📔📚🗂️📁📌📍✅☑️💡⭐️🔥🚀🎯🧠💬📅🗓️⏰🏠💼🧳✈️🍳🔍🎨🎵💰📈🛒❤️',
+  '😀😃😄😁😆😅😂🙂😉😊😇🥰😍🤩😘😋😜🤓😎🤔🤨😐😴😷🤒🥳😭😤😡👍👎👏🙌🙏💪👀🧑‍💻👩‍🍳👨‍🏫🧑‍🎨',
+  '🌱🌿🍀🌵🌴🌳🌲🍁🍂🌸🌼🌻🌹🌷🌙⭐️🌟☀️⛅️🌧️❄️🌈🌊🔥🐶🐱🐭🐰🦊🐻🐼🐨🐯🦁🐮🐷🐸🐵🐧🐦🦋🐢🐟🐳',
+  '🍎🍊🍋🍌🍉🍇🍓🫐🍒🍑🥭🍍🥝🍅🥑🥦🥕🌽🍞🥐🧀🥚🍳🥞🍔🍟🍕🌭🥪🌮🍜🍝🍣🍱🍙🍚🍛🍲🥗🍰🍪🍩🍫🍿☕️🍵🧋🍺🍷',
+  '⚽️🏀🏈⚾️🎾🏐🏓🏸🥊🎽🏃🚴🏊🧘🎮🎲🧩🎯🎳🎸🎹🎺🎻🥁🎤🎧🎬🎨🖌️📷🎭🏆🥇🎉🎁',
+  '🚗🚕🚌🚎🚓🚑🚲🛵🚂🚄🚇✈️🛫🛬🚀🛸⛵️🚢🗺️🗾🏔️⛰️🏕️🏖️🏝️🏛️🏯🏰🗼🗽⛩️🏙️🌃🌉🎡🎢🏨🏠🏡🏢🏥🏫',
+  '⌚️📱💻⌨️🖥️🖨️🖱️💾💿📷📹🎥📞☎️📺📻⏰⏳💡🔦🕯️🧯💸💵💳💎⚖️🔧🔨🛠️⚙️🧰🔒🔑🗝️🧪🔬🔭📦📫✏️✒️🖊️🖍️📎📐📏✂️🗑️',
+  '❤️🧡💛💚💙💜🖤🤍🤎💯✔️❌⭕️❗️❓⚠️🚫♻️✳️❇️🔆🔅〽️⚜️🔱📛🔰✅☑️🔘🔴🟠🟡🟢🔵🟣⚫️⚪️🟥🟧🟨🟩🟦🟪⬛️⬜️🔶🔷',
 ]
 
 const seg = typeof Intl !== 'undefined' && 'Segmenter' in Intl ? new Intl.Segmenter(undefined, { granularity: 'grapheme' }) : null
@@ -21,7 +22,7 @@ function splitEmoji(s: string): string[] {
   return seg ? Array.from(seg.segment(s), (x) => x.segment) : Array.from(s)
 }
 
-const ALL = CATEGORIES.map((c) => ({ name: c.name, list: splitEmoji(c.emojis) }))
+const ALL = CATEGORIES.map((emojis, i) => ({ name: t.page.emojiCategories[i], list: splitEmoji(emojis) }))
 
 export function randomEmoji(): string {
   const list = ALL[0].list.concat(ALL[2].list, ALL[3].list, ALL[6].list)

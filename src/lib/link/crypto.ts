@@ -5,6 +5,8 @@
  * Payload: `ghnotes:1:<salt>.<iv>.<ciphertext>`, all base64url (no padding).
  * Ciphertext: AES-GCM of the UTF-8 JSON `{"o","r","b","t","e"}`.
  * Key: PBKDF2-SHA-256 of the pairing code (normalised, without the dash), 600,000 iterations, 16-byte salt.
+ * QR code: the payload, a dot, then the pairing code (`ghnotes:1:<salt>.<iv>.<ciphertext>.<CODE>`), so
+ * scanning needs nothing typed. The setup code (copied text) is the payload alone.
  */
 
 export interface LinkData {
@@ -94,6 +96,27 @@ export function normalizePairingCode(input: string): string | null {
 
 export function isLinkPayload(text: string): boolean {
   return text.trim().startsWith(PAYLOAD_PREFIX)
+}
+
+/** LINK-1: the text the QR code carries — the payload with its pairing code. */
+export function qrText(payload: string, code: string): string {
+  const normalized = normalizePairingCode(code)
+  if (normalized === null) throw new Error('invalid pairing code')
+  return `${payload}.${normalized}`
+}
+
+/**
+ * Scanned or pasted text → the payload, and the pairing code if the text carries one (a QR code
+ * does, a setup code does not). Base64url has no dots, so a fourth dot-separated part can only be
+ * the code.
+ */
+export function splitLinkText(text: string): { payload: string; code: string | null } {
+  const trimmed = text.trim()
+  if (!trimmed.startsWith(PAYLOAD_PREFIX)) return { payload: trimmed, code: null }
+  const parts = trimmed.slice(PAYLOAD_PREFIX.length).split('.')
+  const code = parts.length === 4 ? normalizePairingCode(parts[3]) : null
+  if (code === null) return { payload: trimmed, code: null }
+  return { payload: PAYLOAD_PREFIX + parts.slice(0, 3).join('.'), code }
 }
 
 async function deriveKey(normalized: string, salt: Uint8Array): Promise<CryptoKey> {

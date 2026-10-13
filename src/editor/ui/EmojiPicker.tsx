@@ -1,5 +1,5 @@
 import { calloutKindForIcon } from '../../lib/schema'
-import { t } from '../../strings/zh-TW'
+import { t } from '../../strings'
 import { Popover } from '../../ui/primitives'
 import { calloutIconOf } from '../nodeViews'
 import { useEditorUI, useUIState } from './shared'

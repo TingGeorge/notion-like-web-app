@@ -167,6 +167,13 @@
   height: 232px;
   padding: 12px;
 }
+.link-code-hint {
+  margin-top: 6px;
+  max-width: 300px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  text-align: center;
+}
 .link-screen .link-code-label {
   margin-top: 24px;
 }

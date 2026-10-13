@@ -5,7 +5,7 @@ import { useState } from 'react'
 import { parseTrashIndex } from '../../lib/data/notesFiles'
 import { db } from '../../lib/store/db'
 import { TRASH_INDEX_PATH, type TrashEntry } from '../../lib/types'
-import { t } from '../../strings/zh-TW'
+import { t } from '../../strings'
 import { Button, IconButton, Modal, Popover } from '../../ui/primitives'
 import { purgeFromTrash, restoreFromTrash } from '../actions'
 import { relativeTime } from '../format'
@@ -100,7 +100,7 @@ export function TrashPanel({ anchor }: { anchor?: DOMRect }) {
     )
   }
   return (
-    <Popover anchor={anchor ?? new DOMRect(16, window.innerHeight - 80, 200, 30)} onClose={closeOverlay} placement="right-start" className="trash-popover">
+    <Popover anchor={anchor ?? new DOMRect(16, window.innerHeight - 80, 200, 30)} onClose={closeOverlay} placement="right-end" offset={4} className="trash-popover">
       <TrashList mobile={false} />
     </Popover>
   )

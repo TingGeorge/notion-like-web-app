@@ -4,21 +4,49 @@
  * blocks separated by one blank line, one trailing newline (DATA-10).
  *
  * These are page *content* that ends up in the user's repo, so they live here and not in
- * `src/strings/zh-TW.ts`. Page titles for the starters are `t.templates.*`.
+ * `src/strings`. Each comes in the device's UI language. Page titles for the starters are
+ * `t.templates.*`.
  */
-import { t } from '../../strings/zh-TW'
+import { language, t } from '../../strings'
+
+const english = language === 'en'
 
 /** 空白頁面. */
 export const TEMPLATE_BLANK = ''
 
 /** 待辦清單. */
-export const TEMPLATE_TODO = `- [ ] 第一件要做的事
+export const TEMPLATE_TODO = english
+  ? `- [ ] First thing to do
+- [ ] Second thing to do
+- [ ] Third thing to do
+`
+  : `- [ ] 第一件要做的事
 - [ ] 第二件要做的事
 - [ ] 第三件要做的事
 `
 
 /** 會議記錄範本. */
-export const TEMPLATE_MEETING = `## 日期
+export const TEMPLATE_MEETING = english
+  ? `## Date
+
+## Attendees
+
+- Name
+
+## Agenda
+
+1. Topic one
+2. Topic two
+
+## Decisions
+
+- Decision
+
+## Action items
+
+- [ ] Action item
+`
+  : `## 日期
 
 ## 與會者
 
@@ -57,11 +85,10 @@ export const PAGE_TEMPLATES: readonly PageTemplate[] = [
 ]
 
 /** SETUP-9: the repo path and title of the page created in an empty repo. */
-export const WELCOME_PAGE_PATH = '歡迎使用.md'
-export const WELCOME_PAGE_TITLE = '歡迎使用'
+export const WELCOME_PAGE_TITLE = english ? 'Welcome' : '歡迎使用'
+export const WELCOME_PAGE_PATH = `${WELCOME_PAGE_TITLE}.md`
 
-/** SETUP-9: body of `歡迎使用.md` (without frontmatter). */
-export const WELCOME_PAGE_BODY = `這裡是你的筆記本。每一頁都是你自己 GitHub repo 裡的一個 Markdown 檔，沒有伺服器，也不用註冊。
+const WELCOME_ZH = `這裡是你的筆記本。每一頁都是你自己 GitHub repo 裡的一個 Markdown 檔，沒有伺服器，也不用註冊。
 
 > [!TIP]
 > 想看看筆記長什麼樣子，可以到 GitHub 打開這個 repo，你會看到一個叫「歡迎使用.md」的檔案，就是這一頁。
@@ -111,7 +138,7 @@ export const WELCOME_PAGE_BODY = `這裡是你的筆記本。每一頁都是你�
 
 ## 連結另一台裝置
 
-到「設定 → 連結新裝置」，在電腦上顯示 QR code，再用手機掃描並輸入配對碼，就能把同一個筆記本帶到另一台裝置。QR code 和配對碼合起來等於你的 token，不要一起給別人看。
+到「設定 → 連結新裝置」，在電腦上顯示 QR code，再用手機掃描，就能把同一個筆記本帶到另一台裝置。QR code 等於你的 token，不要給別人看或拍下來。
 
 ## 垃圾桶
 
@@ -121,3 +148,67 @@ export const WELCOME_PAGE_BODY = `這裡是你的筆記本。每一頁都是你�
 
 準備好了嗎？從側邊欄按「新增頁面」開始寫吧。
 `
+
+const WELCOME_EN = `This is your notebook. Every page is a Markdown file in your own GitHub repo. No server, no sign-up.
+
+> [!TIP]
+> To see what your notes look like, open this repo on GitHub: the file “Welcome.md” is this page.
+
+## Pages are files
+
+- Every page is a \`.md\` file, and the page title is the file name
+- Adding a subpage under a page creates a folder with the same name
+- Images and attachments go in the \`_assets\` folder
+- You can open and edit these files on GitHub or in any text editor at any time
+
+## Insert blocks with “/”
+
+Type \`/\` on an empty line to open the block menu: headings, lists, to-dos, toggles, quotes, callouts, code, dividers, tables and images. Keep typing to filter.
+
+<details>
+<summary>This is a toggle. Click to expand</summary>
+
+What is in here stays folded away. GitHub shows the same folded block.
+
+</details>
+
+## Markdown shortcuts
+
+Type one of these at the start of a line, then a space, to turn it into a block:
+
+- \`#\`, \`##\`, \`###\`: heading 1, 2, 3
+- \`-\` or \`*\`: bulleted list
+- \`1.\`: numbered list
+- \`[]\`: to-do list
+- \`>\`: toggle
+- \`"\`: quote
+- Three backticks: code block
+- \`---\`: divider
+
+Inside text you can also type \`**bold**\`, \`*italic*\` and \`~strikethrough~\`; the formatting applies as you finish.
+
+- [ ] Try it: check this to-do
+- [ ] Try it: add a callout below
+
+## Sync and offline
+
+- Your changes are saved on this device first, then synced to GitHub a few seconds after you stop typing
+- You can read and edit without a network; changes catch up once you are back online
+- If two devices change the same text, you are asked which version to keep; nothing is silently overwritten
+- The status in the top right tells you whether you are “Synced”, “Syncing” or “Offline”
+
+## Link another device
+
+Go to “Settings → Link a new device”, show the QR code on your computer and scan it with your phone to bring the same notebook to that device. The QR code is as good as your token: don’t show it to anyone or photograph it.
+
+## Trash
+
+Deleted pages go to the trash first and are kept for 30 days by default; restore them from “Trash” in the sidebar. Even after deleting permanently, you can find them in the GitHub history.
+
+---
+
+Ready? Click “New page” in the sidebar to start writing.
+`
+
+/** SETUP-9: body of the welcome page (without frontmatter). */
+export const WELCOME_PAGE_BODY = english ? WELCOME_EN : WELCOME_ZH

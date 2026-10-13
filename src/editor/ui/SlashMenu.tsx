@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
-import { t } from '../../strings/zh-TW'
+import { t } from '../../strings'
 import { cx } from '../../ui/primitives'
 import { filterSlashItems, slashKey, setSlashSelected, type SlashItem } from '../slash'
 import { ITEM_ICONS, useEditorUI, useViewportTick, visibleViewport } from './shared'

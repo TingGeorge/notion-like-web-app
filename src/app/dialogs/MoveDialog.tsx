@@ -2,7 +2,7 @@
 import { ArrowUpToLine, Search } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { childDirOf, isInside } from '../../lib/data/names'
-import { t } from '../../strings/zh-TW'
+import { t } from '../../strings'
 import { Modal, Sheet } from '../../ui/primitives'
 import { moveTo } from '../actions'
 import { pagesCache, useIsMobile, usePage, usePages } from '../hooks'

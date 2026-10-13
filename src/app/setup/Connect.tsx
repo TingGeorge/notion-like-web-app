@@ -2,7 +2,7 @@
 import { useRef, useState } from 'react'
 import { CalendarDays, Lock } from 'lucide-react'
 import { GitHubError, type GitHubClient, type GitHubUser, type RepoSummary } from '../../lib/github/client'
-import { t } from '../../strings/zh-TW'
+import { t } from '../../strings'
 import { Button, Spinner } from '../../ui/primitives'
 import { errorMessage } from './deps'
 import { SetupPage } from './parts'
@@ -95,7 +95,7 @@ export function Connect({ createClient, today, deviceName, onConnected }: Connec
       <h1 className="setup-title">{t.setup.connectTitle}</h1>
       <p className="setup-intro">
         <span className="only-desktop">{t.setup.connectIntro}</span>
-        <span className="only-phone">{t.setup.connectIntro.replace('這台裝置', deviceName ? `這台 ${deviceName}` : '這台裝置')}</span>
+        <span className="only-phone">{t.setup.connectIntro.replace(t.setup.thisDevice, deviceName ? t.setup.thisNamedDevice(deviceName) : t.setup.thisDevice)}</span>
       </p>
 
       <ol className="instructions">

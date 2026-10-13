@@ -5,7 +5,7 @@
 import { ChevronRight, MoreHorizontal, Plus } from 'lucide-react'
 import { useState, type DragEvent, type MouseEvent } from 'react'
 import type { PageRow } from '../../lib/types'
-import { t } from '../../strings/zh-TW'
+import { t } from '../../strings'
 import { cx } from '../../ui/primitives'
 import { moveTo, newPage } from '../actions'
 import { openOverlay } from '../overlays'

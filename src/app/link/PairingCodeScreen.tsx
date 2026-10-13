@@ -1,13 +1,14 @@
 /**
- * LINK-3 / M22: enter the pairing code, decrypt the scanned payload, show what is about to be linked
- * (SEC-8), then probe write access (SETUP-8) and hand the Workspace to the app.
+ * LINK-3 / M22: decrypt the scanned payload — with the pairing code the QR code carries, or the one
+ * the user types for a pasted setup code — show what is about to be linked (SEC-8), then probe write
+ * access (SETUP-8) and hand the Workspace to the app.
  */
-import { useRef, useState } from 'react'
-import { InvalidPayloadError, WrongPairingCodeError } from '../../lib/link/crypto'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { InvalidPayloadError, splitLinkText, WrongPairingCodeError } from '../../lib/link/crypto'
 import type { GitHubUser } from '../../lib/github/client'
 import type { LinkData } from '../../lib/link/crypto'
 import type { Workspace } from '../../lib/types'
-import { t } from '../../strings/zh-TW'
+import { t } from '../../strings'
 import { Button, Spinner } from '../../ui/primitives'
 import { activateRepo, errorMessage, type SetupDeps } from '../setup/deps'
 import { formatExpiry } from '../setup/token'
@@ -17,7 +18,7 @@ import './link.css'
 export const MAX_WRONG_CODES = 3
 
 export interface PairingCodeScreenProps {
-  /** The scanned or pasted `ghnotes:1:…` text. Held in memory only. */
+  /** The scanned or pasted `ghnotes:1:…` text, with or without its pairing code. Held in memory only. */
   payload: string
   deps: Required<Pick<SetupDeps, 'createClient' | 'linkCrypto' | 'welcomePage' | 'now'>>
   onCancel(): void
@@ -27,8 +28,9 @@ export interface PairingCodeScreenProps {
   onReady(ws: Workspace): Promise<void>
 }
 
-export function PairingCodeScreen({ payload, deps, onCancel, onDiscard, onReady }: PairingCodeScreenProps) {
-  const [code, setCode] = useState('')
+export function PairingCodeScreen({ payload: text, deps, onCancel, onDiscard, onReady }: PairingCodeScreenProps) {
+  const { payload, code: carried } = useMemo(() => splitLinkText(text), [text])
+  const [code, setCode] = useState(carried ?? '')
   const [wrong, setWrong] = useState<number | null>(null)
   const [busy, setBusy] = useState(false)
   const [data, setData] = useState<LinkData | null>(null)
@@ -38,6 +40,7 @@ export function PairingCodeScreen({ payload, deps, onCancel, onDiscard, onReady 
   const [linkError, setLinkError] = useState<string | null>(null)
   const attempts = useRef(0)
   const [inputKey, setInputKey] = useState(0)
+  const started = useRef(false)
 
   const decrypt = async (value: string) => {
     if (busy) return
@@ -52,7 +55,8 @@ export function PairingCodeScreen({ payload, deps, onCancel, onDiscard, onReady 
         setAccountError(errorMessage(e))
       }
     } catch (e) {
-      if (e instanceof InvalidPayloadError) {
+      // A QR code whose own pairing code does not open it was not made by GitHub Notes.
+      if (e instanceof InvalidPayloadError || carried !== null) {
         onDiscard(t.link.notOurQr)
         return
       }
@@ -106,6 +110,14 @@ export function PairingCodeScreen({ payload, deps, onCancel, onDiscard, onReady 
     }
   }
 
+  // A scanned QR code carries its pairing code: decrypt it straight away.
+  useEffect(() => {
+    if (carried === null || started.current) return
+    started.current = true
+    void decrypt(carried)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- once, on mount
+  }, [])
+
   const confirmed = data !== null
 
   return (
@@ -115,17 +127,23 @@ export function PairingCodeScreen({ payload, deps, onCancel, onDiscard, onReady 
           {t.common.cancel}
         </button>
         <div className="pair-main">
-          <h1 className="pair-title">{t.link.enterCodeTitle}</h1>
-          <p className="pair-intro">{t.link.enterCodeIntro}</p>
-          <PairingInput
-            key={inputKey}
-            value={code}
-            onChange={setCode}
-            onComplete={(v) => void decrypt(v)}
-            disabled={busy || confirmed}
-            invalid={wrong !== null}
-            autoFocus
-          />
+          {carried === null ? (
+            <>
+              <h1 className="pair-title">{t.link.enterCodeTitle}</h1>
+              <p className="pair-intro">{t.link.enterCodeIntro}</p>
+              <PairingInput
+                key={inputKey}
+                value={code}
+                onChange={setCode}
+                onComplete={(v) => void decrypt(v)}
+                disabled={busy || confirmed}
+                invalid={wrong !== null}
+                autoFocus
+              />
+            </>
+          ) : (
+            <h1 className="pair-title">{t.link.confirmTitle}</h1>
+          )}
           {busy && (
             <p className="pair-status">
               <Spinner size={12} /> {t.link.decrypting}

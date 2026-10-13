@@ -2,9 +2,21 @@
  * Repository paths and page file names (DATA-2 to DATA-6).
  * All paths are repo paths without a leading slash, using `/` as the separator.
  */
+import { t } from '../../strings'
 import { ASSETS_DIR, SETTINGS_PATH, TRASH_DIR, TRASH_INDEX_PATH, type FileKind } from '../types'
 
-export const UNTITLED = '未命名'
+/** The title of a new page, in the device's language. */
+export const UNTITLED = t.common.untitled
+
+/**
+ * An untitled title in any UI language (devices sharing a repo may use different ones), with or
+ * without the ` (2)` that keeps names unique.
+ */
+const UNTITLED_TITLE = /^(未命名|Untitled)( \(\d+\))?$/
+
+export function isUntitledTitle(title: string): boolean {
+  return title.trim() === '' || UNTITLED_TITLE.test(title)
+}
 export const MAX_NAME_BYTES = 150
 
 const FULL_WIDTH: Record<string, string> = {

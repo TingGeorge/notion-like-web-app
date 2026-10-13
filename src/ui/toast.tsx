@@ -3,7 +3,7 @@
  * Usage: `toast('已複製連結')` or `toast('已刪除「x」', { action: { label: '復原', run: undo } })`.
  */
 import { useSyncExternalStore } from 'react'
-import { t } from '../strings/zh-TW'
+import { t } from '../strings'
 import './toast.css'
 
 export interface ToastOptions {

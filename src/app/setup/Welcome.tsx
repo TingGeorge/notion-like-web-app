@@ -1,6 +1,6 @@
 /** D01 / M01 (SETUP-1). */
 import { Link2 } from 'lucide-react'
-import { t } from '../../strings/zh-TW'
+import { t } from '../../strings'
 import { Button } from '../../ui/primitives'
 import { LogoMark } from './parts'
 import './setup.css'

@@ -8,7 +8,7 @@ import { ChevronLeft, Lock, QrCode } from 'lucide-react'
 import * as realCrypto from '../../lib/link/crypto'
 import type { LinkCrypto } from '../setup/deps'
 import type { Workspace } from '../../lib/types'
-import { t } from '../../strings/zh-TW'
+import { t } from '../../strings'
 import { Button, IconButton, Modal } from '../../ui/primitives'
 import { qrPath } from './qrSvg'
 import { useIsPhone } from './useIsPhone'
@@ -121,13 +121,23 @@ function Inner({ onClose, workspace, linkCrypto = realCrypto }: LinkDeviceDialog
           </span>
         ))}
       </p>
-      {shown ? <QrCard payload={shown.payload} /> : <Placeholder busy={busy} failed={failed} onShow={generate} />}
+      {shown ? (
+        <QrCard key={shown.payload} text={realCrypto.qrText(shown.payload, shown.code)} />
+      ) : (
+        <Placeholder busy={busy} failed={failed} onShow={generate} />
+      )}
       {shown && (
         <>
-          <div className="link-code-label">{t.link.pairingCode}</div>
-          <div className="link-code" aria-live="polite">
-            {shown.code.slice(0, 4)}-{shown.code.slice(4)}
-          </div>
+          {/* LINK-2: the QR code carries the pairing code; only the copied setup code needs it typed. */}
+          {copied && (
+            <>
+              <div className="link-code-label">{t.link.pairingCode}</div>
+              <div className="link-code" aria-live="polite">
+                {shown.code.slice(0, 4)}-{shown.code.slice(4)}
+              </div>
+              <div className="link-code-hint">{t.link.pairingCodeForPaste}</div>
+            </>
+          )}
           <div className="link-warning">
             <Lock size={12} aria-hidden="true" />
             <span>{t.link.secretWarning}</span>
@@ -191,9 +201,9 @@ function Placeholder({ busy, failed, onShow }: { busy: boolean; failed: boolean;
   )
 }
 
-function QrCard({ payload }: { payload: string }) {
-  // Computing the matrix is cheap; memoising is not needed because the card re-renders once a second at most.
-  const [path] = useState(() => qrPath(payload))
+function QrCard({ text }: { text: string }) {
+  // Computed once per payload (the card is keyed by it); it re-renders once a second for the countdown.
+  const [path] = useState(() => qrPath(text))
   const quiet = 0
   const total = path.size + quiet * 2
   return (

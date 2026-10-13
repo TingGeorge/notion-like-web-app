@@ -195,7 +195,7 @@ export interface TreeItem {
   size?: number
 }
 
-/** SYNC-11 error reasons. Shown to the user via strings in `src/strings/zh-TW.ts`. */
+/** SYNC-11 error reasons. Shown to the user via `t.sync.errors` (`src/strings`). */
 export type SyncErrorKind =
   | 'unauthorized' // 401: token invalid or expired → read-only (SETUP-13)
   | 'forbidden' // 403 without rate limit: token has no write access

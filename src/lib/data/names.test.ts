@@ -4,6 +4,7 @@ import {
   classifyPath,
   isPagePath,
   isReservedPath,
+  isUntitledTitle,
   pagePathFor,
   parentPagePathOf,
   titleOf,
@@ -125,5 +126,15 @@ describe('ULID', () => {
     expect(a < b).toBe(true)
     expect(ulidTime(a)).toBe(1_700_000_000_000)
     expect(ulid()).not.toBe(ulid())
+  })
+})
+
+describe('untitled titles in either UI language', () => {
+  it('recognises 未命名 and Untitled, numbered or not, and blank titles', () => {
+    for (const title of ['未命名', '未命名 (2)', 'Untitled', 'Untitled (12)', '', '  ']) expect(isUntitledTitle(title)).toBe(true)
+  })
+
+  it('does not take other titles for untitled', () => {
+    for (const title of ['未命名的想法', 'Untitled draft', 'untitled', '未命名(2)', '工作']) expect(isUntitledTitle(title)).toBe(false)
   })
 })

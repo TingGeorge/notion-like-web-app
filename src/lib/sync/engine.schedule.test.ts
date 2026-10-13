@@ -5,7 +5,7 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import { GitHubClient } from '../github/client'
 import type { FakeGitHub } from '../../../test/fake-github'
-import { t } from '../../strings/zh-TW'
+import { t } from '../../strings'
 import { SyncEngine } from './engine'
 import { Device, FULL, ManualClock, TOKEN, makeGitHub, type DeviceOptions } from './testHarness'
 

@@ -8,7 +8,7 @@
 import { childDirOf, classifyPath, dirname, isInside, pagePathFor, trashEntryIdOf } from '../data/names'
 import { parseSettings, parseTrashIndex } from '../data/notesFiles'
 import { readPageId } from '../markdown/frontmatter'
-import { t } from '../../strings/zh-TW'
+import { t } from '../../strings'
 import { SETTINGS_PATH, TRASH_DIR, type ConflictInfo, type FileKind, type FileRow, type TreeItem } from '../types'
 import { titleOfText } from './commitMessage'
 import { rewriteLocalLinks } from './links'

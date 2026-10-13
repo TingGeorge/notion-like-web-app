@@ -1,8 +1,9 @@
 /**
- * All UI strings (NFR-4). Traditional Chinese is the only UI language in v1.
+ * All UI strings in Traditional Chinese (NFR-4), the default language. `en.ts` has the same shape;
+ * code reads them through `t` from `src/strings`.
  * Keep strings grouped by area. Functions are used for strings with values.
  */
-export const t = {
+export const zhTW = {
   app: {
     name: 'GitHub Notes',
     tagline: '像 Notion 一樣好用，筆記存在你自己的 GitHub。',
@@ -118,6 +119,7 @@ export const t = {
     moveDialogTitle: '移動到…',
     moveToRoot: '最上層',
     moveSearch: '搜尋頁面',
+    emojiCategories: ['常用', '人物', '自然', '食物', '活動', '旅行', '物品', '符號'],
   },
 
   toast: {
@@ -240,16 +242,19 @@ export const t = {
     publicConfirmTitle: '要使用公開的 repo 嗎？',
     syncFailed: '下載失敗',
     helpUrl: 'https://github.com/TingGeorge/notion-like-web-app#readme',
+    thisDevice: '這台裝置',
+    thisNamedDevice: (device: string) => `這台 ${device}`,
   },
 
   link: {
     title: '連結新裝置',
-    showIntro: ['在 iPhone 或另一台電腦打開 GitHub Notes，', '選「用 QR code 從另一台裝置連結」，', '掃描 QR code 後輸入配對碼。'],
-    showIntroPhone: ['在另一台裝置打開 GitHub Notes，', '選「用 QR code 從另一台裝置連結」，', '掃描後輸入配對碼。'],
+    showIntro: ['在 iPhone 或另一台電腦打開 GitHub Notes，', '選「用 QR code 從另一台裝置連結」，', '掃描 QR code 就完成了。'],
+    showIntroPhone: ['在另一台裝置打開 GitHub Notes，', '選「用 QR code 從另一台裝置連結」，', '掃描 QR code 就完成了。'],
     showQr: '顯示 QR code',
     showQrHint: '用 QR code 把設定帶到 iPhone 或另一台電腦',
     pairingCode: '配對碼',
-    secretWarning: 'QR code 和配對碼合起來等於你的 token，不要一起給別人看。',
+    secretWarning: 'QR code 等於你的 token，不要給別人看或拍下來。',
+    pairingCodeForPaste: '在新裝置貼上設定碼後，要輸入這個配對碼。',
     hidesIn: (s: number) => `${s} 秒後自動隱藏`,
     regenerate: '重新產生',
     copySetupCode: '複製設定碼',
@@ -264,7 +269,8 @@ export const t = {
     notOurQr: '這不是 GitHub Notes 的 QR code',
     cameraDenied: '無法使用相機。你可以改用設定碼。',
     enterCodeTitle: '輸入配對碼',
-    enterCodeIntro: '在原本那台裝置的 QR code 下方。',
+    enterCodeIntro: '在原本那台裝置按「複製設定碼」後，會顯示在 QR code 下方。',
+    confirmTitle: '確認要連結的 repo',
     wrongCode: (left: number) => `配對碼不正確，還可以再試 ${left} 次`,
     tooManyTries: '配對碼錯太多次了，請重新掃描 QR code。',
     aboutToLink: '即將連結',
@@ -421,6 +427,8 @@ export const t = {
       connection: '連結',
       preferences: '偏好設定',
       data: '資料',
+      sync: '同步',
+      appearance: '外觀',
     },
     github: 'GitHub 連結',
     appearance: '外觀與語言',
@@ -428,6 +436,7 @@ export const t = {
     syncStorage: '同步與儲存',
     export: '匯出',
     storage: '儲存位置',
+    repoWithVisibility: (repo: string, isPublic: boolean) => `${repo}（${isPublic ? 'public' : 'private'}）`,
     changeRepo: '更換 repo',
     token: 'GitHub token',
     changeToken: '更換 token',
@@ -445,6 +454,7 @@ export const t = {
     themeDark: '深色',
     language: '語言',
     languageZh: '繁體中文',
+    languageEn: 'English',
     exportZip: '匯出全部（.zip）',
     exportZipHint: '下載所有頁面和附件',
     discardChanges: (n: number) => `放棄 ${n} 個未同步的修改`,
@@ -541,4 +551,11 @@ export const t = {
   },
 } as const
 
-export type Strings = typeof t
+/** The shape every language follows: zhTW with its literal types widened to `string`. */
+type Widen<T> = T extends string
+  ? string
+  : T extends (...args: infer A) => infer R
+    ? (...args: A) => Widen<R>
+    : { [K in keyof T]: Widen<T[K]> }
+
+export type Strings = Widen<typeof zhTW>

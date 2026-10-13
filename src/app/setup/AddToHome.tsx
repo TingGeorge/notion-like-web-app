@@ -1,6 +1,6 @@
 /** M16 (SETUP-2): iOS in a Safari tab. Explains 加入主畫面 and points at Safari's share button. */
 import { FileText, ChevronLeft, ChevronRight, Copy, Share } from 'lucide-react'
-import { t } from '../../strings/zh-TW'
+import { t } from '../../strings'
 import { Button } from '../../ui/primitives'
 import { LogoMark } from './parts'
 import './setup.css'

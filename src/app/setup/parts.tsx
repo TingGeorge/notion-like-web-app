@@ -1,7 +1,7 @@
 /** Small shared pieces of the setup screens: logo mark, header, step indicator. */
 import type { ReactNode } from 'react'
 import { Check, FileText } from 'lucide-react'
-import { t } from '../../strings/zh-TW'
+import { t } from '../../strings'
 import { cx } from '../../ui/primitives'
 import './setup.css'
 
