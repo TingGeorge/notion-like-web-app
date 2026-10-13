@@ -618,6 +618,10 @@
   display: inline-flex;
   color: inherit;
 }
+.sheet-row-check {
+  margin-left: auto;
+  color: var(--accent-text);
+}
 
 /* ---------- Settings (D08 / M17) ---------- */
 .settings-modal {
