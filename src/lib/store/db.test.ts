@@ -1,7 +1,7 @@
 import 'fake-indexeddb/auto'
 import Dexie from 'dexie'
 import { afterEach, describe, expect, it } from 'vitest'
-import { NotesDB, withBytes } from './db'
+import { NotesDB, putAttachment, withBytes } from './db'
 
 let n = 0
 let open: Dexie[] = []
@@ -53,5 +53,26 @@ describe('attachment rows (WebKit private windows cannot store Blobs)', () => {
     const { db } = fresh()
     await db.uploads.put({ path: 'old', blob: new Blob([new Uint8Array([7])]), sha256: 'y', createdAt: 1 })
     expect(await bytes((await db.uploads.get('old'))!.blob)).toEqual([7])
+  })
+
+  it('are written as Blobs where IndexedDB takes them', async () => {
+    const { db, raw } = fresh()
+    await putAttachment(db.uploads, { path: 'b', blob: new Blob([new Uint8Array([5])]), sha256: 'z', createdAt: 1 })
+    expect(((await raw.table('uploads').get('b')) as { blob: unknown }).blob).toBeInstanceOf(Blob)
+  })
+
+  it('fall back to bytes where IndexedDB refuses a Blob (WebKit private window)', async () => {
+    const { db, raw } = fresh()
+    const refusing = {
+      put: (row: Parameters<typeof db.uploads.put>[0]) =>
+        row.blob instanceof Blob
+          ? Promise.reject(new Error('Error preparing Blob/File data to be stored in object store'))
+          : db.uploads.put(row),
+    }
+    await putAttachment(refusing, { path: 'w', blob: new Blob([new Uint8Array([4, 2])], { type: 'image/jpeg' }), sha256: 'w', createdAt: 1 })
+    expect(((await raw.table('uploads').get('w')) as { blob: unknown }).blob).toBeInstanceOf(ArrayBuffer)
+    const row = (await db.uploads.get('w'))!
+    expect(row.blob.type).toBe('image/jpeg')
+    expect(await bytes(row.blob)).toEqual([4, 2])
   })
 })

@@ -17,6 +17,7 @@ import {
   syncAndWaitForCommit,
   threeImages,
   titleInput,
+  topBlocks,
   waitSynced,
 } from './helpers'
 
@@ -329,6 +330,9 @@ test('several images picked at once from the / menu all land in the page (UI-18)
   expect(fc.isMultiple()).toBe(true)
   await fc.setFiles(threeImages())
   await expectUploadedImages(page, 3)
+  // No empty lines between the images; typing goes below them, not over one.
+  expect(await topBlocks(page)).toEqual(['上面', 'image', 'image', 'image', 'empty'])
+  await page.keyboard.type('下面')
   await page.waitForTimeout(400)
   await syncAndWaitForCommit(page, fake)
   const assets = assetPaths(fake)
@@ -337,5 +341,6 @@ test('several images picked at once from the / menu all land in the page (UI-18)
   const links = [...body.matchAll(/!\[\]\(([^)]+)\)/g)].map((m) => m[1])
   expect(links).toHaveLength(3)
   expect(body.startsWith('上面\n\n![](')).toBe(true)
+  expect(body.endsWith(')\n\n下面\n')).toBe(true)
   expect(links.map((l) => decodeURIComponent(l).replace(/^\.?\//, '')).sort()).toEqual([...assets].sort())
 })

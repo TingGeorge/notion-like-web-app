@@ -350,3 +350,10 @@ export async function expectUploadedImages(page: Page, count: number): Promise<v
   await expect(ed.locator('.image-placeholder:not(.is-loading)'), 'images that failed to show').toHaveCount(0)
   await expect(ed.locator('figure.image-block img'), 'images shown').toHaveCount(count)
 }
+
+/** The editor's top-level blocks: `image`, `empty` (paragraph) or the paragraph's text. */
+export async function topBlocks(page: Page): Promise<string[]> {
+  return editor(page).evaluate((el) =>
+    [...el.children].map((c) => (c.tagName === 'FIGURE' ? 'image' : (c.textContent ?? '') === '' ? 'empty' : (c.textContent ?? ''))),
+  )
+}

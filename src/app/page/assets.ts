@@ -5,7 +5,7 @@
  */
 import { assetPathFor, checkUploadSize, prepareImage } from '../../lib/data/assets'
 import { encodeLinkPath, parseHref } from '../../lib/data/links'
-import { db, withBytes } from '../../lib/store/db'
+import { db, putAttachment } from '../../lib/store/db'
 import type { UploadResult } from '../../editor/types'
 import { session } from '../session'
 
@@ -35,8 +35,8 @@ export async function uploadAttachment(file: File): Promise<UploadResult> {
   const path = await assetPathFor(new Uint8Array(bytes), ext, new Date(), (p) => pathExistsWithOtherContent(p, sha256))
   const existing = await db().uploads.get(path)
   if (!existing) {
-    await db().uploads.put(await withBytes({ path, blob: prepared.blob, sha256, createdAt: Date.now() }))
-    await db().assets.put(await withBytes({ path, blob: prepared.blob, size: prepared.blob.size, lastUsed: Date.now() }))
+    await putAttachment(db().uploads, { path, blob: prepared.blob, sha256, createdAt: Date.now() })
+    await putAttachment(db().assets, { path, blob: prepared.blob, size: prepared.blob.size, lastUsed: Date.now() })
   }
   session()?.engine.notifyLocalChange()
   return { href: encodeLinkPath(path), name: file.name, isImage }
@@ -78,7 +78,7 @@ export async function resolveAttachment(href: string): Promise<string | null> {
     try {
       const { owner, repo, branch } = s.workspace
       blob = await s.client.getFileBlob(owner, repo, path, branch)
-      await db().assets.put(await withBytes({ path, blob, size: blob.size, lastUsed: Date.now() }))
+      await putAttachment(db().assets, { path, blob, size: blob.size, lastUsed: Date.now() })
       void evictIfNeeded()
     } catch {
       return null
