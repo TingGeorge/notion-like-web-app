@@ -5,15 +5,19 @@
 import type { Page } from '@playwright/test'
 import { expect, test, modKey } from './fixtures'
 import {
+  assetPaths,
   bodyOf,
   commitCount,
   createPage,
   editor,
+  expectUploadedImages,
   forceSync,
   readRepoFile,
   setupDevice,
   syncAndWaitForCommit,
+  threeImages,
   titleInput,
+  topBlocks,
   waitSynced,
 } from './helpers'
 
@@ -314,4 +318,29 @@ test('the page title field and Enter: Enter moves to the body, the body is not l
   await syncAndWaitForCommit(page, fake)
   expect(await bodyInRepo(fake, '標題欄.md')).toBe('內文\n')
   await waitSynced(page)
+})
+
+test('several images picked at once from the / menu all land in the page (UI-18)', async ({ page, fake }) => {
+  await setupDevice(page)
+  await createPage(page, '多張圖片', '上面\n')
+  // The caret is on an empty line: the first image takes its place.
+  const chooser = page.waitForEvent('filechooser')
+  await slash(page, '圖片')
+  const fc = await chooser
+  expect(fc.isMultiple()).toBe(true)
+  await fc.setFiles(threeImages())
+  await expectUploadedImages(page, 3)
+  // No empty lines between the images; typing goes below them, not over one.
+  expect(await topBlocks(page)).toEqual(['上面', 'image', 'image', 'image', 'empty'])
+  await page.keyboard.type('下面')
+  await page.waitForTimeout(400)
+  await syncAndWaitForCommit(page, fake)
+  const assets = assetPaths(fake)
+  expect(assets).toHaveLength(3)
+  const body = await bodyInRepo(fake, '多張圖片.md')
+  const links = [...body.matchAll(/!\[\]\(([^)]+)\)/g)].map((m) => m[1])
+  expect(links).toHaveLength(3)
+  expect(body.startsWith('上面\n\n![](')).toBe(true)
+  expect(body.endsWith(')\n\n下面\n')).toBe(true)
+  expect(links.map((l) => decodeURIComponent(l).replace(/^\.?\//, '')).sort()).toEqual([...assets].sort())
 })

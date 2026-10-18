@@ -2,7 +2,7 @@
  * Attachments (UI-18, DATA-18): files are handed to `services.uploadFile` and become image or file
  * blocks. While an upload runs a placeholder widget sits where the block will go.
  */
-import { Plugin, PluginKey, type EditorState } from 'prosemirror-state'
+import { Plugin, PluginKey, Selection, type EditorState } from 'prosemirror-state'
 import { Decoration, DecorationSet, type EditorView } from 'prosemirror-view'
 import { schema } from '../lib/schema'
 import { t } from '../strings'
@@ -41,7 +41,7 @@ export function uploadPlugin(): Plugin<DecorationSet> {
   })
 }
 
-function placeholderWidget(id: string, file: File, index: number, pos: number, mode: 'insert' | 'replace'): Decoration {
+function placeholderWidget(id: string, file: File, index: number, pos: number): Decoration {
   const dom = document.createElement('div')
   dom.className = 'upload-placeholder'
   dom.contentEditable = 'false'
@@ -50,7 +50,7 @@ function placeholderWidget(id: string, file: File, index: number, pos: number, m
   dom.innerHTML = `<span class="upload-spinner"></span><span class="upload-icon">${isImage ? icons.image(18) : icons.file(18)}</span><span class="upload-name"></span><span class="upload-state"></span>`
   dom.querySelector('.upload-name')!.textContent = file.name
   dom.querySelector('.upload-state')!.textContent = t.editor.uploading
-  return Decoration.widget(pos, dom, { id, side: index, key: id, mode, ignoreSelection: true } as Record<string, unknown>)
+  return Decoration.widget(pos, dom, { id, side: index, key: id, ignoreSelection: true } as Record<string, unknown>)
 }
 
 function findWidget(state: EditorState, id: string): Decoration | undefined {
@@ -60,11 +60,14 @@ function findWidget(state: EditorState, id: string): Decoration | undefined {
 /**
  * Where an upload goes: in place of an empty paragraph, otherwise below the block at `pos` (or at
  * the selection). Inside a list the block goes below the whole list.
+ *
+ * For an empty paragraph the placeholders sit just after it, not at its start: replacing the
+ * paragraph would otherwise delete every placeholder still waiting there.
  */
 function insertionPoint(state: EditorState, at?: number): { pos: number; mode: 'insert' | 'replace' } {
   const ref = at === undefined ? blockAtSelection(state) : blockAtPos(state.doc, at)
   if (!ref) return { pos: state.doc.content.size, mode: 'insert' }
-  if (ref.node.type === N.paragraph && isEmptyBlock(ref.node)) return { pos: ref.pos, mode: 'replace' }
+  if (ref.node.type === N.paragraph && isEmptyBlock(ref.node)) return { pos: ref.pos + ref.node.nodeSize, mode: 'replace' }
   if (ref.node.type === N.list_item) {
     const $p = state.doc.resolve(ref.pos)
     return { pos: $p.after(), mode: 'insert' }
@@ -78,20 +81,52 @@ function nodeFor(result: UploadResult) {
     : N.file.create({ href: result.href, name: result.name })
 }
 
-/** Upload files and insert them as blocks. Errors show in the placeholder for a few seconds. */
+/** At most this many uploads run at once: a dozen full-size photos at a time is too much for a phone. */
+const MAX_PARALLEL_UPLOADS = 3
+
+/** Start `fn` for each item, at most `max` at a time; the promises keep the items' order. */
+function limited<T, R>(items: T[], max: number, fn: (item: T) => Promise<R>): Promise<R>[] {
+  let active = 0
+  const waiting: Array<() => void> = []
+  return items.map(
+    (item) =>
+      new Promise<R>((resolve, reject) => {
+        const run = () => {
+          active++
+          fn(item)
+            .then(resolve, reject)
+            .finally(() => {
+              active--
+              waiting.shift()?.()
+            })
+        }
+        if (active < max) run()
+        else waiting.push(run)
+      }),
+  )
+}
+
+/**
+ * Upload files and insert them as blocks, in the order given. The first one that succeeds takes
+ * the place of the empty paragraph it was dropped on. Errors show in the placeholder for a few
+ * seconds.
+ */
 export async function insertFiles(view: EditorView, files: File[], ctx: EditorContext, at?: number): Promise<void> {
   if (!files.length || !view.editable) return
   const { pos, mode } = insertionPoint(view.state, at)
+  let replace = mode === 'replace'
   const ids = files.map(() => `up-${Math.random().toString(36).slice(2)}-${Date.now()}`)
   view.dispatch(
     view.state.tr.setMeta(uploadKey, {
-      add: files.map((f, i) => placeholderWidget(ids[i], f, i, pos, i === 0 ? mode : 'insert')),
+      add: files.map((f, i) => placeholderWidget(ids[i], f, i, pos)),
     } satisfies UploadMeta),
   )
-  const uploads = files.map((f) => ctx.services().uploadFile(f).then(
-    (r) => ({ ok: true as const, r }),
-    (e: unknown) => ({ ok: false as const, e }),
-  ))
+  const uploads = limited(files, MAX_PARALLEL_UPLOADS, (f) =>
+    ctx.services().uploadFile(f).then(
+      (r) => ({ ok: true as const, r }),
+      (e: unknown) => ({ ok: false as const, e }),
+    ),
+  )
   for (let i = 0; i < files.length; i++) {
     const res = await uploads[i]
     if (view.isDestroyed) return
@@ -100,13 +135,28 @@ export async function insertFiles(view: EditorView, files: File[], ctx: EditorCo
     if (res.ok) {
       const tr = view.state.tr
       const at = widget.from
-      const after = tr.doc.nodeAt(at)
+      const $at = tr.doc.resolve(at)
+      const before = $at.nodeBefore
       const node = nodeFor(res.r)
-      if (i === 0 && mode === 'replace' && after && after.type === N.paragraph && after.content.size === 0) {
-        tr.replaceWith(at, at + after.nodeSize, node)
+      // The page's trailing paragraph (normalizePlugin adds one after an image) lands between the
+      // block just inserted and the waiting placeholders; it is replaced too, so no gaps remain.
+      const trailing = $at.depth === 0 && $at.index() === tr.doc.childCount
+      let caretAfter: number | null = null
+      if ((replace || trailing) && before && before.type === N.paragraph && before.content.size === 0) {
+        const from = at - before.nodeSize
+        const { selection } = view.state
+        // The caret was in that paragraph: keep it typing after the image, not on it.
+        if (selection.from >= from && selection.to <= at) caretAfter = from + node.nodeSize
+        tr.replaceWith(from, at, node)
       } else tr.insert(at, node)
+      replace = false
       tr.setMeta(uploadKey, { remove: ids[i] } satisfies UploadMeta)
       view.dispatch(tr)
+      if (caretAfter !== null) {
+        // After dispatch, so the trailing paragraph normalizePlugin appended is there to take it.
+        const sel = Selection.findFrom(view.state.doc.resolve(caretAfter), 1, true)
+        if (sel) view.dispatch(view.state.tr.setSelection(sel))
+      }
     } else {
       const message = res.e instanceof Error && res.e.message ? res.e.message : t.editor.uploadFailed
       showUploadError(view, ids[i], message)

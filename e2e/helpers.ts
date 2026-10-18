@@ -322,3 +322,38 @@ export async function expectAccessible(page: Page, screen: string): Promise<void
   const found = violations.flatMap((v) => v.nodes.map((n) => `${v.id}: ${n.target.join(' ')} — ${n.failureSummary?.split('\n')[1]?.trim() ?? v.help}`))
   expect(found, `${screen}: accessibility violations`).toEqual([])
 }
+
+// --- Attachments -------------------------------------------------------------------------------
+
+/** Three distinct 2×2 PNGs (red, green, blue), for file choosers. */
+export function threeImages(): Array<{ name: string; mimeType: string; buffer: Buffer }> {
+  return [
+    ['red', 'iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAIAAAD91JpzAAAAEElEQVR4nGP4z8AARAwQCgAf7gP9i18U1AAAAABJRU5ErkJggg=='],
+    ['green', 'iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAIAAAD91JpzAAAAD0lEQVR4nGNg+M8AQhAKABvyA/1tVLjHAAAAAElFTkSuQmCC'],
+    ['blue', 'iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAIAAAD91JpzAAAAD0lEQVR4nGNgYPgPRmAKABf2A/1+6zfzAAAAAElFTkSuQmCC'],
+  ].map(([name, b64]) => ({ name: `${name}.png`, mimeType: 'image/png', buffer: Buffer.from(b64, 'base64') }))
+}
+
+/** The attachments (`_assets/…`) in the repo. */
+export function assetPaths(fake: FakeGitHub): string[] {
+  return fake.listFiles(REPO).filter((p) => p.startsWith('_assets/'))
+}
+
+/** Wait for `count` uploaded images in the editor, failing at the step that went wrong. */
+export async function expectUploadedImages(page: Page, count: number): Promise<void> {
+  const ed = editor(page)
+  await expect(ed.locator('.upload-placeholder, figure.image-block').first(), 'uploads started').toBeVisible()
+  await expect(ed.locator('.upload-placeholder:not(.is-error)'), 'uploads still running').toHaveCount(0, { timeout: 20_000 })
+  // An error shows for a few seconds only: read it straight away.
+  expect(await ed.locator('.upload-placeholder.is-error').allTextContents(), 'upload errors').toEqual([])
+  await expect(ed.locator('figure.image-block'), 'image blocks').toHaveCount(count)
+  await expect(ed.locator('.image-placeholder:not(.is-loading)'), 'images that failed to show').toHaveCount(0)
+  await expect(ed.locator('figure.image-block img'), 'images shown').toHaveCount(count)
+}
+
+/** The editor's top-level blocks: `image`, `empty` (paragraph) or the paragraph's text. */
+export async function topBlocks(page: Page): Promise<string[]> {
+  return editor(page).evaluate((el) =>
+    [...el.children].map((c) => (c.tagName === 'FIGURE' ? 'image' : (c.textContent ?? '') === '' ? 'empty' : (c.textContent ?? ''))),
+  )
+}

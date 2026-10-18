@@ -133,7 +133,7 @@ export function MobileBar() {
             {btn(t.editor.blocks.todo, <SquareCheck size={22} />, () => toggleKind('todo'), { active: block?.kind === 'todo' })}
             {btn(t.editor.blocks.bullet, <List size={22} />, () => toggleKind('bullet'), { active: block?.kind === 'bullet' })}
             {btn(t.editor.camera, <Camera size={22} />, () => {
-              void pickFiles('image/*', false).then((files) => {
+              void pickFiles('image/*').then((files) => {
                 if (files.length) void insertFiles(view, files, ctx)
               })
             })}
