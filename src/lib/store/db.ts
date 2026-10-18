@@ -16,6 +16,25 @@ export interface SearchRow {
   updatedAt: number
 }
 
+/** How an attachment row is kept on disk: the bytes and their MIME type instead of a Blob. */
+type StoredBytes<T extends { blob: Blob }> = Omit<T, 'blob'> & { blob: ArrayBuffer; type: string }
+
+/**
+ * WebKit cannot store a Blob in IndexedDB in a private window ("Error preparing Blob/File data to
+ * be stored in object store"), so `uploads` and `assets` rows are written with `withBytes` and
+ * read back with a Blob again. Rows written as Blobs by earlier versions read as they are.
+ */
+export async function withBytes<T extends { blob: Blob }>(row: T): Promise<T> {
+  const stored: StoredBytes<T> = { ...row, blob: await row.blob.arrayBuffer(), type: row.blob.type }
+  return stored as unknown as T
+}
+
+function readBlob<T extends { blob: Blob }>(row: T | StoredBytes<T> | undefined): T | undefined {
+  if (!row || !(row.blob instanceof ArrayBuffer)) return row as T | undefined
+  const { type, ...rest } = row as StoredBytes<T>
+  return { ...rest, blob: new Blob([rest.blob], { type }) } as unknown as T
+}
+
 /**
  * STORE-1: one IndexedDB database `github-notes`, shared by all tabs (STORE-6).
  * Add a new `this.version(n)` block for every schema change; never edit an old one.
@@ -41,6 +60,8 @@ export class NotesDB extends Dexie {
       sync: 'key',
       search: 'key',
     })
+    this.uploads.hook('reading', readBlob)
+    this.assets.hook('reading', readBlob)
   }
 }
 
