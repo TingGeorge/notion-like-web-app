@@ -60,11 +60,14 @@ function findWidget(state: EditorState, id: string): Decoration | undefined {
 /**
  * Where an upload goes: in place of an empty paragraph, otherwise below the block at `pos` (or at
  * the selection). Inside a list the block goes below the whole list.
+ *
+ * For an empty paragraph the placeholders sit just after it, not at its start: replacing the
+ * paragraph would otherwise delete every placeholder still waiting there.
  */
 function insertionPoint(state: EditorState, at?: number): { pos: number; mode: 'insert' | 'replace' } {
   const ref = at === undefined ? blockAtSelection(state) : blockAtPos(state.doc, at)
   if (!ref) return { pos: state.doc.content.size, mode: 'insert' }
-  if (ref.node.type === N.paragraph && isEmptyBlock(ref.node)) return { pos: ref.pos, mode: 'replace' }
+  if (ref.node.type === N.paragraph && isEmptyBlock(ref.node)) return { pos: ref.pos + ref.node.nodeSize, mode: 'replace' }
   if (ref.node.type === N.list_item) {
     const $p = state.doc.resolve(ref.pos)
     return { pos: $p.after(), mode: 'insert' }
@@ -78,10 +81,15 @@ function nodeFor(result: UploadResult) {
     : N.file.create({ href: result.href, name: result.name })
 }
 
-/** Upload files and insert them as blocks. Errors show in the placeholder for a few seconds. */
+/**
+ * Upload files and insert them as blocks, in the order given. The first one that succeeds takes
+ * the place of the empty paragraph it was dropped on. Errors show in the placeholder for a few
+ * seconds.
+ */
 export async function insertFiles(view: EditorView, files: File[], ctx: EditorContext, at?: number): Promise<void> {
   if (!files.length || !view.editable) return
   const { pos, mode } = insertionPoint(view.state, at)
+  let replace = mode === 'replace'
   const ids = files.map(() => `up-${Math.random().toString(36).slice(2)}-${Date.now()}`)
   view.dispatch(
     view.state.tr.setMeta(uploadKey, {
@@ -100,11 +108,12 @@ export async function insertFiles(view: EditorView, files: File[], ctx: EditorCo
     if (res.ok) {
       const tr = view.state.tr
       const at = widget.from
-      const after = tr.doc.nodeAt(at)
+      const before = tr.doc.resolve(at).nodeBefore
       const node = nodeFor(res.r)
-      if (i === 0 && mode === 'replace' && after && after.type === N.paragraph && after.content.size === 0) {
-        tr.replaceWith(at, at + after.nodeSize, node)
+      if (replace && before && before.type === N.paragraph && before.content.size === 0) {
+        tr.replaceWith(at - before.nodeSize, at, node)
       } else tr.insert(at, node)
+      replace = false
       tr.setMeta(uploadKey, { remove: ids[i] } satisfies UploadMeta)
       view.dispatch(tr)
     } else {

@@ -322,3 +322,19 @@ export async function expectAccessible(page: Page, screen: string): Promise<void
   const found = violations.flatMap((v) => v.nodes.map((n) => `${v.id}: ${n.target.join(' ')} — ${n.failureSummary?.split('\n')[1]?.trim() ?? v.help}`))
   expect(found, `${screen}: accessibility violations`).toEqual([])
 }
+
+// --- Attachments -------------------------------------------------------------------------------
+
+/** Three distinct 2×2 PNGs (red, green, blue), for file choosers. */
+export function threeImages(): Array<{ name: string; mimeType: string; buffer: Buffer }> {
+  return [
+    ['red', 'iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAIAAAD91JpzAAAAEElEQVR4nGP4z8AARAwQCgAf7gP9i18U1AAAAABJRU5ErkJggg=='],
+    ['green', 'iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAIAAAD91JpzAAAAD0lEQVR4nGNg+M8AQhAKABvyA/1tVLjHAAAAAElFTkSuQmCC'],
+    ['blue', 'iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAIAAAD91JpzAAAAD0lEQVR4nGNgYPgPRmAKABf2A/1+6zfzAAAAAElFTkSuQmCC'],
+  ].map(([name, b64]) => ({ name: `${name}.png`, mimeType: 'image/png', buffer: Buffer.from(b64, 'base64') }))
+}
+
+/** The attachments (`_assets/…`) in the repo. */
+export function assetPaths(fake: FakeGitHub): string[] {
+  return fake.listFiles(REPO).filter((p) => p.startsWith('_assets/'))
+}

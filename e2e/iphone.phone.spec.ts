@@ -1,6 +1,6 @@
 /** iPhone layout at 393×852 (M01–M22): home, 所有頁面, page menu sheet, insert-block sheet, settings. */
 import { BASE_URL, attachFake, expect, makeFake, test } from './fixtures'
-import { bodyOf, editor, readRepoFile, setupDevice, syncAndWaitForCommit, titleInput } from './helpers'
+import { assetPaths, bodyOf, editor, readRepoFile, setupDevice, syncAndWaitForCommit, threeImages, titleInput } from './helpers'
 
 const FILES = {
   '工作.md': '---\nid: 01JA8Z3K5N6P7Q8R9S0T1V2W01\n---\n工作首頁\n',
@@ -135,6 +135,25 @@ test.describe('phone', () => {
     await page.waitForTimeout(500)
     await syncAndWaitForCommit(page, fake)
     expect(bodyOf(await readRepoFile(fake, '手機頁.md'))).toBe('# 手機上的標題\n\n- [ ] 買牛奶\n')
+  })
+
+  test('the keyboard toolbar 拍照／圖片 button takes several photos at once', async ({ page, fake }) => {
+    await setupDevice(page)
+    await page.locator('.tabbar').getByRole('button', { name: '新增' }).tap()
+    await titleInput(page).fill('相簿')
+    await titleInput(page).press('Enter')
+    await expect(editor(page)).toBeFocused()
+    const bar = page.getByRole('toolbar', { name: '編輯工具列' })
+    const chooser = page.waitForEvent('filechooser')
+    await bar.getByRole('button', { name: '拍照／圖片' }).tap()
+    const fc = await chooser
+    expect(fc.isMultiple()).toBe(true)
+    await fc.setFiles(threeImages())
+    await expect(editor(page).locator('img')).toHaveCount(3)
+    await page.waitForTimeout(500)
+    await syncAndWaitForCommit(page, fake)
+    expect(assetPaths(fake)).toHaveLength(3)
+    expect([...bodyOf(await readRepoFile(fake, '相簿.md')).matchAll(/!\[\]\(/g)]).toHaveLength(3)
   })
 
   test('settings: sections, auto-sync switch, theme and 立即同步 on the phone', async ({ page, fake }) => {
