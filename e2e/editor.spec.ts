@@ -10,6 +10,7 @@ import {
   commitCount,
   createPage,
   editor,
+  expectUploadedImages,
   forceSync,
   readRepoFile,
   setupDevice,
@@ -327,8 +328,7 @@ test('several images picked at once from the / menu all land in the page (UI-18)
   const fc = await chooser
   expect(fc.isMultiple()).toBe(true)
   await fc.setFiles(threeImages())
-  await expect(editor(page).locator('img')).toHaveCount(3)
-  await expect(editor(page).locator('.upload-placeholder')).toHaveCount(0)
+  await expectUploadedImages(page, 3)
   await page.waitForTimeout(400)
   await syncAndWaitForCommit(page, fake)
   const assets = assetPaths(fake)

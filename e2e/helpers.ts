@@ -338,3 +338,14 @@ export function threeImages(): Array<{ name: string; mimeType: string; buffer: B
 export function assetPaths(fake: FakeGitHub): string[] {
   return fake.listFiles(REPO).filter((p) => p.startsWith('_assets/'))
 }
+
+/** Wait for `count` uploaded images in the editor, failing at the step that went wrong. */
+export async function expectUploadedImages(page: Page, count: number): Promise<void> {
+  const ed = editor(page)
+  await expect(ed.locator('.upload-placeholder, figure.image-block').first(), 'uploads started').toBeVisible()
+  await expect(ed.locator('.upload-placeholder:not(.is-error)'), 'uploads still running').toHaveCount(0, { timeout: 20_000 })
+  await expect(ed.locator('.upload-placeholder.is-error'), 'upload errors').toHaveCount(0)
+  await expect(ed.locator('figure.image-block'), 'image blocks').toHaveCount(count)
+  await expect(ed.locator('.image-placeholder:not(.is-loading)'), 'images that failed to show').toHaveCount(0)
+  await expect(ed.locator('figure.image-block img'), 'images shown').toHaveCount(count)
+}

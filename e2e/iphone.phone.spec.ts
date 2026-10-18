@@ -1,6 +1,6 @@
 /** iPhone layout at 393×852 (M01–M22): home, 所有頁面, page menu sheet, insert-block sheet, settings. */
 import { BASE_URL, attachFake, expect, makeFake, test } from './fixtures'
-import { assetPaths, bodyOf, editor, readRepoFile, setupDevice, syncAndWaitForCommit, threeImages, titleInput } from './helpers'
+import { assetPaths, bodyOf, editor, expectUploadedImages, readRepoFile, setupDevice, syncAndWaitForCommit, threeImages, titleInput } from './helpers'
 
 const FILES = {
   '工作.md': '---\nid: 01JA8Z3K5N6P7Q8R9S0T1V2W01\n---\n工作首頁\n',
@@ -149,7 +149,7 @@ test.describe('phone', () => {
     const fc = await chooser
     expect(fc.isMultiple()).toBe(true)
     await fc.setFiles(threeImages())
-    await expect(editor(page).locator('img')).toHaveCount(3)
+    await expectUploadedImages(page, 3)
     await page.waitForTimeout(500)
     await syncAndWaitForCommit(page, fake)
     expect(assetPaths(fake)).toHaveLength(3)
