@@ -5,6 +5,7 @@ import { generatePairingCode, LONG_CODE_LENGTH, WrongPairingCodeError, type Link
 import {
   fetchLinkGist,
   LINK_GIST_DESCRIPTION,
+  LINK_GIST_SECONDS,
   LINK_GIST_FILE,
   LinkGistNotFoundError,
   NoGistPermissionError,
@@ -36,7 +37,9 @@ describe('linking by typing a code (LINK-5)', () => {
 
   it('publishes the encrypted payload in a public gist that the new device reads without a token', async () => {
     const code = generatePairingCode(LONG_CODE_LENGTH)
-    const id = await publishLinkGist(client(TOKEN), data, code)
+    const { id, login } = await publishLinkGist(client(TOKEN), data, code)
+    // The login to type is the one GitHub filed the gist under.
+    expect(login).toBe('me')
     const [gist] = gh.gistsOf('me')
     expect(gist.id).toBe(id)
     expect(gist.public).toBe(true)
@@ -50,6 +53,8 @@ describe('linking by typing a code (LINK-5)', () => {
     const anonymous = client('')
     const found = await fetchLinkGist(anonymous, 'me', code.toLowerCase())
     expect(found).toEqual({ data, gistId: id })
+    // GitHub logins are case-insensitive.
+    expect((await fetchLinkGist(anonymous, 'ME', code)).gistId).toBe(id)
     // The anonymous requests carry no Authorization header.
     expect(gh.requests.filter((r) => r.path.startsWith('/users/me/gists') || r.path === `/gists/${id}`).length).toBeGreaterThan(0)
   }, 30_000)
@@ -71,7 +76,7 @@ describe('linking by typing a code (LINK-5)', () => {
   it('ignores other gists and finds the right one among recent link gists', async () => {
     const source = client(TOKEN)
     await source.createGist({ description: 'my snippet', filename: 'a.js', content: 'x', public: true })
-    const first = await publishLinkGist(source, data, 'K7QM2XPA9H')
+    const { id: first } = await publishLinkGist(source, data, 'K7QM2XPA9H')
     await publishLinkGist(source, { ...data, r: 'other' }, 'ABCDE23456')
     expect((await fetchLinkGist(client(''), 'me', 'K7QM2XPA9H')).gistId).toBe(first)
   }, 60_000)
@@ -82,18 +87,18 @@ describe('linking by typing a code (LINK-5)', () => {
     expect(gh.gistsOf('me')).toEqual([])
   }, 30_000)
 
-  it('removes leftover link gists but keeps other gists', async () => {
+  it('removes link gists older than a code lives, keeping younger ones and other gists', async () => {
     const source = client(TOKEN)
     await source.createGist({ description: 'my snippet', filename: 'a.js', content: 'x', public: true })
-    await publishLinkGist(source, data, 'K7QM2XPA9H')
-    const keep = await publishLinkGist(source, data, 'ABCDE23456')
-    await removeLinkGists(source, keep)
-    expect(gh.gistsOf('me').map((g) => g.id)).toEqual([keep, expect.any(String)])
-    expect(gh.gistsOf('me')[1].description).toBe('my snippet')
+    const { id } = await publishLinkGist(source, data, 'K7QM2XPA9H')
+    await publishLinkGist(source, data, 'ABCDE23456')
+    // Codes still on show (in another tab or device) are left alone.
     await removeLinkGists(source)
+    expect(gh.gistsOf('me')).toHaveLength(3)
+    await removeLinkGists(source, Date.now() + LINK_GIST_SECONDS * 1000)
     expect(gh.gistsOf('me').map((g) => g.description)).toEqual(['my snippet'])
     // Deleting a gist that is already gone is fine.
-    await source.deleteGist(keep)
+    await source.deleteGist(id)
   }, 30_000)
 
   it('normalises the GitHub account', () => {

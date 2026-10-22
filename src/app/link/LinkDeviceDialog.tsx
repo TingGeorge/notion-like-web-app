@@ -18,7 +18,7 @@ import { errorMessage, type LinkCrypto } from '../setup/deps'
 import type { Workspace } from '../../lib/types'
 import { t } from '../../strings'
 import { Button, IconButton, Modal, Spinner } from '../../ui/primitives'
-import { rememberLinkGist } from './linkGist'
+import { forgetLinkGist, rememberLinkGist } from './linkGist'
 import { qrPath } from './qrSvg'
 import { useIsPhone } from './useIsPhone'
 import './link.css'
@@ -149,7 +149,7 @@ function Inner({ onClose, workspace, linkCrypto = realCrypto, createClient }: Li
           </span>
         ))}
       </p>
-      <CodePanel state={codeLink} login={workspace.login} classic={workspace.token.startsWith('ghp_')} onRetry={codeLink.generate} />
+      <CodePanel state={codeLink} classic={workspace.token.startsWith('ghp_')} onRetry={() => void codeLink.generate()} />
       {codeLink.shown && !codeLink.shown.linked && (
         <>
           <div className="link-warning">
@@ -265,6 +265,8 @@ function Inner({ onClose, workspace, linkCrypto = realCrypto, createClient }: Li
 interface CodeShown {
   code: string
   gistId: string
+  /** The account the gist was created under (what the new device types). */
+  login: string
   deadline: number
   /** The new device has read (and deleted) the gist. */
   linked: boolean
@@ -298,7 +300,7 @@ function useCodeLink(workspace: Workspace, linkCrypto: LinkCrypto, createClient?
     if (!id) return
     void client
       .deleteGist(id)
-      .then(() => rememberLinkGist(null))
+      .then(() => forgetLinkGist(id))
       .catch(() => undefined)
   }, [client])
 
@@ -319,15 +321,21 @@ function useCodeLink(workspace: Workspace, linkCrypto: LinkCrypto, createClient?
       const code = linkCrypto.generatePairingCode(LONG_CODE_LENGTH)
       // Leftovers of earlier codes (an app closed while one was shown). Publishing reports real problems.
       await removeLinkGists(client).catch(() => undefined)
+      // Closed or replaced meanwhile: publish nothing.
+      if (mine !== generation.current) return
       const data = { o: workspace.owner, r: workspace.repo, b: workspace.branch, t: workspace.token, e: workspace.tokenExpiresOn }
-      const id = await publishLinkGist(client, data, code)
+      const { id, login } = await publishLinkGist(client, data, code)
+      // Kept in mind first, so a gist that outlives this page is deleted at the next start.
+      await rememberLinkGist(id).catch(() => undefined)
       if (mine !== generation.current) {
-        void client.deleteGist(id).catch(() => undefined)
+        void client
+          .deleteGist(id)
+          .then(() => forgetLinkGist(id))
+          .catch(() => undefined)
         return
       }
       live.current = id
-      void rememberLinkGist(id).catch(() => undefined)
-      setShown({ code, gistId: id, deadline: Date.now() + LINK_GIST_SECONDS * 1000, linked: false })
+      setShown({ code, gistId: id, login: login ?? workspace.login, deadline: Date.now() + LINK_GIST_SECONDS * 1000, linked: false })
       setSeconds(LINK_GIST_SECONDS)
     } catch (e) {
       if (mine === generation.current) setError(e instanceof NoGistPermissionError ? { kind: 'no-permission' } : { kind: 'failed', message: errorMessage(e) })
@@ -361,7 +369,7 @@ function useCodeLink(workspace: Workspace, linkCrypto: LinkCrypto, createClient?
         .then((content) => {
           if (stopped || content !== null || live.current !== watching) return
           live.current = null
-          void rememberLinkGist(null).catch(() => undefined)
+          void forgetLinkGist(watching).catch(() => undefined)
           setShown((s) => (s && s.gistId === watching ? { ...s, linked: true } : s))
         })
         .catch(() => undefined)
@@ -371,6 +379,16 @@ function useCodeLink(workspace: Workspace, linkCrypto: LinkCrypto, createClient?
       clearInterval(id)
     }
   }, [client, watching])
+
+  // Closing the page deletes the gist, as far as the browser lets it.
+  useEffect(() => {
+    const onPageHide = () => {
+      const id = live.current
+      if (id) void client.deleteGist(id, { keepalive: true }).catch(() => undefined)
+    }
+    window.addEventListener('pagehide', onPageHide)
+    return () => window.removeEventListener('pagehide', onPageHide)
+  }, [client])
 
   // Closing the dialog deletes the gist.
   useEffect(
@@ -384,13 +402,17 @@ function useCodeLink(workspace: Workspace, linkCrypto: LinkCrypto, createClient?
   return { shown, busy, error, seconds, generate, hide }
 }
 
-function CodePanel({ state, login, classic, onRetry }: { state: CodeLinkState; login: string; classic: boolean; onRetry(): void }) {
-  const { shown, error } = state
+function CodePanel({ state, classic, onRetry }: { state: CodeLinkState; classic: boolean; onRetry(): void }) {
+  const { shown, error, busy } = state
   if (shown?.linked) {
     return (
       <div className="code-card is-linked" role="status">
         <CircleCheck size={28} aria-hidden="true" />
         <p>{t.link.codeLinked}</p>
+        {/* The new device may still cancel its confirmation, and its code is gone. */}
+        <Button size="sm" onClick={onRetry}>
+          {t.link.regenerate}
+        </Button>
       </div>
     )
   }
@@ -398,7 +420,7 @@ function CodePanel({ state, login, classic, onRetry }: { state: CodeLinkState; l
     return (
       <div className="code-card">
         <div className="link-code-label">{t.link.accountLabel}</div>
-        <div className="code-account">{login}</div>
+        <div className="code-account">{shown.login}</div>
         <div className="link-code-label">{t.link.pairingCode}</div>
         <div className="link-code" aria-live="polite">
           {formatPairingCode(shown.code)}
@@ -424,9 +446,20 @@ function CodePanel({ state, login, classic, onRetry }: { state: CodeLinkState; l
       </div>
     )
   }
+  if (busy) {
+    return (
+      <div className="code-card is-busy">
+        <Spinner size={16} /> <span>{t.link.generating}</span>
+      </div>
+    )
+  }
+  // The code expired (or was hidden): offer a new one.
   return (
-    <div className="code-card is-busy">
-      <Spinner size={16} /> <span>{t.link.generating}</span>
+    <div className="code-card is-expired">
+      <p>{t.link.codeExpired}</p>
+      <Button variant="primary" onClick={onRetry}>
+        {t.link.regenerate}
+      </Button>
     </div>
   )
 }

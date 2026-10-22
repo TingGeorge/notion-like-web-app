@@ -157,6 +157,11 @@
   line-height: 20px;
   color: var(--text-primary);
 }
+.code-card.is-expired {
+  gap: 12px;
+  font-size: 14px;
+  color: var(--text-secondary);
+}
 .code-card.is-error {
   gap: 8px;
   max-width: 340px;

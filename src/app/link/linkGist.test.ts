@@ -3,7 +3,7 @@ import { FakeGitHub } from '../../../test/fake-github'
 import { GitHubClient } from '../../lib/github/client'
 import { LINK_GIST_SECONDS, publishLinkGist } from '../../lib/link/gist'
 import { db, NotesDB, setDb } from '../../lib/store/db'
-import { deleteLeftoverLinkGist, rememberLinkGist } from './linkGist'
+import { deleteLeftoverLinkGist, forgetLinkGist, rememberLinkGist } from './linkGist'
 
 const TOKEN = 'github_pat_11SOURCE_token_value_0123456789'
 let gh: FakeGitHub
@@ -18,14 +18,15 @@ beforeEach(() => {
 })
 
 describe('a link gist left behind (LINK-5)', () => {
-  it('is deleted at the next start once a code would have expired', async () => {
-    const id = await publishLinkGist(client, { o: 'me', r: 'diary', b: 'main', t: TOKEN, e: null }, 'K7QM2XPA9H')
+  it('is deleted at the next start once a code would have expired; until then, says when to try again', async () => {
+    const { id } = await publishLinkGist(client, { o: 'me', r: 'diary', b: 'main', t: TOKEN, e: null }, 'K7QM2XPA9H')
     await rememberLinkGist(id)
     const createdAt = ((await db().config.get('linkGist'))?.value as { createdAt: number }).createdAt
-    // A code still being shown (in another tab) is left alone.
-    await deleteLeftoverLinkGist(client, createdAt + 1000)
+    // A code still being shown (in another tab) is left alone, and looked at again after it expires.
+    const wait = await deleteLeftoverLinkGist(client, createdAt + 1000)
+    expect(wait).toBe(LINK_GIST_SECONDS * 1000 - 1000 + 1000)
     expect(gh.gistsOf('me')).toHaveLength(1)
-    await deleteLeftoverLinkGist(client, createdAt + LINK_GIST_SECONDS * 1000)
+    expect(await deleteLeftoverLinkGist(client, createdAt + LINK_GIST_SECONDS * 1000)).toBeNull()
     expect(gh.gistsOf('me')).toHaveLength(0)
     expect(await db().config.get('linkGist')).toBeUndefined()
   }, 30_000)
@@ -33,13 +34,16 @@ describe('a link gist left behind (LINK-5)', () => {
   it('is kept in mind when GitHub cannot be reached', async () => {
     await rememberLinkGist('aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa1')
     gh.offline = true
-    await deleteLeftoverLinkGist(client, Date.now() + LINK_GIST_SECONDS * 1000)
+    expect(await deleteLeftoverLinkGist(client, Date.now() + LINK_GIST_SECONDS * 1000)).toBeNull()
     expect(await db().config.get('linkGist')).toBeDefined()
   })
 
-  it('is forgotten once deleted by the dialog', async () => {
+  it('is forgotten once deleted, unless another gist was remembered since', async () => {
     await rememberLinkGist('aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa1')
-    await rememberLinkGist(null)
+    await rememberLinkGist('aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa2')
+    await forgetLinkGist('aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa1')
+    expect((await db().config.get('linkGist'))?.value).toMatchObject({ id: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa2' })
+    await forgetLinkGist('aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa2')
     expect(await db().config.get('linkGist')).toBeUndefined()
   })
 })

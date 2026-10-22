@@ -6,19 +6,32 @@ import type { GitHubClient } from '../../lib/github/client'
 import { LINK_GIST_SECONDS } from '../../lib/link/gist'
 import { db } from '../../lib/store/db'
 
-export async function rememberLinkGist(id: string | null): Promise<void> {
-  if (id) await db().config.put({ key: 'linkGist', value: { id, createdAt: Date.now() } })
-  else await db().config.delete('linkGist')
+export async function rememberLinkGist(id: string): Promise<void> {
+  await db().config.put({ key: 'linkGist', value: { id, createdAt: Date.now() } })
 }
 
-/** Deletes the remembered gist once it is older than a code lives (a code shown in another tab is left alone). */
-export async function deleteLeftoverLinkGist(client: GitHubClient, now = Date.now()): Promise<void> {
+/** Forget `id` once it is deleted; a gist another tab remembered since is kept in mind. */
+export async function forgetLinkGist(id: string): Promise<void> {
+  await db().transaction('rw', db().config, async () => {
+    const row = await db().config.get('linkGist')
+    if (row?.key === 'linkGist' && row.value.id === id) await db().config.delete('linkGist')
+  })
+}
+
+/**
+ * Deletes the remembered gist once it is older than a code lives (a code shown in another tab is
+ * left alone). Returns how many milliseconds to wait before calling again, or null when done.
+ */
+export async function deleteLeftoverLinkGist(client: GitHubClient, now = Date.now()): Promise<number | null> {
   const row = await db().config.get('linkGist')
-  if (row?.key !== 'linkGist' || now - row.value.createdAt < LINK_GIST_SECONDS * 1000) return
+  if (row?.key !== 'linkGist') return null
+  const left = row.value.createdAt + LINK_GIST_SECONDS * 1000 - now
+  if (left > 0) return left + 1000
   try {
     await client.deleteGist(row.value.id)
-    await db().config.delete('linkGist')
+    await forgetLinkGist(row.value.id)
   } catch {
     // Offline or no longer allowed: try again at the next start.
   }
+  return null
 }

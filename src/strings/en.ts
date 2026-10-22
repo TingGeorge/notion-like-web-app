@@ -303,6 +303,7 @@ export const en: Strings = {
     codeWarning: 'The account and code together are as good as your token. Don’t show them to anyone.',
     codeExpiresIn: (s: number) => `Expires in ${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`,
     codeLinked: 'The new device has your setup. You can close this window.',
+    codeExpired: 'The code has expired.',
     noGistPermission: 'This token has no Gists permission, so it cannot link with a code.',
     noGistPermissionSteps: 'Edit the token on GitHub: under Account permissions set Gists to Read and write, save, and try again.',
     noGistScopeSteps: 'Edit this classic token on GitHub, tick gist, save, and try again.',

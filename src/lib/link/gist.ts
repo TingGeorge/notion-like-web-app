@@ -42,19 +42,26 @@ export function normalizeLogin(input: string): string | null {
   return /^[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?$/.test(login) ? login : null
 }
 
-/** Source device: encrypt the link data with `code` and leave it in a new public gist. Returns its id. */
-export async function publishLinkGist(client: GitHubClient, data: LinkData, code: string): Promise<string> {
+/**
+ * Source device: encrypt the link data with `code` and leave it in a new public gist. Returns its id
+ * and the login it was created under (the one the new device must type, even after a rename).
+ */
+export async function publishLinkGist(client: GitHubClient, data: LinkData, code: string): Promise<{ id: string; login: string | null }> {
   const payload = await encryptLinkPayload(data, code)
-  const id = await client.createGist({ description: LINK_GIST_DESCRIPTION, filename: LINK_GIST_FILE, content: payload, public: true })
-  if (id === null) throw new NoGistPermissionError()
-  return id
+  const gist = await client.createGist({ description: LINK_GIST_DESCRIPTION, filename: LINK_GIST_FILE, content: payload, public: true })
+  if (gist === null) throw new NoGistPermissionError()
+  return gist
 }
 
-/** Source device: delete every link gist of the account except `keep` (leftovers of earlier codes). */
-export async function removeLinkGists(client: GitHubClient, keep?: string): Promise<void> {
+/**
+ * Source device: delete link gists older than a code lives (left by an app closed while a code was
+ * shown). Younger ones may be on show in another tab or device, and are left alone.
+ */
+export async function removeLinkGists(client: GitHubClient, now = Date.now()): Promise<void> {
   const gists = await client.listOwnGists()
   for (const g of gists) {
-    if (g.id !== keep && g.files.includes(LINK_GIST_FILE) && g.description === LINK_GIST_DESCRIPTION) await client.deleteGist(g.id)
+    const young = now - Date.parse(g.createdAt) < LINK_GIST_SECONDS * 1000
+    if (g.files.includes(LINK_GIST_FILE) && g.description === LINK_GIST_DESCRIPTION && !young) await client.deleteGist(g.id)
   }
 }
 

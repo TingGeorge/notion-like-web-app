@@ -81,6 +81,7 @@ interface RawGist {
   id: string
   description: string | null
   created_at: string
+  owner?: { login: string } | null
   files: Record<string, { filename?: string; content?: string; truncated?: boolean } | null>
 }
 
@@ -137,6 +138,8 @@ interface RequestOptions {
   etag?: string | null
   /** Status codes that are returned instead of thrown. */
   allow?: number[]
+  /** Sent even if the page is being unloaded (`fetch` keepalive), and not queued. */
+  keepalive?: boolean
 }
 
 /** The `Device:` trailer of a commit message (SYNC-9), or null. The last one wins. */
@@ -223,6 +226,7 @@ export class GitHubClient {
         cache: 'no-store',
         credentials: 'omit',
         redirect: 'follow',
+        ...(opts.keepalive ? { keepalive: true } : {}),
       })
     } catch {
       throw new GitHubError('network', 0, 'Network error')
@@ -325,11 +329,11 @@ export class GitHubClient {
   // Gists, the mailbox of linking by typing a code (LINK-5)
 
   /**
-   * `POST /gists` with one text file. Returns the gist id, or null when the token may not create
-   * gists (a fine-grained token without Gists: Read and write answers 403, a classic token without
-   * the `gist` scope 404).
+   * `POST /gists` with one text file. Returns the gist id and its owner's login, or null when the
+   * token may not create gists (a fine-grained token without Gists: Read and write answers 403, a
+   * classic token without the `gist` scope 404).
    */
-  async createGist(opts: { description: string; filename: string; content: string; public: boolean }): Promise<string | null> {
+  async createGist(opts: { description: string; filename: string; content: string; public: boolean }): Promise<{ id: string; login: string | null } | null> {
     const res = await this.request('POST', '/gists', {
       body: { description: opts.description, public: opts.public, files: { [opts.filename]: { content: opts.content } } },
       allow: [403, 404],
@@ -342,12 +346,18 @@ export class GitHubClient {
       }
       return null
     }
-    return ((await res.json()) as RawGist).id
+    const gist = (await res.json()) as RawGist
+    return { id: gist.id, login: gist.owner?.login ?? null }
   }
 
-  /** `DELETE /gists/{id}`. A gist that is already gone is not an error. */
-  async deleteGist(id: string): Promise<void> {
-    await this.request('DELETE', `/gists/${encodeURIComponent(id)}`, { allow: [404] })
+  /**
+   * `DELETE /gists/{id}`. A gist that is already gone is not an error. `keepalive` sends it at once
+   * and lets it finish while the page unloads.
+   */
+  async deleteGist(id: string, opts: { keepalive?: boolean } = {}): Promise<void> {
+    const path = `/gists/${encodeURIComponent(id)}`
+    if (opts.keepalive) await this.send('DELETE', path, { allow: [404], keepalive: true })
+    else await this.request('DELETE', path, { allow: [404] })
   }
 
   /** `GET /gists/{id}` → the file's text, or null when the gist or the file does not exist. */

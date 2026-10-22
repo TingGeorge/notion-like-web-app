@@ -302,6 +302,7 @@ export const zhTW = {
     codeWarning: '帳號加上配對碼等於你的 token，不要給別人看。',
     codeExpiresIn: (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')} 後失效`,
     codeLinked: '新裝置已取得設定，可以關閉這個視窗了。',
+    codeExpired: '配對碼已失效。',
     noGistPermission: '這把 token 沒有 Gists 權限，所以不能用配對碼連結。',
     noGistPermissionSteps: '到 GitHub 編輯這把 token，在 Account permissions 把 Gists 設為 Read and write，存檔後再試一次。',
     noGistScopeSteps: '到 GitHub 編輯這把 classic token，勾選 gist，存檔後再試一次。',

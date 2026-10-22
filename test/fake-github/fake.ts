@@ -485,7 +485,9 @@ export class FakeGitHub {
     if (url.origin !== API_ORIGIN) throw new TypeError(`fake GitHub: unexpected origin ${url.origin}`)
     // CORS preflight: any non-safelisted request header must be allowed by GitHub.
     const allowed = new Set(ALLOWED_REQUEST_HEADERS.map((h) => h.toLowerCase()))
-    for (const [name, value] of req.headers) {
+    for (const [raw, value] of req.headers) {
+      // Header names are case-insensitive (some DOM implementations keep the casing they were given).
+      const name = raw.toLowerCase()
       if (SAFELISTED_REQUEST_HEADERS.includes(name)) continue
       if (name === 'content-type' && SIMPLE_CONTENT_TYPES.includes(value.split(';')[0].trim())) continue
       if (!allowed.has(name)) throw new TypeError(`Failed to fetch (CORS: request header ${name} is not allowed)`)
@@ -1385,10 +1387,11 @@ export class FakeGitHub {
     )
   }
 
-  /** Public gists only, unless the caller is the owner. No token needed. */
+  /** Public gists only, unless the caller is the owner. No token needed. Logins are case-insensitive. */
   private listUserGists(ctx: Ctx): Response {
-    const login = decodeURIComponent(ctx.match[0])
-    if (!this.users.has(login)) throw new HttpError(404, 'Not Found')
+    const typed = decodeURIComponent(ctx.match[0]).toLowerCase()
+    const login = [...this.users.keys()].find((l) => l.toLowerCase() === typed)
+    if (!login) throw new HttpError(404, 'Not Found')
     const own = ctx.auth?.user.login === login
     return this.listGists(
       ctx,

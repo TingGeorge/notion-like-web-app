@@ -33,12 +33,13 @@ export function CodeLinkScreen({ createClient, onCancel, onLinked, retryDelaysMs
   const [codeWrong, setCodeWrong] = useState(false)
   const [inputKey, setInputKey] = useState(0)
   const alive = useRef(true)
-  useEffect(
-    () => () => {
+  useEffect(() => {
+    // Set again on mount: StrictMode mounts, cleans up and mounts once more.
+    alive.current = true
+    return () => {
       alive.current = false
-    },
-    [],
-  )
+    }
+  }, [])
 
   const account = normalizeLogin(login)
   const ready = account !== null && code.length === LONG_CODE_LENGTH

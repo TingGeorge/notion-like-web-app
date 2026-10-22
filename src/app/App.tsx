@@ -37,7 +37,12 @@ export function App() {
         const s = startSession(workspace, device)
         s.engine.start()
         preloadSearch()
-        void deleteLeftoverLinkGist(createClient(workspace.token))
+        const gists = createClient(workspace.token)
+        const cleanUp = () =>
+          void deleteLeftoverLinkGist(gists).then((wait) => {
+            if (wait !== null) setTimeout(cleanUp, wait)
+          })
+        cleanUp()
       }
       const resume = resumeRow && resumeRow.key === 'resume' ? resumeRow.value : null
       setBoot({ state: 'ready', workspace, device, resume, safariAccepted: prefs.safariTabModeAccepted ?? false })

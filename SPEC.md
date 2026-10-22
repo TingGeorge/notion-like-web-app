@@ -473,13 +473,14 @@ The editor document is converted to and from Markdown (CommonMark 0.31 + GFM) as
   - **Why a gist**: there is no server, and the new device has no token yet, so the only place both devices can reach is a public gist of the user's account on `api.github.com` (ARCH-3).
   - **Source device**: 連結新裝置 → 「新裝置沒有相機？改用配對碼」.
     - It creates a 10-character code from the LINK-1 alphabet, shown as `XXXXX-XXXXX`, and encrypts the LINK-1 payload with it (same key derivation).
-    - It deletes earlier link gists, then `POST /gists` one public gist: description `GitHub Notes: device link (deleted automatically)`, file `github-notes-link.txt` holding the payload.
-    - It shows the GitHub login and the code, the warning 「帳號加上配對碼等於你的 token，不要給別人看。」 and a 5-minute countdown. They stay while the window is hidden, because the phone may lock while the user types on the other device.
-    - Every 3 s it checks the gist; once the new device has deleted it, it shows 「新裝置已取得設定」.
-    - It deletes the gist when the code expires, is replaced (「重新產生」), or the dialog closes. The gist id is kept in `config.linkGist`, so a gist left by an app that was closed meanwhile is deleted at the next start.
+    - It deletes link gists older than 5 minutes (left by an app that was closed), then `POST /gists` one public gist: description `GitHub Notes: device link (deleted automatically)`, file `github-notes-link.txt` holding the payload. Younger link gists may be on show in another tab or device and are left alone.
+    - It shows the login from the `POST /gists` answer (current even after a rename) and the code, the warning 「帳號加上配對碼等於你的 token，不要給別人看。」 and a 5-minute countdown. They stay while the window is hidden, because the phone may lock while the user types on the other device.
+    - Every 3 s it checks the gist; once the new device has deleted it, it shows 「新裝置已取得設定」 with 「重新產生」, in case the new device cancels.
+    - It deletes the gist when the code expires (then 「配對碼已失效」 offers 「重新產生」), is replaced, or the dialog closes, and with a `keepalive` request when the page is closed.
+    - The gist id is kept in `config.linkGist` before anything else, so a gist that outlives the page is deleted at the next start, or once it is 5 minutes old if the app starts sooner.
     - The token needs the Gists account permission (Read and write), or the `gist` scope for a classic token. Without it, `POST /gists` answers `403` / `404`, and the dialog explains how to add it on github.com, with 「在 GitHub 編輯 token ↗」 and 「重試」.
   - **New device**: 「沒有相機？用配對碼連結」 on D01/M01, or 「改用配對碼」 on M15, asks for the GitHub account and the code.
-    1. Without a token, it lists `GET /users/{login}/gists` and reads the newest three link gists with `GET /gists/{id}`. A gist made a moment ago may not be listed yet, so it looks again after 2, 4 and 6 s.
+    1. Without a token, it lists `GET /users/{login}/gists` and reads the newest three link gists with `GET /gists/{id}`. A gist made a moment ago may not be listed yet, so it looks again, waiting 2, 4 and 6 s between tries.
     2. It decrypts each with the code. None found: 「找不到配對碼…」. None opens: 「配對碼不正確，請再確認一次。」. Unknown account: 「找不到這個 GitHub 帳號」.
     3. It deletes the gist with the token it got, then continues at M22 (LINK-3 step 2) without asking for a code.
 
@@ -655,7 +656,11 @@ Markdown shortcuts, applied only after composition ends:
   - Users who prefer separate tokens per device can skip QR linking and paste a different token on each device.
   - A lost device: revoke the token. The notes remain in the repo.
 - **SEC-8** The QR code alone links a device: it carries the pairing code with the payload (LINK-1), so anyone who photographs it while it is shown can read the token. That is why it appears only on request, hides after 60 s or when the window is hidden, and carries a warning (LINK-2). The setup code is text that clipboard history can keep, so it stays encrypted with a pairing code shown only on the source device. The new device always shows which account and repo it is about to link to (LINK-3), so a planted QR code cannot silently point it at someone else's repo.
-- **SEC-9** Linking by typing (LINK-5) puts the encrypted payload in a public gist for up to 5 minutes (longer only if the app is closed while the code is shown; it is then deleted at the next start), so anyone can download it while it exists. It is protected by the 10-character code (about 50 bits) and PBKDF2 with 600,000 iterations, which makes an offline search impractical. The gist is deleted by the new device as soon as it has read it, and by the source device when the code expires or is closed. The account and the code are shown only on request, with a warning, and the new device still confirms the account and repo (LINK-3).
+- **SEC-9** Linking by typing (LINK-5) puts the encrypted payload in a public gist for up to 5 minutes (longer only if the app is closed while the code is shown, or a phone sleeps through the countdown; it is then deleted at the next start).
+  - Public gists are collected by crawlers, so the ciphertext must be assumed kept forever: deleting the gist does not end an offline attack, the token's lifetime does.
+  - It is protected by the 10-character code (31^10, about 2^49.5) and PBKDF2 with 600,000 iterations: at about 15,000 guesses a second on a current GPU, an average search takes some 900 GPU-years.
+  - The gist is deleted by the new device as soon as it has read it, and by the source device when the code expires or is closed. The account and the code are shown only on request, with a warning, and the new device still confirms the account and repo (LINK-3).
+  - A token that may be exposed is revoked on github.com (SEC-7).
 
 ## 9. Non-functional requirements
 
