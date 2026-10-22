@@ -1,6 +1,6 @@
 /**
- * LINK-3 / M22: eight boxes for `XXXX-XXXX`. Auto-advance, backspace goes back, paste fills all boxes,
- * input is uppercased and limited to the pairing alphabet.
+ * LINK-3 / M22: eight boxes for `XXXX-XXXX` (ten for the LINK-5 code, `XXXXX-XXXXX`). Auto-advance,
+ * backspace goes back, paste fills all boxes, input is uppercased and limited to the pairing alphabet.
  */
 import { useEffect, useRef } from 'react'
 import { PAIRING_ALPHABET } from '../../lib/link/crypto'
@@ -21,7 +21,7 @@ export function sanitizePairingInput(raw: string): string {
  * Applies what the user typed into box `index` to the current value.
  * `raw` is the box's new content. Returns the new value and the box to focus next.
  */
-export function applyPairingInput(value: string, index: number, raw: string): { value: string; focus: number } {
+export function applyPairingInput(value: string, index: number, raw: string, length = PAIRING_LENGTH): { value: string; focus: number } {
   const chars = sanitizePairingInput(raw)
   if (chars === '') {
     // Cleared the box: remove that character.
@@ -29,21 +29,23 @@ export function applyPairingInput(value: string, index: number, raw: string): { 
     return { value: next, focus: index }
   }
   const at = Math.min(index, value.length)
-  const next = (value.slice(0, at) + chars + value.slice(at + (index < value.length ? 1 : 0))).slice(0, PAIRING_LENGTH)
-  return { value: next, focus: Math.min(at + chars.length, PAIRING_LENGTH - 1) }
+  const next = (value.slice(0, at) + chars + value.slice(at + (index < value.length ? 1 : 0))).slice(0, length)
+  return { value: next, focus: Math.min(at + chars.length, length - 1) }
 }
 
 export interface PairingInputProps {
   value: string
   onChange(value: string): void
-  /** Called when the 8th character has been entered. */
+  /** Called when the last character has been entered. */
   onComplete?(value: string): void
+  /** Number of boxes. Default 8. */
+  length?: number
   disabled?: boolean
   invalid?: boolean
   autoFocus?: boolean
 }
 
-export function PairingInput({ value, onChange, onComplete, disabled, invalid, autoFocus }: PairingInputProps) {
+export function PairingInput({ value, onChange, onComplete, disabled, invalid, autoFocus, length = PAIRING_LENGTH }: PairingInputProps) {
   const refs = useRef<(HTMLInputElement | null)[]>([])
   const pendingFocus = useRef<number | null>(null)
 
@@ -55,7 +57,7 @@ export function PairingInput({ value, onChange, onComplete, disabled, invalid, a
     }
   })
   useEffect(() => {
-    if (autoFocus) refs.current[Math.min(value.length, PAIRING_LENGTH - 1)]?.focus()
+    if (autoFocus) refs.current[Math.min(value.length, length - 1)]?.focus()
     // Only on mount.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -63,11 +65,11 @@ export function PairingInput({ value, onChange, onComplete, disabled, invalid, a
   const commit = (next: string, focus: number) => {
     pendingFocus.current = focus
     onChange(next)
-    if (next.length === PAIRING_LENGTH && next !== value) onComplete?.(next)
+    if (next.length === length && next !== value) onComplete?.(next)
   }
 
   const boxes = []
-  for (let i = 0; i < PAIRING_LENGTH; i++) {
+  for (let i = 0; i < length; i++) {
     boxes.push(
       <input
         key={i}
@@ -81,12 +83,12 @@ export function PairingInput({ value, onChange, onComplete, disabled, invalid, a
         autoCorrect="off"
         autoComplete="off"
         spellCheck={false}
-        maxLength={PAIRING_LENGTH}
+        maxLength={length}
         disabled={disabled}
         aria-label={t.link.codeBoxLabel(i + 1)}
         onFocus={(e) => e.currentTarget.select()}
         onChange={(e) => {
-          const r = applyPairingInput(value, i, e.target.value)
+          const r = applyPairingInput(value, i, e.target.value, length)
           commit(r.value, r.focus)
         }}
         onKeyDown={(e) => {
@@ -96,19 +98,19 @@ export function PairingInput({ value, onChange, onComplete, disabled, invalid, a
           } else if (e.key === 'ArrowLeft' && i > 0) {
             e.preventDefault()
             refs.current[i - 1]?.focus()
-          } else if (e.key === 'ArrowRight' && i < PAIRING_LENGTH - 1) {
+          } else if (e.key === 'ArrowRight' && i < length - 1) {
             e.preventDefault()
             refs.current[i + 1]?.focus()
           }
         }}
         onPaste={(e) => {
           e.preventDefault()
-          const next = sanitizePairingInput(e.clipboardData.getData('text')).slice(0, PAIRING_LENGTH)
-          if (next) commit(next, Math.min(next.length, PAIRING_LENGTH - 1))
+          const next = sanitizePairingInput(e.clipboardData.getData('text')).slice(0, length)
+          if (next) commit(next, Math.min(next.length, length - 1))
         }}
       />,
     )
-    if (i === 3) {
+    if (i === Math.ceil(length / 2) - 1) {
       boxes.push(
         <span key="dash" className="pair-dash" aria-hidden="true">
           –

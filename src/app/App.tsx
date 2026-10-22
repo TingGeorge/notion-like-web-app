@@ -14,6 +14,7 @@ import { DesktopShell, MobileShell } from './layout/Shells'
 import { OverlayHost } from './OverlayHost'
 import { registerServiceWorker } from './pwa'
 import { navigate, useRoute } from './router'
+import { deleteLeftoverLinkGist } from './link/linkGist'
 import { createClient, loadDevice, loadUi, loadWorkspace, onNotice, preloadSearch, saveWorkspace, session, startSession, updateUi } from './session'
 import { useTheme } from './shortcuts'
 import { runInitialSync } from './workspaceAdmin'
@@ -36,6 +37,7 @@ export function App() {
         const s = startSession(workspace, device)
         s.engine.start()
         preloadSearch()
+        void deleteLeftoverLinkGist(createClient(workspace.token))
       }
       const resume = resumeRow && resumeRow.key === 'resume' ? resumeRow.value : null
       setBoot({ state: 'ready', workspace, device, resume, safariAccepted: prefs.safariTabModeAccepted ?? false })

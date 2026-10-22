@@ -8,6 +8,8 @@ export type ConfigRow =
   | { key: 'ui'; value: UiPrefs }
   /** SETUP-12 更換 repo: the token kept while the user picks a new repo. */
   | { key: 'resume'; value: { token: string; tokenExpiresOn: string | null } }
+  /** LINK-5: the gist holding a code that is being shown, deleted at the next start if left behind. */
+  | { key: 'linkGist'; value: { id: string; createdAt: number } }
 
 export interface SearchRow {
   key: 'index'

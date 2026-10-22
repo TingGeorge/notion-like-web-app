@@ -7,6 +7,8 @@
  * Key: PBKDF2-SHA-256 of the pairing code (normalised, without the dash), 600,000 iterations, 16-byte salt.
  * QR code: the payload, a dot, then the pairing code (`ghnotes:1:<salt>.<iv>.<ciphertext>.<CODE>`), so
  * scanning needs nothing typed. The setup code (copied text) is the payload alone.
+ * Linking by typing (LINK-5) uses the same payload with a 10-character code, because the payload
+ * is briefly public in a gist.
  */
 
 export interface LinkData {
@@ -43,6 +45,8 @@ const PBKDF2_ITERATIONS = 600_000
 const SALT_BYTES = 16
 const IV_BYTES = 12
 const CODE_LENGTH = 8
+/** LINK-5: the code typed with the GitHub account, `XXXXX-XXXXX`. */
+export const LONG_CODE_LENGTH = 10
 
 const encoder = new TextEncoder()
 const decoder = new TextDecoder('utf-8', { fatal: true })
@@ -62,36 +66,42 @@ function fromBase64Url(text: string): Uint8Array {
   return out
 }
 
-/** 8 random characters from PAIRING_ALPHABET (crypto.getRandomValues, no modulo bias). */
-export function generatePairingCode(): string {
+/** 8 (or `length`) random characters from PAIRING_ALPHABET (crypto.getRandomValues, no modulo bias). */
+export function generatePairingCode(length = CODE_LENGTH): string {
   const n = PAIRING_ALPHABET.length
   // Reject bytes at or above the largest multiple of n that fits in a byte.
   const limit = 256 - (256 % n)
   let code = ''
-  while (code.length < CODE_LENGTH) {
-    const bytes = crypto.getRandomValues(new Uint8Array(CODE_LENGTH * 2))
+  while (code.length < length) {
+    const bytes = crypto.getRandomValues(new Uint8Array(length * 2))
     for (const b of bytes) {
-      if (b < limit && code.length < CODE_LENGTH) code += PAIRING_ALPHABET[b % n]
+      if (b < limit && code.length < length) code += PAIRING_ALPHABET[b % n]
     }
   }
   return code
 }
 
-/** `K7QM2XPA` → `K7QM-2XPA`. */
+/** `K7QM2XPA` → `K7QM-2XPA`; `K7QM2XPA9H` → `K7QM2-XPA9H`. */
 export function formatPairingCode(code: string): string {
-  return `${code.slice(0, 4)}-${code.slice(4)}`
+  const half = Math.ceil(code.length / 2)
+  return `${code.slice(0, half)}-${code.slice(half)}`
 }
 
 /**
- * User input → 8 canonical characters, or null if it cannot be a code. Removes spaces and dashes
- * and uppercases. Characters outside the alphabet (look-alikes such as `O`, `0`, `I`, `L`, `1`
- * are not in it) are rejected rather than guessed.
+ * User input → 8 (or `length`) canonical characters, or null if it cannot be a code. Removes spaces
+ * and dashes and uppercases. Characters outside the alphabet (look-alikes such as `O`, `0`, `I`, `L`,
+ * `1` are not in it) are rejected rather than guessed.
  */
-export function normalizePairingCode(input: string): string | null {
+export function normalizePairingCode(input: string, length = CODE_LENGTH): string | null {
   const code = input.replace(/[\s-]+/g, '').toUpperCase()
-  if (code.length !== CODE_LENGTH) return null
+  if (code.length !== length) return null
   for (const ch of code) if (!PAIRING_ALPHABET.includes(ch)) return null
   return code
+}
+
+/** A QR / setup-code pairing code or a LINK-5 code. */
+function normalizeAnyCode(input: string): string | null {
+  return normalizePairingCode(input) ?? normalizePairingCode(input, LONG_CODE_LENGTH)
 }
 
 export function isLinkPayload(text: string): boolean {
@@ -131,7 +141,7 @@ async function deriveKey(normalized: string, salt: Uint8Array): Promise<CryptoKe
 }
 
 export async function encryptLinkPayload(data: LinkData, code: string): Promise<string> {
-  const normalized = normalizePairingCode(code)
+  const normalized = normalizeAnyCode(code)
   if (normalized === null) throw new Error('invalid pairing code')
   const salt = crypto.getRandomValues(new Uint8Array(SALT_BYTES))
   const iv = crypto.getRandomValues(new Uint8Array(IV_BYTES))
@@ -154,7 +164,7 @@ export async function decryptLinkPayload(payload: string, code: string): Promise
   if (salt.length !== SALT_BYTES || iv.length !== IV_BYTES || cipher.length < 16) {
     throw new InvalidPayloadError('bad lengths')
   }
-  const normalized = normalizePairingCode(code)
+  const normalized = normalizeAnyCode(code)
   if (normalized === null) throw new WrongPairingCodeError()
   const key = await deriveKey(normalized, salt)
   let plain: ArrayBuffer

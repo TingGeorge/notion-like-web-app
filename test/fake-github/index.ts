@@ -22,6 +22,7 @@ export {
   type CommitFilesOptions,
   type FakeCommitInfo,
   type FakeFailure,
+  type FakeGist,
   type FakeRepoOptions,
   type FakeRequestInfo,
   type FakeTokenOptions,

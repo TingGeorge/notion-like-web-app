@@ -42,8 +42,15 @@ describe('pairing code (LINK-1)', () => {
     for (const n of counts.values()) expect(Math.abs(n - expected)).toBeLessThan(expected * 0.2)
   })
 
-  it('formats as XXXX-XXXX', () => {
+  it('formats as XXXX-XXXX (XXXXX-XXXXX for the LINK-5 code)', () => {
     expect(formatPairingCode('K7QM2XPA')).toBe('K7QM-2XPA')
+    expect(formatPairingCode('K7QM2XPA9H')).toBe('K7QM2-XPA9H')
+  })
+
+  it('normalises a 10-character LINK-5 code only when asked for that length', () => {
+    expect(normalizePairingCode('k7qm2-xpa9h', 10)).toBe('K7QM2XPA9H')
+    expect(normalizePairingCode('K7QM2XPA9H')).toBeNull()
+    expect(normalizePairingCode('K7QM2XPA', 10)).toBeNull()
   })
 
   it('normalises lowercase, spaces and dashes; rejects anything outside the alphabet', () => {

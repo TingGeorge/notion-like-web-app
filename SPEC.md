@@ -74,7 +74,7 @@ The editor is built directly on ProseMirror, the engine Milkdown wraps, with rem
   | `#/settings/<section>` | settings |
   | `#/setup/<step>` | setup |
   | `#/link` | link a device |
-- **ARCH-3** All network calls go to `https://api.github.com`: the REST API and `/graphql`. The token MUST NOT be sent anywhere else.
+- **ARCH-3** All network calls go to `https://api.github.com`: the REST API and `/graphql`. The token MUST NOT be sent anywhere else. A device that is not linked yet reads the link gist of LINK-5 there without a token.
 - **ARCH-4** No third-party scripts, fonts or analytics are loaded at runtime. Libraries are bundled at build time.
 - **ARCH-5** Fonts and colours:
   - UI text uses the system font stack `-apple-system, BlinkMacSystemFont, "PingFang TC", "Microsoft JhengHei", "Noto Sans TC", "Segoe UI", sans-serif`.
@@ -244,7 +244,7 @@ The editor document is converted to and from Markdown (CommonMark 0.31 + GFM) as
 
   | Table | Key | Contents |
   | --- | --- | --- |
-  | `config` | key | `workspace` `{owner, repo, branch, token, tokenExpiresOn (YYYY-MM-DD or null), login, linkedAt}`, `device` `{id, name}`, `ui` `{theme, sidebarWidth, collapsed, recent[], lastColor}` |
+  | `config` | key | `workspace` `{owner, repo, branch, token, tokenExpiresOn (YYYY-MM-DD or null), login, linkedAt}`, `device` `{id, name}`, `ui` `{theme, sidebarWidth, collapsed, recent[], lastColor}`, `linkGist` `{id, createdAt}` (LINK-5) |
   | `files` | path | `kind` (`page` / `meta`), `baseSha`, `baseText`, `text`, `pushing` (snapshot text or null), `dirty`, `deleted`, `conflict`, `updatedAt` |
   | `uploads` | path | attachments not yet pushed: `blob`, `sha256`, `createdAt`. Never evicted |
   | `pages` | pageKey | derived: `path`, `title`, `icon`, `parentKey`, `links[]`, `excerpt`, `updatedAt`. Can always be rebuilt from `files` |
@@ -460,6 +460,19 @@ The editor document is converted to and from Markdown (CommonMark 0.31 + GFM) as
   - Any other QR content shows 「這不是 GitHub Notes 的 QR code」.
   - Three wrong pairing codes in a row discard the scanned payload.
 - **LINK-4** If the camera is denied or unavailable, 「改用設定碼」 (M15) accepts the pasted payload, and the flow continues at M22.
+- **LINK-5** Linking by typing, for a new device that cannot scan (no camera, or a broken one):
+  - **Why a gist**: there is no server, and the new device has no token yet, so the only place both devices can reach is a public gist of the user's account on `api.github.com` (ARCH-3).
+  - **Source device**: 連結新裝置 → 「新裝置沒有相機？改用配對碼」.
+    - It creates a 10-character code from the LINK-1 alphabet, shown as `XXXXX-XXXXX`, and encrypts the LINK-1 payload with it (same key derivation).
+    - It deletes earlier link gists, then `POST /gists` one public gist: description `GitHub Notes: device link (deleted automatically)`, file `github-notes-link.txt` holding the payload.
+    - It shows the GitHub login and the code, the warning 「帳號加上配對碼等於你的 token，不要給別人看。」 and a 5-minute countdown. They stay while the window is hidden, because the phone may lock while the user types on the other device.
+    - Every 3 s it checks the gist; once the new device has deleted it, it shows 「新裝置已取得設定」.
+    - It deletes the gist when the code expires, is replaced (「重新產生」), or the dialog closes. The gist id is kept in `config.linkGist`, so a gist left by an app that was closed meanwhile is deleted at the next start.
+    - The token needs the Gists account permission (Read and write), or the `gist` scope for a classic token. Without it, `POST /gists` answers `403` / `404`, and the dialog explains how to add it on github.com, with 「在 GitHub 編輯 token ↗」 and 「重試」.
+  - **New device**: 「沒有相機？用配對碼連結」 on D01/M01, or 「改用配對碼」 on M15, asks for the GitHub account and the code.
+    1. Without a token, it lists `GET /users/{login}/gists` and reads the newest three link gists with `GET /gists/{id}`. A gist made a moment ago may not be listed yet, so it looks again after 2, 4 and 6 s.
+    2. It decrypts each with the code. None found: 「找不到配對碼…」. None opens: 「配對碼不正確，請再確認一次。」. Unknown account: 「找不到這個 GitHub 帳號」.
+    3. It deletes the gist with the token it got, then continues at M22 (LINK-3 step 2) without asking for a code.
 
 ### 6.6 Changing the setup (D08 / M17)
 
@@ -496,6 +509,7 @@ Each Figma frame is the visual spec for its screen. This section adds the behavi
 | D12–D14 M12–M14 | 首次設定 | §6.2–§6.4 |
 | D15 M21 | 連結新裝置 (show) | LINK-1, LINK-2 |
 | M15 M22 | 掃描 QR code, 輸入配對碼 | LINK-3, LINK-4 |
+| — | 用配對碼連結 (typing the account and code) | LINK-5 |
 | M02 | 首頁 | UI-11 |
 | M04 | 編輯中 | UI-12 |
 | M05 | 所有頁面 | Same tree as the desktop sidebar; tap opens, long-press opens M08 |
@@ -606,6 +620,7 @@ Markdown shortcuts, applied only after composition ends:
 - **SEC-1** Token scope. The UI and the docs tell users to create a fine-grained token with:
   - only the notes repo;
   - Contents: Read and write;
+  - optionally Gists: Read and write, needed only to link devices by typing a code (LINK-5);
   - an expiry date, recommended. A token without one (「No expiration」) is accepted (SETUP-5); the docs remind users to revoke it on github.com when a device is lost.
 - **SEC-2** The token is used only in the `Authorization` header of requests to `https://api.github.com`. It MUST NOT appear in URLs, logs, error reports, exports or the service-worker cache.
 - **SEC-3** The Content Security Policy is set with a `<meta>` tag, because GitHub Pages cannot set headers. `<meta>` cannot carry `frame-ancestors`, so the app also refuses to run inside a frame (`if (top !== self)`).
@@ -627,10 +642,11 @@ Markdown shortcuts, applied only after composition ends:
   - **Before inviting other people to use the app**, give this repo its own custom domain (for example `notes.example.com`). A custom domain on the user site would be inherited by every project site and does not isolate anything.
   - Thanks to ARCH-1 the build works at any path. Local data does not move to the new origin, so every device syncs, then sets up again.
 - **SEC-7** Token sharing:
-  - QR linking copies the same token to every device, so revoking it on github.com locks all of them. Each device then needs 更換 token, or a fresh QR link from a device that already has the new token.
+  - QR and code linking copy the same token to every device, so revoking it on github.com locks all of them. Each device then needs 更換 token, or a fresh QR link from a device that already has the new token.
   - Users who prefer separate tokens per device can skip QR linking and paste a different token on each device.
   - A lost device: revoke the token. The notes remain in the repo.
 - **SEC-8** The QR code alone links a device: it carries the pairing code with the payload (LINK-1), so anyone who photographs it while it is shown can read the token. That is why it appears only on request, hides after 60 s or when the window is hidden, and carries a warning (LINK-2). The setup code is text that clipboard history can keep, so it stays encrypted with a pairing code shown only on the source device. The new device always shows which account and repo it is about to link to (LINK-3), so a planted QR code cannot silently point it at someone else's repo.
+- **SEC-9** Linking by typing (LINK-5) puts the encrypted payload in a public gist for up to 5 minutes (longer only if the app is closed while the code is shown; it is then deleted at the next start), so anyone can download it while it exists. It is protected by the 10-character code (about 50 bits) and PBKDF2 with 600,000 iterations, which makes an offline search impractical. The gist is deleted by the new device as soon as it has read it, and by the source device when the code expires or is closed. The account and the code are shown only on request, with a warning, and the new device still confirms the account and repo (LINK-3).
 
 ## 9. Non-functional requirements
 

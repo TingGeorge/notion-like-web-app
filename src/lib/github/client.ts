@@ -67,7 +67,29 @@ export interface CommitSummary {
 
 export type WriteProbe = 'ok' | 'empty' | 'no-access'
 
+/** LINK-5: a gist as listed (no file contents). */
+export interface GistSummary {
+  id: string
+  description: string | null
+  /** ISO 8601. */
+  createdAt: string
+  /** File names. */
+  files: string[]
+}
+
+interface RawGist {
+  id: string
+  description: string | null
+  created_at: string
+  files: Record<string, { filename?: string; content?: string; truncated?: boolean } | null>
+}
+
+function toGistSummary(g: RawGist): GistSummary {
+  return { id: g.id, description: g.description ?? null, createdAt: g.created_at, files: Object.keys(g.files ?? {}) }
+}
+
 export interface GitHubClientOptions {
+  /** '' for anonymous requests (LINK-5 on the new device): no Authorization header is sent. */
   token: string
   /** Injected in tests to use the fake GitHub. */
   fetch?: typeof fetch
@@ -186,9 +208,9 @@ export class GitHubClient {
   private async send(method: string, path: string, opts: RequestOptions = {}): Promise<Response> {
     const headers: Record<string, string> = {
       Accept: opts.accept ?? 'application/vnd.github+json',
-      Authorization: `Bearer ${this.options.token}`,
       'X-GitHub-Api-Version': GITHUB_API_VERSION,
     }
+    if (this.options.token) headers.Authorization = `Bearer ${this.options.token}`
     if (opts.body !== undefined) headers['Content-Type'] = 'application/json'
     if (opts.etag) headers['If-None-Match'] = opts.etag
     const doFetch = this.options.fetch ?? ((input: RequestInfo | URL, init?: RequestInit) => fetch(input, init))
@@ -297,6 +319,53 @@ export class GitHubClient {
       return 'no-access'
     }
     return 'ok'
+  }
+
+  // ---------------------------------------------------------------------------------------------
+  // Gists, the mailbox of linking by typing a code (LINK-5)
+
+  /**
+   * `POST /gists` with one text file. Returns the gist id, or null when the token may not create
+   * gists (a fine-grained token without Gists: Read and write answers 403, a classic token without
+   * the `gist` scope 404).
+   */
+  async createGist(opts: { description: string; filename: string; content: string; public: boolean }): Promise<string | null> {
+    const res = await this.request('POST', '/gists', {
+      body: { description: opts.description, public: opts.public, files: { [opts.filename]: { content: opts.content } } },
+      allow: [403, 404],
+    })
+    if (res.status === 403 || res.status === 404) {
+      // A rate-limited 403 is not a permission answer.
+      if (res.status === 403) {
+        const err = await this.toError(res)
+        if (err.kind === 'rate-limited') throw err
+      }
+      return null
+    }
+    return ((await res.json()) as RawGist).id
+  }
+
+  /** `DELETE /gists/{id}`. A gist that is already gone is not an error. */
+  async deleteGist(id: string): Promise<void> {
+    await this.request('DELETE', `/gists/${encodeURIComponent(id)}`, { allow: [404] })
+  }
+
+  /** `GET /gists/{id}` → the file's text, or null when the gist or the file does not exist. */
+  async getGistFile(id: string, filename: string): Promise<string | null> {
+    const res = await this.request('GET', `/gists/${encodeURIComponent(id)}`, { allow: [404] })
+    if (res.status === 404) return null
+    const file = ((await res.json()) as RawGist).files?.[filename]
+    return file && typeof file.content === 'string' && !file.truncated ? file.content : null
+  }
+
+  /** `GET /users/{login}/gists`: the user's public gists, newest first. Works without a token. */
+  async listUserGists(login: string): Promise<GistSummary[]> {
+    return (await this.json<RawGist[]>('GET', `/users/${encodeURIComponent(login)}/gists?per_page=30`)).map(toGistSummary)
+  }
+
+  /** `GET /gists`: the token owner's gists, newest first. */
+  async listOwnGists(): Promise<GistSummary[]> {
+    return (await this.json<RawGist[]>('GET', '/gists?per_page=100')).map(toGistSummary)
   }
 
   /**

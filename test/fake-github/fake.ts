@@ -87,6 +87,8 @@ export interface FakeTokenOptions {
   permission?: 'read' | 'write'
   /** `YYYY-MM-DD`; sent in the (not CORS-exposed) `github-authentication-token-expiration` header. */
   expiresOn?: string | null
+  /** Fine-grained: the Gists account permission (Read and write); classic: the `gist` scope. Default false. */
+  gists?: boolean
 }
 
 interface TokenInfo extends Required<Omit<FakeTokenOptions, 'expiresOn'>> {
@@ -115,6 +117,17 @@ interface Repo {
   createdAt: string
   updatedAt: string
   pushedAt: string | null
+}
+
+/** A gist (LINK-5). */
+export interface FakeGist {
+  id: string
+  owner: string
+  description: string | null
+  public: boolean
+  files: Map<string, string>
+  createdAt: string
+  updatedAt: string
 }
 
 export type FakeFailure =
@@ -253,6 +266,8 @@ export class FakeGitHub {
   private stores = new Map<string, ObjectStore>()
   private commitAuthors = new Map<string, string>()
   private buckets = new Map<string, Bucket>()
+  /** Oldest first. */
+  private gists: FakeGist[] = []
   private failures: Array<{ failure: FakeFailure; times: number; match?: (r: FakeRequestInfo) => boolean }> = []
   private hooks: Array<(r: FakeRequestInfo) => void | Promise<void>> = []
   private nextId = 1
@@ -290,8 +305,20 @@ export class FakeGitHub {
       repos: opts.repos ?? 'all',
       permission: opts.permission ?? 'write',
       expiresOn: opts.expiresOn ?? null,
+      gists: opts.gists ?? false,
       revoked: false,
     })
+  }
+
+  /** Give a token the Gists permission (or the `gist` scope), as editing it on github.com would. */
+  allowGists(token: string, allow = true): void {
+    const t = this.tokens.get(token)
+    if (t) t.gists = allow
+  }
+
+  /** A user's gists, newest first (LINK-5). */
+  gistsOf(login: string): FakeGist[] {
+    return this.gists.filter((g) => g.owner === login).reverse()
   }
 
   revokeToken(token: string): void {
@@ -662,7 +689,7 @@ export class FakeGitHub {
     headers.set('x-github-request-id', `FAKE:${(++this.requestCounter).toString(16).toUpperCase()}`)
     headers.set('vary', 'Accept, Authorization, Cookie, X-GitHub-OTP')
     if (auth) {
-      if (auth.info.kind === 'classic') headers.set('x-oauth-scopes', 'repo')
+      if (auth.info.kind === 'classic') headers.set('x-oauth-scopes', auth.info.gists ? 'gist, repo' : 'repo')
       if (auth.info.expiresOn) headers.set('github-authentication-token-expiration', `${auth.info.expiresOn} 23:59:59 UTC`)
     }
     return new Response(res.status === 204 || res.status === 304 ? null : res.body, { status: res.status, headers })
@@ -717,6 +744,11 @@ export class FakeGitHub {
     if (method === 'GET' && m(/^\/repos\/([^/]+)\/([^/]+)\/commits$/)) return this.listCommits(ctx)
     if (method === 'GET' && m(/^\/repos\/([^/]+)\/([^/]+)\/contents(?:\/(.*))?$/)) return this.getContents(ctx)
     if (method === 'PUT' && m(/^\/repos\/([^/]+)\/([^/]+)\/contents\/(.+)$/)) return this.putContents(ctx)
+    if (method === 'POST' && m(/^\/gists$/)) return this.createGist(ctx)
+    if (method === 'GET' && m(/^\/gists$/)) return this.listOwnGists(ctx)
+    if (method === 'GET' && m(/^\/gists\/([^/]+)$/)) return this.getGist(ctx)
+    if (method === 'DELETE' && m(/^\/gists\/([^/]+)$/)) return this.deleteGist(ctx)
+    if (method === 'GET' && m(/^\/users\/([^/]+)\/gists$/)) return this.listUserGists(ctx)
     throw new HttpError(404, 'Not Found')
   }
 
@@ -759,6 +791,16 @@ export class FakeGitHub {
   private requireAuth(ctx: Ctx): Auth {
     if (!ctx.auth) throw new HttpError(401, 'Requires authentication')
     return ctx.auth
+  }
+
+  /** Writing gists needs the Gists permission (fine-grained: 403) or the `gist` scope (classic: 404). */
+  private requireGists(ctx: Ctx): Auth {
+    const auth = this.requireAuth(ctx)
+    if (auth.info.gists) return auth
+    if (auth.info.kind === 'fine-grained') {
+      throw new HttpError(403, 'Resource not accessible by personal access token', { 'x-accepted-github-permissions': 'gists=write' })
+    }
+    throw new HttpError(404, 'Not Found')
   }
 
   // ----- JSON shapes ----------------------------------------------------------------------------
@@ -1258,6 +1300,102 @@ export class FakeGitHub {
    * `repository(owner:, name:) { alias: object(oid: "…") { ... on Blob { text byteSize isBinary isTruncated oid } } }`
    * with literal or `$variable` arguments.
    */
+  // ----- gists (LINK-5) -------------------------------------------------------------------------
+
+  private gistJson(g: FakeGist, withContent: boolean) {
+    const files: Record<string, unknown> = {}
+    for (const [name, content] of g.files) {
+      files[name] = {
+        filename: name,
+        type: 'text/plain',
+        language: 'Text',
+        raw_url: `https://gist.githubusercontent.com/${g.owner}/${g.id}/raw/${encodeURIComponent(name)}`,
+        size: utf8(content).length,
+        ...(withContent ? { truncated: false, content } : {}),
+      }
+    }
+    return {
+      url: this.api(`/gists/${g.id}`),
+      id: g.id,
+      node_id: `G_${g.id.slice(0, 12)}`,
+      html_url: `https://gist.github.com/${g.owner}/${g.id}`,
+      files,
+      public: g.public,
+      created_at: g.createdAt,
+      updated_at: g.updatedAt,
+      description: g.description,
+      comments: 0,
+      user: null,
+      owner: this.userJson(this.users.get(g.owner)!),
+      truncated: false,
+    }
+  }
+
+  private listGists(ctx: Ctx, gists: FakeGist[]): Response {
+    const { perPage, page } = this.paging(ctx.url)
+    const newest = [...gists].reverse()
+    const lastPage = Math.max(1, Math.ceil(newest.length / perPage))
+    return this.json(
+      200,
+      newest.slice((page - 1) * perPage, page * perPage).map((g) => this.gistJson(g, false)),
+      this.linkHeader(ctx.url, page, lastPage),
+    )
+  }
+
+  private createGist(ctx: Ctx): Response {
+    const auth = this.requireGists(ctx)
+    const body = (ctx.body ?? {}) as { description?: unknown; public?: unknown; files?: Record<string, { content?: unknown }> }
+    const entries = Object.entries(body.files ?? {})
+    if (entries.length === 0 || entries.some(([, f]) => typeof f?.content !== 'string' || f.content === '')) {
+      throw new HttpError(422, 'Validation Failed')
+    }
+    const at = isoSeconds(this.now())
+    const gist: FakeGist = {
+      id: (this.nextId++).toString(16).padStart(32, 'a'),
+      owner: auth.user.login,
+      description: typeof body.description === 'string' ? body.description : null,
+      public: body.public === true,
+      files: new Map(entries.map(([name, f]) => [name, f.content as string])),
+      createdAt: at,
+      updatedAt: at,
+    }
+    this.gists.push(gist)
+    return this.json(201, this.gistJson(gist, true), { location: this.api(`/gists/${gist.id}`) })
+  }
+
+  private getGist(ctx: Ctx): Response {
+    const gist = this.gists.find((g) => g.id === ctx.match[0])
+    if (!gist) throw new HttpError(404, 'Not Found')
+    return this.json(200, this.gistJson(gist, true))
+  }
+
+  private deleteGist(ctx: Ctx): Response {
+    const auth = this.requireGists(ctx)
+    const i = this.gists.findIndex((g) => g.id === ctx.match[0] && g.owner === auth.user.login)
+    if (i < 0) throw new HttpError(404, 'Not Found')
+    this.gists.splice(i, 1)
+    return new Response(null, { status: 204 })
+  }
+
+  private listOwnGists(ctx: Ctx): Response {
+    const auth = this.requireAuth(ctx)
+    return this.listGists(
+      ctx,
+      this.gists.filter((g) => g.owner === auth.user.login),
+    )
+  }
+
+  /** Public gists only, unless the caller is the owner. No token needed. */
+  private listUserGists(ctx: Ctx): Response {
+    const login = decodeURIComponent(ctx.match[0])
+    if (!this.users.has(login)) throw new HttpError(404, 'Not Found')
+    const own = ctx.auth?.user.login === login
+    return this.listGists(
+      ctx,
+      this.gists.filter((g) => g.owner === login && (g.public || own)),
+    )
+  }
+
   private graphql(ctx: Ctx): Response {
     if (!ctx.auth) throw new HttpError(401, 'This endpoint requires you to be authenticated.')
     const body = (ctx.body ?? {}) as { query?: unknown; variables?: Record<string, unknown> }

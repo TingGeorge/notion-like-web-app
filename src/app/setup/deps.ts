@@ -12,7 +12,7 @@ import { t } from '../../strings'
 
 /** The parts of `src/lib/link/crypto.ts` the screens call; injectable so tests and the harness can fake them. */
 export interface LinkCrypto {
-  generatePairingCode(): string
+  generatePairingCode(length?: number): string
   encryptLinkPayload(data: LinkData, code: string): Promise<string>
   decryptLinkPayload(payload: string, code: string): Promise<LinkData>
 }

@@ -19,6 +19,8 @@ export interface ScanScreenProps {
   /** A `ghnotes:1:…` payload was scanned or pasted. */
   onPayload(payload: string): void
   onCancel(): void
+  /** LINK-5: type the account and a code instead. */
+  onUseCode?(): void
   /** For 「設定只會存在這台 …」. */
   deviceName: string
   /** A message to show first, for example after three wrong pairing codes. */
@@ -31,7 +33,7 @@ type CameraState = 'starting' | 'live' | 'unavailable'
 
 const SCAN_INTERVAL_MS = 200
 
-export function ScanScreen({ onPayload, onCancel, deviceName, notice, startWithPaste }: ScanScreenProps) {
+export function ScanScreen({ onPayload, onCancel, onUseCode, deviceName, notice, startWithPaste }: ScanScreenProps) {
   const [mode, setMode] = useState<'scan' | 'paste'>(startWithPaste ? 'paste' : 'scan')
   const [camera, setCamera] = useState<CameraState>('starting')
   const [error, setError] = useState<string | null>(notice ?? null)
@@ -142,16 +144,23 @@ export function ScanScreen({ onPayload, onCancel, deviceName, notice, startWithP
             )}
           </div>
           <div className="scan-bottom">
-            <button
-              type="button"
-              className="scan-link"
-              onClick={() => {
-                setError(null)
-                setMode('paste')
-              }}
-            >
-              {t.link.usePasteCode}
-            </button>
+            <div className="scan-links">
+              {onUseCode && (
+                <button type="button" className="scan-link" onClick={onUseCode}>
+                  {t.link.useCodeInstead}
+                </button>
+              )}
+              <button
+                type="button"
+                className="scan-link"
+                onClick={() => {
+                  setError(null)
+                  setMode('paste')
+                }}
+              >
+                {t.link.usePasteCode}
+              </button>
+            </div>
             <div className="scan-chip">
               <Lock size={12} aria-hidden="true" />
               {t.link.storedOnlyHere(deviceName)}
