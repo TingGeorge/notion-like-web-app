@@ -5,6 +5,7 @@
 import { GitHubClient } from '../lib/github/client'
 import { deviceName, isSafariTab } from '../lib/data/device'
 import { ulid } from '../lib/data/ulid'
+import { NEVER_EXPIRES } from '../lib/link/crypto'
 import { db, type ConfigRow } from '../lib/store/db'
 import { SyncEngine } from '../lib/sync/engine'
 import { DEFAULT_UI, type DeviceInfo, type UiPrefs, type Workspace } from '../lib/types'
@@ -55,8 +56,9 @@ export async function filesChanged(paths: string[]): Promise<void> {
 export async function loadWorkspace(): Promise<Workspace | null> {
   const row = await db().config.get('workspace')
   if (!row || row.key !== 'workspace') return null
-  // Older versions could store '' when the date was cleared: it means no known expiry (SETUP-5).
-  return { ...row.value, tokenExpiresOn: row.value.tokenExpiresOn || null }
+  // Older versions could store '' when the date was cleared, or the link's NEVER_EXPIRES: no expiry (SETUP-5).
+  const expires = row.value.tokenExpiresOn
+  return { ...row.value, tokenExpiresOn: expires && expires !== NEVER_EXPIRES ? expires : null }
 }
 
 export async function saveWorkspace(workspace: Workspace): Promise<void> {

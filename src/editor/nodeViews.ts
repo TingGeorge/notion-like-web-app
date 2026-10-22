@@ -329,7 +329,8 @@ class ImageView extends BaseView {
   handles = ['is-left', 'is-right'].map((side) =>
     el('div', `image-resize ${side}`, {
       role: 'slider',
-      tabindex: '0',
+      // A tab stop only once the picture shows (see load()).
+      tabindex: '-1',
       'aria-label': t.editor.resizeImage,
       'aria-orientation': 'horizontal',
       'aria-valuemin': String(IMAGE_WIDTH_MIN),
@@ -382,12 +383,14 @@ class ImageView extends BaseView {
     const width = this.node.attrs.width as number | null
     this.frame.style.width = width ? `${width}px` : ''
     this.frame.classList.toggle('is-sized', !!width)
-    // The shown width is read once the picture is on screen (syncSlider); until then, the stored one.
-    if (!this.frame.classList.contains('has-image')) for (const h of this.handles) h.setAttribute('aria-valuenow', String(width ?? IMAGE_WIDTH_MIN))
+    // The shown width once the picture is on screen; until then, the stored one.
+    if (this.frame.classList.contains('has-image')) this.syncSlider()
+    else for (const h of this.handles) h.setAttribute('aria-valuenow', String(width ?? IMAGE_WIDTH_MIN))
   }
   placeholder(loading: boolean) {
     this.media.textContent = ''
     this.frame.classList.remove('has-image')
+    for (const h of this.handles) h.tabIndex = -1
     const box = el('div', `image-placeholder${loading ? ' is-loading' : ''}`)
     box.innerHTML = `${icons.image(20)}<span></span>`
     box.lastElementChild!.textContent = loading ? t.common.loading : t.editor.imageUnavailable
@@ -418,6 +421,7 @@ class ImageView extends BaseView {
         this.media.textContent = ''
         this.media.append(img)
         this.frame.classList.add('has-image')
+        for (const h of this.handles) h.tabIndex = 0
         this.syncSlider()
       })
       img.src = url
@@ -439,7 +443,7 @@ class ImageView extends BaseView {
    * step), and only after the pointer really moved: a tap, or a cancelled touch, changes nothing.
    */
   startResize(e: PointerEvent, handle: HTMLElement, side: -1 | 1) {
-    if (!this.view.editable || e.button !== 0 || !this.img) return
+    if (!this.view.editable || e.button !== 0 || !this.img || !this.frame.classList.contains('has-image')) return
     e.preventDefault()
     e.stopPropagation()
     this.cancelResize?.()
@@ -477,7 +481,7 @@ class ImageView extends BaseView {
   }
   /** Keyboard resize on a focused handle: ←/→ by 10 px, with Shift by 50 px. */
   keyResize(e: KeyboardEvent) {
-    if (e.isComposing || !this.view.editable || !this.img) return
+    if (e.isComposing || !this.view.editable || !this.img || !this.frame.classList.contains('has-image')) return
     const step = e.shiftKey ? 50 : 10
     const delta = e.key === 'ArrowRight' || e.key === 'ArrowUp' ? step : e.key === 'ArrowLeft' || e.key === 'ArrowDown' ? -step : 0
     if (!delta) return

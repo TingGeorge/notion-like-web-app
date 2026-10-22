@@ -26,7 +26,8 @@ export async function deleteLeftoverLinkGist(client: GitHubClient, now = Date.no
   const row = await db().config.get('linkGist')
   if (row?.key !== 'linkGist') return null
   const left = row.value.createdAt + LINK_GIST_SECONDS * 1000 - now
-  if (left > 0) return left + 1000
+  // More than a code lives: the clock was ahead when it was remembered, so it is old anyway.
+  if (left > 0 && left <= LINK_GIST_SECONDS * 1000) return left + 1000
   try {
     await client.deleteGist(row.value.id)
     await forgetLinkGist(row.value.id)

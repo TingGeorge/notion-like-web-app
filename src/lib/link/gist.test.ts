@@ -91,11 +91,14 @@ describe('linking by typing a code (LINK-5)', () => {
     const source = client(TOKEN)
     await source.createGist({ description: 'my snippet', filename: 'a.js', content: 'x', public: true })
     const { id } = await publishLinkGist(source, data, 'K7QM2XPA9H')
-    await publishLinkGist(source, data, 'ABCDE23456')
-    // Codes still on show (in another tab or device) are left alone.
-    await removeLinkGists(source)
+    const second = await publishLinkGist(source, data, 'ABCDE23456')
+    // Codes still on show (in another tab or device) are left alone; age is by GitHub's clock.
+    await removeLinkGists(source, Date.parse(second.createdAt))
     expect(gh.gistsOf('me')).toHaveLength(3)
-    await removeLinkGists(source, Date.now() + LINK_GIST_SECONDS * 1000)
+    // `keep` is spared even when old.
+    await removeLinkGists(source, Date.parse(second.createdAt) + LINK_GIST_SECONDS * 1000, second.id)
+    expect(gh.gistsOf('me').map((g) => g.id)).toEqual([second.id, expect.any(String)])
+    await removeLinkGists(source, Date.parse(second.createdAt) + LINK_GIST_SECONDS * 1000)
     expect(gh.gistsOf('me').map((g) => g.description)).toEqual(['my snippet'])
     // Deleting a gist that is already gone is fine.
     await source.deleteGist(id)

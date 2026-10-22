@@ -329,11 +329,12 @@ export class GitHubClient {
   // Gists, the mailbox of linking by typing a code (LINK-5)
 
   /**
-   * `POST /gists` with one text file. Returns the gist id and its owner's login, or null when the
+   * `POST /gists` with one text file. Returns the gist id, its owner's login and its creation time
+   * (GitHub's clock), or null when the
    * token may not create gists (a fine-grained token without Gists: Read and write answers 403, a
    * classic token without the `gist` scope 404).
    */
-  async createGist(opts: { description: string; filename: string; content: string; public: boolean }): Promise<{ id: string; login: string | null } | null> {
+  async createGist(opts: { description: string; filename: string; content: string; public: boolean }): Promise<{ id: string; login: string | null; createdAt: string } | null> {
     const res = await this.request('POST', '/gists', {
       body: { description: opts.description, public: opts.public, files: { [opts.filename]: { content: opts.content } } },
       allow: [403, 404],
@@ -347,7 +348,7 @@ export class GitHubClient {
       return null
     }
     const gist = (await res.json()) as RawGist
-    return { id: gist.id, login: gist.owner?.login ?? null }
+    return { id: gist.id, login: gist.owner?.login ?? null, createdAt: gist.created_at }
   }
 
   /**

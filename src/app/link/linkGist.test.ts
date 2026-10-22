@@ -31,6 +31,14 @@ describe('a link gist left behind (LINK-5)', () => {
     expect(await db().config.get('linkGist')).toBeUndefined()
   }, 30_000)
 
+  it('is treated as old when it was remembered with a clock that was ahead', async () => {
+    const { id } = await publishLinkGist(client, { o: 'me', r: 'diary', b: 'main', t: TOKEN, e: null }, 'K7QM2XPA9H')
+    await rememberLinkGist(id)
+    // The clock has since gone back by an hour.
+    expect(await deleteLeftoverLinkGist(client, Date.now() - 3_600_000)).toBeNull()
+    expect(gh.gistsOf('me')).toHaveLength(0)
+  }, 30_000)
+
   it('is kept in mind when GitHub cannot be reached', async () => {
     await rememberLinkGist('aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa1')
     gh.offline = true

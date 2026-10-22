@@ -46,7 +46,7 @@ export function normalizeLogin(input: string): string | null {
  * Source device: encrypt the link data with `code` and leave it in a new public gist. Returns its id
  * and the login it was created under (the one the new device must type, even after a rename).
  */
-export async function publishLinkGist(client: GitHubClient, data: LinkData, code: string): Promise<{ id: string; login: string | null }> {
+export async function publishLinkGist(client: GitHubClient, data: LinkData, code: string): Promise<{ id: string; login: string | null; createdAt: string }> {
   const payload = await encryptLinkPayload(data, code)
   const gist = await client.createGist({ description: LINK_GIST_DESCRIPTION, filename: LINK_GIST_FILE, content: payload, public: true })
   if (gist === null) throw new NoGistPermissionError()
@@ -55,13 +55,14 @@ export async function publishLinkGist(client: GitHubClient, data: LinkData, code
 
 /**
  * Source device: delete link gists older than a code lives (left by an app closed while a code was
- * shown). Younger ones may be on show in another tab or device, and are left alone.
+ * shown). Younger ones may be on show in another tab or device, and are left alone. `now` should be
+ * GitHub's time (a new gist's `createdAt`), so a device clock that is off does not matter.
  */
-export async function removeLinkGists(client: GitHubClient, now = Date.now()): Promise<void> {
+export async function removeLinkGists(client: GitHubClient, now: number, keep?: string): Promise<void> {
   const gists = await client.listOwnGists()
   for (const g of gists) {
     const young = now - Date.parse(g.createdAt) < LINK_GIST_SECONDS * 1000
-    if (g.files.includes(LINK_GIST_FILE) && g.description === LINK_GIST_DESCRIPTION && !young) await client.deleteGist(g.id)
+    if (g.id !== keep && g.files.includes(LINK_GIST_FILE) && g.description === LINK_GIST_DESCRIPTION && !young) await client.deleteGist(g.id)
   }
 }
 

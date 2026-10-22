@@ -8,7 +8,8 @@ import { dropCursor } from 'prosemirror-dropcursor'
 import { gapCursor } from 'prosemirror-gapcursor'
 import { history } from 'prosemirror-history'
 import { keymap } from 'prosemirror-keymap'
-import { EditorState, Plugin, Selection } from 'prosemirror-state'
+import type { Node as PMNode } from 'prosemirror-model'
+import { EditorState, Plugin, Selection, type Transaction } from 'prosemirror-state'
 import { tableEditing } from 'prosemirror-tables'
 import { EditorView } from 'prosemirror-view'
 import { schema } from '../lib/schema'
@@ -89,6 +90,20 @@ function linkClickPlugin(ctx: EditorContext): Plugin {
       },
     },
   })
+}
+
+/**
+ * Where the image at `pos` is after `tr`, or -1 if it is gone. A change to the image's own
+ * attributes (a caption, a width) replaces the node, so it is followed by its `src`.
+ */
+function mapImage(tr: Transaction, doc: PMNode, pos: number): number {
+  if (pos < 0) return -1
+  const after = tr.mapping.mapResult(pos)
+  if (!after.deleted) return after.pos
+  const src = tr.before.nodeAt(pos)?.attrs.src as string | undefined
+  const at = tr.mapping.map(pos, -1)
+  const node = at < doc.content.size ? doc.nodeAt(at) : null
+  return node?.type === schema.nodes.image && node.attrs.src === src ? at : -1
 }
 
 export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor(props, ref) {
@@ -187,10 +202,7 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor(prop
           if (ctx.hover.pos !== null) ctx.hover.pos = isSimpleTextEdit(tr) ? null : tr.mapping.map(ctx.hover.pos)
           // DATA-19: the image being cropped moves with the document (the dialog closes if it goes).
           const crop = ctx.ui.getSnapshot().crop
-          if (crop) {
-            const mapped = tr.mapping.mapResult(crop.pos)
-            crop.pos = mapped.deleted ? -1 : mapped.pos
-          }
+          if (crop) crop.pos = mapImage(tr, next.doc, crop.pos)
           if (!tr.getMeta('gn-ui-only') && !tr.getMeta('gn-silent')) {
             if (v.composing) pendingChange = true
             else latest.current.onChange(next.doc)

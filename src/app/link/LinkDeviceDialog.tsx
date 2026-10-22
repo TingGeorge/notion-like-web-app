@@ -319,14 +319,12 @@ function useCodeLink(workspace: Workspace, linkCrypto: LinkCrypto, createClient?
     setBusy(true)
     try {
       const code = linkCrypto.generatePairingCode(LONG_CODE_LENGTH)
-      // Leftovers of earlier codes (an app closed while one was shown). Publishing reports real problems.
-      await removeLinkGists(client).catch(() => undefined)
-      // Closed or replaced meanwhile: publish nothing.
-      if (mine !== generation.current) return
       const data = { o: workspace.owner, r: workspace.repo, b: workspace.branch, t: workspace.token, e: workspace.tokenExpiresOn }
-      const { id, login } = await publishLinkGist(client, data, code)
+      const { id, login, createdAt } = await publishLinkGist(client, data, code)
       // Kept in mind first, so a gist that outlives this page is deleted at the next start.
       await rememberLinkGist(id).catch(() => undefined)
+      // Leftovers of earlier codes (an app closed while one was shown), aged by GitHub's clock.
+      void removeLinkGists(client, Date.parse(createdAt), id).catch(() => undefined)
       if (mine !== generation.current) {
         void client
           .deleteGist(id)

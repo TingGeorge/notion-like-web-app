@@ -160,7 +160,8 @@ function Cropper({ node }: { node: PMNode }) {
         const current = target.attrs.width as number | null
         // Without a width, an image wider than the page shows narrower: keep that scale too.
         const base = current ?? (shown !== null && shown < natural.w - 1 ? Math.round(shown) : null)
-        const width = widthAfterCrop(base, natural.w, r.w)
+        // A crop scaled down to 2560 px would show smaller without a width: give it the one it showed at.
+        const width = widthAfterCrop(base ?? (out.scaled ? Math.round(shown ?? natural.w) : null), natural.w, r.w)
         view.dispatch(view.state.tr.setNodeMarkup(pos, null, { ...target.attrs, src: result.href, width }))
       }
       busyRef.current = false

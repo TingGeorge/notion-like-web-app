@@ -122,6 +122,38 @@ describe('Editor component', () => {
     expect(document.querySelector('[role="dialog"]')?.textContent).toContain('裁切圖片')
   })
 
+  it('the crop dialog follows its image through edits and closes when it goes (DATA-19)', async () => {
+    const image = { type: 'image', attrs: { src: '/_assets/a.png', alt: '', title: null, width: null } }
+    const { ref, container } = setup({ doc: docOf(p('before'), image, p('x')) })
+    const view = ref.current!.view!
+    const dialog = () => document.querySelector('[role="dialog"]')
+    await act(async () => {
+      container.querySelector<HTMLButtonElement>('button[aria-label="裁切圖片"]')!.click()
+    })
+    expect(dialog()?.textContent).toContain('裁切圖片')
+    const imagePos = () => {
+      let at = -1
+      view.state.doc.forEach((n, offset) => {
+        if (n.type.name === 'image') at = offset
+      })
+      return at
+    }
+    // Its own caption changes (the node is replaced), and a block is inserted before it.
+    await act(async () => {
+      view.dispatch(view.state.tr.setNodeMarkup(imagePos(), null, { ...view.state.doc.nodeAt(imagePos())!.attrs, alt: '說明' }))
+    })
+    await act(async () => {
+      view.dispatch(view.state.tr.insert(0, view.state.schema.nodes.paragraph.create(null, view.state.schema.text('new'))))
+    })
+    expect(dialog()?.textContent).toContain('裁切圖片')
+    // The image is deleted: the dialog goes.
+    await act(async () => {
+      const at = imagePos()
+      view.dispatch(view.state.tr.delete(at, at + 1))
+    })
+    expect(dialog()).toBeNull()
+  })
+
   it('a tap on a resize handle, without moving, leaves the width alone (DATA-19)', () => {
     const { container, onChange } = setup({ doc: docOf({ type: 'image', attrs: { src: 'https://example.com/a.png', alt: '', title: null, width: 600 } }, p('x')) })
     const handle = container.querySelector<HTMLElement>('.image-resize.is-right')!
