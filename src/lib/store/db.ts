@@ -7,7 +7,7 @@ export type ConfigRow =
   | { key: 'device'; value: DeviceInfo }
   | { key: 'ui'; value: UiPrefs }
   /** SETUP-12 更換 repo: the token kept while the user picks a new repo. */
-  | { key: 'resume'; value: { token: string; tokenExpiresOn: string } }
+  | { key: 'resume'; value: { token: string; tokenExpiresOn: string | null } }
 
 export interface SearchRow {
   key: 'index'

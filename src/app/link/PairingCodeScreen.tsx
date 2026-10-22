@@ -163,7 +163,7 @@ export function PairingCodeScreen({ payload: text, deps, onCancel, onDiscard, on
                 </div>
                 <div className="pair-card-meta">
                   {user ? (
-                    t.link.accountLine(user.login, formatExpiry(data.e))
+                    data.e ? t.link.accountLine(user.login, formatExpiry(data.e)) : t.link.accountLineNoExpiry(user.login)
                   ) : accountError ? (
                     <span className="pair-error-inline">{accountError}</span>
                   ) : (

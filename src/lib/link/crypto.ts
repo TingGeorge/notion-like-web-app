@@ -3,7 +3,7 @@
  *
  * CONTRACT — implemented in this folder.
  * Payload: `ghnotes:1:<salt>.<iv>.<ciphertext>`, all base64url (no padding).
- * Ciphertext: AES-GCM of the UTF-8 JSON `{"o","r","b","t","e"}`.
+ * Ciphertext: AES-GCM of the UTF-8 JSON `{"o","r","b","t","e"}` (`e` is null for a token that never expires).
  * Key: PBKDF2-SHA-256 of the pairing code (normalised, without the dash), 600,000 iterations, 16-byte salt.
  * QR code: the payload, a dot, then the pairing code (`ghnotes:1:<salt>.<iv>.<ciphertext>.<CODE>`), so
  * scanning needs nothing typed. The setup code (copied text) is the payload alone.
@@ -18,8 +18,8 @@ export interface LinkData {
   b: string
   /** token */
   t: string
-  /** tokenExpiresOn (YYYY-MM-DD) */
-  e: string
+  /** tokenExpiresOn (YYYY-MM-DD), or null when the token never expires */
+  e: string | null
 }
 
 export const PAIRING_ALPHABET = '23456789ABCDEFGHJKMNPQRSTUVWXYZ'
@@ -177,7 +177,7 @@ export async function decryptLinkPayload(payload: string, code: string): Promise
     typeof r !== 'string' || !r ||
     typeof b !== 'string' || !b ||
     typeof t !== 'string' || !t ||
-    typeof e !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(e)
+    !(e === null || (typeof e === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(e)))
   ) {
     throw new InvalidPayloadError('bad fields')
   }

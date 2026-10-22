@@ -244,7 +244,7 @@ The editor document is converted to and from Markdown (CommonMark 0.31 + GFM) as
 
   | Table | Key | Contents |
   | --- | --- | --- |
-  | `config` | key | `workspace` `{owner, repo, branch, token, tokenExpiresOn, login, linkedAt}`, `device` `{id, name}`, `ui` `{theme, sidebarWidth, collapsed, recent[], lastColor}` |
+  | `config` | key | `workspace` `{owner, repo, branch, token, tokenExpiresOn (YYYY-MM-DD or null), login, linkedAt}`, `device` `{id, name}`, `ui` `{theme, sidebarWidth, collapsed, recent[], lastColor}` |
   | `files` | path | `kind` (`page` / `meta`), `baseSha`, `baseText`, `text`, `pushing` (snapshot text or null), `dirty`, `deleted`, `conflict`, `updatedAt` |
   | `uploads` | path | attachments not yet pushed: `blob`, `sha256`, `createdAt`. Never evicted |
   | `pages` | pageKey | derived: `path`, `title`, `icon`, `parentKey`, `links[]`, `excerpt`, `updatedAt`. Can always be rebuilt from `files` |
@@ -415,7 +415,8 @@ The editor document is converted to and from Markdown (CommonMark 0.31 + GFM) as
 
 - **SETUP-5** Expiry date. Browsers cannot read GitHub's token-expiry response header (it is not CORS-exposed), so the screen asks for 「到期日」.
   - The default is today + 90 days, which matches the pre-filled form.
-  - The value is stored as `tokenExpiresOn` and can be edited in settings.
+  - 「永不過期」 is for a token created with GitHub's 「No expiration」. It disables the date, which is then neither required nor checked, and stores `tokenExpiresOn: null`. Such a token gets no expiry banner (SETUP-13); a `401` still makes the app read-only.
+  - The value is stored as `tokenExpiresOn` and can be edited in settings, which show 「YYYY/MM/DD 到期」 or 「永不過期」.
 - **SETUP-6** On 「連結」:
   1. `GET /user` gives the login. A `401` shows 「token 無效或已過期」.
   2. `GET /user/repos?per_page=100&sort=updated`, paged, lists candidate repos.
@@ -444,7 +445,7 @@ The editor document is converted to and from Markdown (CommonMark 0.31 + GFM) as
   - The source device creates:
     - an 8-character **pairing code** from the alphabet `23456789ABCDEFGHJKMNPQRSTUVWXYZ`, shown as `XXXX-XXXX`;
     - the payload `ghnotes:1:<salt>.<iv>.<ciphertext>`, all base64url.
-  - The ciphertext is AES-GCM of the UTF-8 JSON `{"o","r","b","t","e"}` (owner, repo, branch, token, `tokenExpiresOn`).
+  - The ciphertext is AES-GCM of the UTF-8 JSON `{"o","r","b","t","e"}` (owner, repo, branch, token, `tokenExpiresOn`; `e` is `null` for a token that never expires).
   - The key is PBKDF2-SHA-256 of the pairing code, 600,000 iterations, 16-byte salt.
   - The QR code carries the payload followed by `.` and the pairing code (`ghnotes:1:<salt>.<iv>.<ciphertext>.<CODE>`), so scanning needs nothing typed. The setup code (LINK-2) is the payload alone.
   - QR error correction is level M.
@@ -464,14 +465,14 @@ The editor document is converted to and from Markdown (CommonMark 0.31 + GFM) as
 
 - **SETUP-11** 更換 token:
   - The new token is checked as in SETUP-4 and SETUP-6, and also needs the write probe (SETUP-8) on the current repo.
-  - It asks for the new expiry date.
+  - It asks for the new expiry date, or 「永不過期」 (SETUP-5).
   - Only the token and the date are replaced.
 - **SETUP-12** These actions need zero dirty files. If any exist, the user must first sync, or confirm 「放棄 N 個未同步的修改」:
   - **更換 repo**: clears `files`, `pages`, `uploads`, `assets`, `sync` and `search`, then goes to D13.
   - **中斷連結**: clears the whole database and the cache, then returns to D01/M01.
   - **清除這台裝置的資料**: clears the caches and re-downloads everything; the token and repo stay.
 - **SETUP-13** Expiry and Safari tab mode:
-  - **Expiry**: from 14 days before `tokenExpiresOn`, a banner says 「token 將在 N 天後到期」 with 「更換 token」.
+  - **Expiry**: from 14 days before `tokenExpiresOn`, a banner says 「token 將在 N 天後到期」 with 「更換 token」. A token that never expires (`tokenExpiresOn: null`) has no such banner.
   - **Expired or revoked token**: any `401` makes the app read-only, with a banner. Local edits are kept and pushed after the token is replaced.
   - **Safari tab mode**: Safari deletes script-written data of sites the user has not used for 7 days. When the app runs as a normal Safari tab (iOS after 「仍要在 Safari 使用」, or Safari on Mac), a permanent hint suggests 「加入主畫面」 or 「加入 Dock」, and pushes ignore the 30 s spacing.
 
@@ -605,7 +606,7 @@ Markdown shortcuts, applied only after composition ends:
 - **SEC-1** Token scope. The UI and the docs tell users to create a fine-grained token with:
   - only the notes repo;
   - Contents: Read and write;
-  - an expiry date.
+  - an expiry date, recommended. A token without one (「No expiration」) is accepted (SETUP-5); the docs remind users to revoke it on github.com when a device is lost.
 - **SEC-2** The token is used only in the `Authorization` header of requests to `https://api.github.com`. It MUST NOT appear in URLs, logs, error reports, exports or the service-worker cache.
 - **SEC-3** The Content Security Policy is set with a `<meta>` tag, because GitHub Pages cannot set headers. `<meta>` cannot carry `frame-ancestors`, so the app also refuses to run inside a frame (`if (top !== self)`).
 
@@ -705,5 +706,5 @@ Markdown shortcuts, applied only after composition ends:
 | Public repos | Allowed after a confirmation | Not allowed |
 | Classic tokens (`ghp_`) | Allowed after a warning | Fine-grained only |
 | Polling | Every 60 s while visible | Only on open and focus |
-| Token expiry asked at setup | Default today + 90 days, the same as the pre-filled GitHub form | Don't ask; only react to `401` |
+| Token expiry asked at setup | Default today + 90 days, the same as the pre-filled GitHub form; 「永不過期」 for tokens without an expiry | Don't ask; only react to `401` |
 | Attachment cap | 25 MB; images scaled to 2560 px | Other limits |

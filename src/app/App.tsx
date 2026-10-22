@@ -21,7 +21,7 @@ import { runInitialSync } from './workspaceAdmin'
 // First run only: keeps the camera/QR code out of the main bundle.
 const SetupFlow = lazy(() => import('./setup/SetupFlow').then((m) => ({ default: m.SetupFlow })))
 
-type Resume = { token: string; tokenExpiresOn: string }
+type Resume = { token: string; tokenExpiresOn: string | null }
 type Boot = { state: 'loading' } | { state: 'ready'; workspace: Workspace | null; device: DeviceInfo; resume: Resume | null; safariAccepted: boolean }
 
 export function App() {

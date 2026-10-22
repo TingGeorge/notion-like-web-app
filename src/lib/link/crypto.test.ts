@@ -97,6 +97,11 @@ describe('link payload encryption (LINK-1, SEC-8)', () => {
     await expect(decryptLinkPayload(`${PAYLOAD_PREFIX}!!.b.c`, 'K7QM2XPA')).rejects.toBeInstanceOf(InvalidPayloadError)
   }, 60_000)
 
+  it('carries a token that never expires (SETUP-5)', async () => {
+    const payload = await encryptLinkPayload({ ...data, e: null }, 'K7QM2XPA')
+    expect(await decryptLinkPayload(payload, 'K7QM2XPA')).toEqual({ ...data, e: null })
+  }, 30_000)
+
   it('rejects decrypted JSON with missing or malformed fields', async () => {
     const bad = { ...data, e: 'tomorrow' } as LinkData
     const payload = await encryptLinkPayload(bad, 'K7QM2XPA')

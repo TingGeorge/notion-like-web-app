@@ -346,6 +346,10 @@
 .field-wrap.is-invalid {
   border-color: var(--status-danger);
 }
+.field-wrap.is-disabled {
+  background: var(--bg-input);
+  color: var(--text-tertiary);
+}
 .field-input {
   flex: 1;
   min-width: 0;
@@ -928,6 +932,15 @@
   .field-label {
     margin-top: 16px;
     margin-bottom: 8px;
+  }
+  .connect-form .check-row {
+    margin-top: 12px;
+    font-size: 15px;
+    line-height: 20px;
+  }
+  .connect-form .check-row input {
+    width: 20px;
+    height: 20px;
   }
   .setup-footer {
     position: sticky;

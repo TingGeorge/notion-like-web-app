@@ -123,6 +123,29 @@
 .text-input.is-invalid {
   border-color: var(--status-danger);
 }
+.text-input:disabled {
+  color: var(--text-tertiary);
+  background: var(--bg-input);
+}
+
+/* Checkbox with its label (永不過期) */
+.check-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  font-size: 13px;
+  line-height: 18px;
+  color: var(--text-primary);
+  cursor: pointer;
+}
+.check-row input {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: var(--accent-default);
+  cursor: pointer;
+}
 
 /* Switch (自動同步) */
 .switch {

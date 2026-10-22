@@ -10,8 +10,8 @@ export interface Workspace {
   branch: string
   /** Fine-grained or classic token. Never logged, never put in a URL (STORE-7, SEC-2). */
   token: string
-  /** `YYYY-MM-DD`, entered by the user (SETUP-5). */
-  tokenExpiresOn: string
+  /** `YYYY-MM-DD`, entered by the user, or null when the token never expires (SETUP-5). */
+  tokenExpiresOn: string | null
   login: string
   /** GitHub display name, if the account has one. Used for 「<name> 的筆記」. */
   name?: string | null

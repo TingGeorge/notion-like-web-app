@@ -1,4 +1,4 @@
-/** D12 / M12 (SETUP-3 to SETUP-6): paste a token and its expiry date, check it with GitHub. */
+/** D12 / M12 (SETUP-3 to SETUP-6): paste a token and its expiry date (or 永不過期), check it with GitHub. */
 import { useRef, useState } from 'react'
 import { CalendarDays, Lock } from 'lucide-react'
 import { GitHubError, type GitHubClient, type GitHubUser, type RepoSummary } from '../../lib/github/client'
@@ -15,8 +15,8 @@ export const NEW_TOKEN_URL =
 
 export interface ConnectResult {
   token: string
-  /** `YYYY-MM-DD` */
-  tokenExpiresOn: string
+  /** `YYYY-MM-DD`, or null when the token never expires (SETUP-5). */
+  tokenExpiresOn: string | null
   client: GitHubClient
   user: GitHubUser
   repos: RepoSummary[]
@@ -35,6 +35,7 @@ export function Connect({ createClient, today, deviceName, onConnected }: Connec
   const [reveal, setReveal] = useState(false)
   const [touched, setTouched] = useState(false)
   const [expiryText, setExpiryText] = useState(() => formatExpiry(defaultExpiry(today())))
+  const [neverExpires, setNeverExpires] = useState(false)
   const [classicAck, setClassicAck] = useState(false)
   const [busy, setBusy] = useState(false)
   const [serverError, setServerError] = useState<string | null>(null)
@@ -43,7 +44,7 @@ export function Connect({ createClient, today, deviceName, onConnected }: Connec
 
   const check = checkToken(tokenText)
   const expiryIso = parseExpiryText(expiryText)
-  const expiryError = !expiryIso ? t.setup.expiryInvalid : isPastDate(expiryIso, today()) ? t.setup.expiryPast : null
+  const expiryError = neverExpires ? null : !expiryIso ? t.setup.expiryInvalid : isPastDate(expiryIso, today()) ? t.setup.expiryPast : null
   const tokenError = check.kind === 'invalid' && (touched || submitted) ? t.setup.notAToken : null
   const showClassic = check.kind === 'classic' && submitted && !classicAck
 
@@ -52,13 +53,13 @@ export function Connect({ createClient, today, deviceName, onConnected }: Connec
     setServerError(null)
     if (check.kind !== 'fine-grained' && check.kind !== 'classic') return
     if (check.kind === 'classic' && !ack) return
-    if (expiryError || !expiryIso) return
+    if (expiryError || (!neverExpires && !expiryIso)) return
     setBusy(true)
     try {
       const client = createClient(check.token)
       const user = await client.getUser()
       const repos = await client.listRepos()
-      onConnected({ token: check.token, tokenExpiresOn: expiryIso, client, user, repos })
+      onConnected({ token: check.token, tokenExpiresOn: neverExpires ? null : expiryIso, client, user, repos })
     } catch (e) {
       setServerError(e instanceof GitHubError && e.kind === 'unauthorized' ? t.setup.tokenInvalid : errorMessage(e))
       setBusy(false)
@@ -216,14 +217,15 @@ export function Connect({ createClient, today, deviceName, onConnected }: Connec
         <label className="field-label" htmlFor="setup-expiry">
           {t.setup.expiryLabel}
         </label>
-        <div className={`field-wrap${submitted && expiryError ? ' is-invalid' : ''}`}>
+        <div className={`field-wrap${submitted && expiryError ? ' is-invalid' : ''}${neverExpires ? ' is-disabled' : ''}`}>
           <input
             id="setup-expiry"
             className="field-input"
             inputMode="numeric"
             placeholder="YYYY/MM/DD"
-            value={expiryText}
+            value={neverExpires ? '' : expiryText}
             autoComplete="off"
+            disabled={neverExpires}
             onChange={(e) => setExpiryText(e.target.value)}
           />
           <span className="field-icon-wrap">
@@ -234,17 +236,22 @@ export function Connect({ createClient, today, deviceName, onConnected }: Connec
               className="date-overlay"
               tabIndex={-1}
               aria-hidden="true"
+              disabled={neverExpires}
               value={expiryIso ?? ''}
               onChange={(e) => e.target.value && setExpiryText(formatExpiry(e.target.value))}
             />
           </span>
         </div>
+        <label className="check-row">
+          <input type="checkbox" checked={neverExpires} onChange={(e) => setNeverExpires(e.target.checked)} />
+          <span>{t.setup.neverExpires}</span>
+        </label>
         {submitted && expiryError ? (
           <p className="field-error" role="alert">
             {expiryError}
           </p>
         ) : (
-          <p className="field-note">{t.setup.expiryHint}</p>
+          <p className="field-note">{neverExpires ? t.setup.neverExpiresHint : t.setup.expiryHint}</p>
         )}
         {serverError && (
           <p className="field-error" role="alert">
