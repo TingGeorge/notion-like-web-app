@@ -19,6 +19,17 @@ import { tableNodes } from 'prosemirror-tables'
 export const NOTION_COLORS = ['gray', 'brown', 'orange', 'yellow', 'green', 'blue', 'purple', 'pink', 'red'] as const
 export type NotionColor = (typeof NOTION_COLORS)[number]
 
+/** DATA-19: an image's display width in CSS pixels, kept within these bounds. */
+export const IMAGE_WIDTH_MIN = 40
+export const IMAGE_WIDTH_MAX = 4000
+
+/** A stored image width: a whole number of pixels within bounds, or null (natural width, at most the page width). */
+export function imageWidth(value: unknown): number | null {
+  const n = typeof value === 'number' ? value : typeof value === 'string' && /^\d+$/.test(value) ? Number(value) : NaN
+  if (!Number.isFinite(n) || n <= 0) return null
+  return Math.min(IMAGE_WIDTH_MAX, Math.max(IMAGE_WIDTH_MIN, Math.round(n)))
+}
+
 export function isNotionColor(value: unknown): value is NotionColor {
   return typeof value === 'string' && (NOTION_COLORS as readonly string[]).includes(value)
 }
@@ -222,9 +233,12 @@ const nodes: Record<string, NodeSpec> = {
     ],
   },
 
-  /** Image alone in a paragraph: `![caption](/_assets/…)`. */
+  /**
+   * Image alone in a paragraph: `![caption](/_assets/…)`, or with a display width (DATA-19)
+   * `<img src="/_assets/…" alt="caption" width="320">` alone in a block.
+   */
   image: {
-    attrs: { src: {}, alt: { default: '' }, title: { default: null } },
+    attrs: { src: {}, alt: { default: '' }, title: { default: null }, width: { default: null } },
     group: 'block nested',
     atom: true,
     draggable: true,
@@ -233,7 +247,12 @@ const nodes: Record<string, NodeSpec> = {
         tag: 'img[src]',
         getAttrs: (dom) => {
           const el = dom as HTMLElement
-          return { src: el.getAttribute('src'), alt: el.getAttribute('alt') ?? '', title: el.getAttribute('title') }
+          return {
+            src: el.getAttribute('src'),
+            alt: el.getAttribute('alt') ?? '',
+            title: el.getAttribute('title'),
+            width: imageWidth(el.getAttribute('width')),
+          }
         },
       },
     ],
@@ -243,6 +262,7 @@ const nodes: Record<string, NodeSpec> = {
         src: node.attrs.src as string,
         alt: node.attrs.alt as string,
         ...(node.attrs.title ? { title: node.attrs.title as string } : {}),
+        ...(node.attrs.width ? { width: String(node.attrs.width as number) } : {}),
       },
     ],
   },

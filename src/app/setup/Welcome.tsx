@@ -8,9 +8,11 @@ import './setup.css'
 export interface WelcomeProps {
   onStart(): void
   onLinkWithQr(): void
+  /** LINK-5: no camera; type the account and a code. */
+  onLinkWithCode(): void
 }
 
-export function Welcome({ onStart, onLinkWithQr }: WelcomeProps) {
+export function Welcome({ onStart, onLinkWithQr, onLinkWithCode }: WelcomeProps) {
   return (
     <div className="welcome">
       <div className="welcome-hero">
@@ -29,6 +31,9 @@ export function Welcome({ onStart, onLinkWithQr }: WelcomeProps) {
         </Button>
         <Button variant="secondary" size="lg" block onClick={onLinkWithQr}>
           {t.setup.linkWithQr}
+        </Button>
+        <Button variant="ghost" size="lg" block onClick={onLinkWithCode}>
+          {t.setup.linkWithCode}
         </Button>
         <p className="welcome-small">
           {t.app.noServer.map((line) => (

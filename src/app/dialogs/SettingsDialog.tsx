@@ -16,6 +16,7 @@ import { useIsMobile, useSyncState, useUi } from '../hooks'
 import { closeOverlay, openOverlay } from '../overlays'
 import { navigate } from '../router'
 import { session } from '../session'
+import { isPastDate, toIsoDate } from '../setup/token'
 import { changeRepo, clearDeviceData, disconnect, downloadBlob, exportZip, pendingChanges, replaceToken } from '../workspaceAdmin'
 import './dialogs.css'
 
@@ -117,23 +118,37 @@ function useGuarded() {
   return { guard, dialog }
 }
 
+/** 「2027/01/10 到期」 or 「永不過期」 (SETUP-5). */
+function expiryLabel(tokenExpiresOn: string | null): string {
+  return tokenExpiresOn ? t.settings.expiresOn(displayDate(tokenExpiresOn)) : t.setup.neverExpires
+}
+
 function TokenDialog({ workspace, onClose }: { workspace: Workspace; onClose: () => void }) {
   const [token, setToken] = useState('')
   const [expires, setExpires] = useState(() => {
     const d = new Date(Date.now() + 90 * 86_400_000)
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
   })
+  // Unticked even when the current token never expires: the new one usually has a date (SETUP-5).
+  const [neverExpires, setNeverExpires] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const today = toIsoDate(new Date())
   const [busy, setBusy] = useState(false)
   return (
     <Modal open onClose={onClose} title={t.settings.newTokenTitle} showTitle width={440}>
       <form
         className="token-form"
+        // The date's `min` only greys out past days in the picker; the message below explains.
+        noValidate
         onSubmit={(e) => {
           e.preventDefault()
+          if (!neverExpires && isPastDate(expires, new Date())) {
+            setError(t.setup.expiryPast)
+            return
+          }
           setBusy(true)
           setError(null)
-          replaceToken(token, expires)
+          replaceToken(token, neverExpires ? null : expires)
             .then(() => {
               toast(t.settings.changeToken)
               onClose()
@@ -162,11 +177,22 @@ function TokenDialog({ workspace, onClose }: { workspace: Workspace; onClose: ()
         <label className="field-label" htmlFor="new-expiry">
           {t.setup.expiryLabel}
         </label>
-        <TextInput id="new-expiry" type="date" value={expires} onChange={(e) => setExpires(e.target.value)} />
+        <TextInput
+          id="new-expiry"
+          type="date"
+          min={today}
+          value={neverExpires ? '' : expires}
+          disabled={neverExpires}
+          onChange={(e) => setExpires(e.target.value)}
+        />
+        <label className="check-row">
+          <input type="checkbox" checked={neverExpires} onChange={(e) => setNeverExpires(e.target.checked)} />
+          <span>{t.setup.neverExpires}</span>
+        </label>
         {error && <p className="field-error">{error}</p>}
         <div className="confirm-actions">
           <Button onClick={onClose}>{t.common.cancel}</Button>
-          <Button variant="primary" type="submit" loading={busy} disabled={!token.trim()}>
+          <Button variant="primary" type="submit" loading={busy} disabled={!token.trim() || (!neverExpires && !expires)}>
             {t.settings.changeToken}
           </Button>
         </div>
@@ -240,7 +266,7 @@ export function SettingsDialog({ section: initial }: { section?: string }) {
     </Row>
   )
   const tokenRow = (
-    <Row title={t.settings.token} sub={`${maskToken(ws.token)} · ${t.settings.expiresOn(displayDate(ws.tokenExpiresOn))}`}>
+    <Row title={t.settings.token} sub={`${maskToken(ws.token)} · ${expiryLabel(ws.tokenExpiresOn)}`}>
       <Button onClick={() => setTokenOpen(true)}>{t.settings.changeToken}</Button>
     </Row>
   )
@@ -370,7 +396,7 @@ export function SettingsDialog({ section: initial }: { section?: string }) {
           t.settings.sections.connection,
           <>
             {mrow(<FileText size={20} />, t.settings.storage, ws.repo, () => void doChangeRepo())}
-            {mrow(<Lock size={20} />, t.settings.token, t.settings.expiresOn(displayDate(ws.tokenExpiresOn)), () => setTokenOpen(true))}
+            {mrow(<Lock size={20} />, t.settings.token, expiryLabel(ws.tokenExpiresOn), () => setTokenOpen(true))}
             {mrow(<Link2 size={20} />, t.settings.linkDevice, undefined, () => openOverlay({ kind: 'link-device' }))}
           </>,
         )}

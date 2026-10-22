@@ -63,7 +63,9 @@ export const RAW_SAMPLES = [
   '#### Heading 4',
   '###### h6 **bold**',
   '[r1]: https://example.com "title"',
-  '<img src="/_assets/a.png" width="100">',
+  // An `<img>` with only src/alt/title/width is an image (DATA-19); any other attribute keeps it raw.
+  '<img src="/_assets/a.png" height="100">',
+  '<img src="/_assets/a.png" width="50%">',
   'line with <br> inline html',
   '<pre>\ncode\n\nmore\n</pre>',
   '<custom-element>\ncontent\n</custom-element>',
@@ -90,6 +92,8 @@ export interface RandomDocOptions {
 
 export function randomDoc(seed: number, options: RandomDocOptions = {}): PMNode {
   const rand = prng(seed)
+  // A separate stream, so that adding image widths left every other generated document as it was.
+  const widthRand = prng(seed + 0x5eed)
   const maxDepth = options.maxDepth ?? 3
   const maxBlocks = options.maxBlocks ?? 8
 
@@ -248,7 +252,13 @@ export function randomDoc(seed: number, options: RandomDocOptions = {}): PMNode 
     if (r < 0.32) return nodes.code_block.create({ language: pick(LANGUAGES) }, (() => { const t = codeText(); return t ? schema.text(t) : null })())
     if (r < 0.34) return nodes.horizontal_rule.create()
     if (r < 0.37) {
-      return nodes.image.create({ src: pick(IMAGE_SRCS), alt: chance(0.2) ? '' : text(1, 3, chance(0.1)), title: chance(0.2) ? pick(['t', '', 'a "b"']) : null })
+      return nodes.image.create({
+        src: pick(IMAGE_SRCS),
+        alt: chance(0.2) ? '' : text(1, 3, chance(0.1)),
+        title: chance(0.2) ? pick(['t', '', 'a "b"']) : null,
+        // DATA-19: a width is written as `<img>`.
+        width: widthRand() < 0.3 ? [40, 320, 4000][Math.floor(widthRand() * 3)] : null,
+      })
     }
     if (r < 0.39) return nodes.file.create({ href: pick(FILE_HREFS), name: chance(0.1) ? '' : text(1, 3) })
     if (r < 0.42) return nodes.page_link.create({ href: pick(PAGE_HREFS), title: chance(0.1) ? '' : text(1, 3) })

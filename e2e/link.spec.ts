@@ -212,3 +212,93 @@ test('the QR code hides after 60 s and 重新產生 makes a new one', async ({ p
   await expect(qr).toHaveCount(0)
   await expect(dialog.getByRole('button', { name: '顯示 QR code' })).toBeVisible()
 })
+
+/** 設定 → 連結新裝置 → 新裝置沒有相機？改用配對碼 (LINK-5). */
+async function openCodeLink(page: Page) {
+  await openSettings(page, '同步與儲存')
+  await page.locator('.settings-content').getByRole('button', { name: '顯示 QR code' }).click()
+  const dialog = page.getByRole('dialog', { name: '連結新裝置' })
+  await dialog.getByRole('button', { name: '新裝置沒有相機？改用配對碼' }).click()
+  return dialog
+}
+
+test('a device without a camera links by typing the GitHub account and the code (LINK-5)', async ({ page, fake, browser }) => {
+  fake.allowGists(TOKEN)
+  await setupDevice(page, { neverExpires: true })
+  await createPage(page, '打字帶走的筆記', '用配對碼帶走')
+  await syncAndWaitForCommit(page, fake)
+  const before = commitCount(fake)
+
+  const dialog = await openCodeLink(page)
+  await expect(dialog.locator('.code-account')).toHaveText('TingGeorge')
+  const code = (await dialog.locator('.link-code').innerText()).replace('-', '')
+  expect(code).toMatch(/^[23456789ABCDEFGHJKMNPQRSTUVWXYZ]{10}$/)
+  await expect(dialog.getByText(/\d:\d\d 後失效/)).toBeVisible()
+  // The payload waits in a public gist, encrypted.
+  const [gist] = fake.gistsOf('TingGeorge')
+  expect(gist.public).toBe(true)
+  const content = [...gist.files.values()].join('')
+  expect(content).toMatch(/^ghnotes:1:/)
+  expect(content).not.toContain(TOKEN)
+  expect(content).not.toContain('TingGeorge')
+
+  const d = await newContextOn(browser, fake)
+  const b = d.page
+  // The new device reads the gist without a token.
+  const anonymous: string[] = []
+  fake.onRequest((r) => {
+    if (r.path.startsWith('/users/TingGeorge/gists')) anonymous.push(r.headers.get('authorization') ?? '')
+  })
+  await b.goto('./')
+  await b.getByRole('button', { name: '沒有相機？用配對碼連結' }).click()
+  await expect(b.getByRole('heading', { name: '用配對碼連結' })).toBeVisible()
+  await b.getByLabel('GitHub 帳號').fill('TingGeorge')
+  await typeCode(b, 'AAAAAAAAAA')
+  await expect(b.getByText('配對碼不正確，請再確認一次。')).toBeVisible()
+  await typeCode(b, code.toLowerCase())
+  // Straight to the confirmation (SEC-8), with the token's expiry carried over.
+  await expect(b.getByRole('heading', { name: '確認要連結的 repo' })).toBeVisible()
+  await expect(b.getByText(REPO)).toBeVisible()
+  await expect(b.getByText('GitHub 帳號：TingGeorge · token 永不過期')).toBeVisible()
+  expect(anonymous.length).toBeGreaterThan(0)
+  expect(anonymous.every((a) => a === '')).toBe(true)
+  // The new device deletes the gist; the source notices.
+  await expect.poll(() => fake.gistsOf('TingGeorge').length).toBe(0)
+  await expect(dialog.getByText('新裝置已取得設定，可以關閉這個視窗了。')).toBeVisible({ timeout: 15_000 })
+
+  await b.getByRole('button', { name: '連結並開始同步' }).click()
+  await b.getByRole('button', { name: '開始使用' }).click({ timeout: 30_000 })
+  await expect(b.locator('.sidebar .tree-title', { hasText: '打字帶走的筆記' })).toBeVisible()
+  await waitSynced(b)
+  expect(commitCount(fake)).toBe(before)
+  await d.context.close()
+})
+
+test('a token without the Gists permission says how to add it; closing the dialog deletes the gist (LINK-5)', async ({ page, fake }) => {
+  await setupDevice(page)
+  const dialog = await openCodeLink(page)
+  await expect(dialog.getByText('這把 token 沒有 Gists 權限，所以不能用配對碼連結。')).toBeVisible()
+  await expect(dialog.getByRole('link', { name: /在 GitHub 編輯 token/ })).toHaveAttribute('href', 'https://github.com/settings/personal-access-tokens')
+  expect(fake.gistsOf('TingGeorge')).toHaveLength(0)
+  // The user edits the token on github.com and tries again.
+  fake.allowGists(TOKEN)
+  await dialog.getByRole('button', { name: '重試' }).click()
+  await expect(dialog.locator('.code-account')).toHaveText('TingGeorge')
+  expect(fake.gistsOf('TingGeorge')).toHaveLength(1)
+  // 重新產生 replaces the gist.
+  const first = fake.gistsOf('TingGeorge')[0].id
+  await dialog.getByRole('button', { name: '重新產生' }).click()
+  await expect.poll(() => fake.gistsOf('TingGeorge').map((g) => g.id)).not.toContain(first)
+  await expect.poll(() => fake.gistsOf('TingGeorge').length).toBe(1)
+  // Back to the QR code, or closing, deletes it.
+  await dialog.getByRole('button', { name: '完成' }).click()
+  await expect.poll(() => fake.gistsOf('TingGeorge').length).toBe(0)
+})
+
+test('the scan screen offers the code when there is no camera (LINK-5)', async ({ page }) => {
+  await page.goto('./')
+  await page.getByRole('button', { name: '用 QR code 從另一台裝置連結' }).click()
+  await page.getByRole('button', { name: '改用配對碼' }).click()
+  await expect(page.getByRole('heading', { name: '用配對碼連結' })).toBeVisible()
+  await expect(page.getByLabel('配對碼第 10 碼')).toBeVisible()
+})

@@ -80,6 +80,9 @@
   --cam-field-bg: rgb(255 255 255 / 8%);
   --cam-button-bg: #ffffff;
   --cam-button-text: #37352f;
+  /* The crop frame sits on the picture itself, so it looks the same in every theme (DATA-19). */
+  --crop-shade: rgb(0 0 0 / 55%);
+  --crop-line: #ffffff;
   --print-bg: #ffffff;
   --print-text: #000000;
 

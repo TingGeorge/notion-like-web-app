@@ -85,6 +85,8 @@ function readDestination(src: string, i: number): string | null {
   return j > i ? decodeDestination(src.slice(i, j)) : null
 }
 
+const IMG_SRC = /<img\s[^<>]*?\bsrc\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'=<>`]+))/gi
+
 const DEFINITION = /^[ \t>]*(?:(?:[-+*]|\d{1,9}[.)])[ \t]+)*\[(?:[^\]\\\n]|\\.){1,999}\]:/gm
 
 function collectLinks(src: string): string[] {
@@ -103,6 +105,12 @@ function collectLinks(src: string): string[] {
     DEFINITION.lastIndex = 0
     let m: RegExpExecArray | null
     while ((m = DEFINITION.exec(src))) add(readDestination(src, m.index + m[0].length))
+  }
+  // DATA-19: images with a width, `<img src="…" … width="…">`.
+  if (/<img\s/i.test(src)) {
+    IMG_SRC.lastIndex = 0
+    let m: RegExpExecArray | null
+    while ((m = IMG_SRC.exec(src))) add(decodeDestination(m[1] ?? m[2] ?? m[3]))
   }
   return [...found]
 }
@@ -141,6 +149,8 @@ export function stripInline(s: string): string {
     .replace(/\[([^\]]*)\]\(<[^>]*>[^)]*\)/g, '$1')
     .replace(/\[([^\]]+)\]\[[^\]]*\]/g, '$1')
     .replace(/<((?:https?|mailto|ftp):[^>\s]+)>/gi, '$1')
+    // An image with a width (DATA-19): its caption, like `![caption](…)`.
+    .replace(/<img\s[^<>]*?\balt\s*=\s*(?:"([^"]*)"|'([^']*)')[^<>]*>/gi, (_all, d?: string, q?: string) => d ?? q ?? '')
     .replace(/<\/?[A-Za-z][A-Za-z0-9-]*(?:\s[^<>]*)?\/?>/g, '')
     .replace(/\*+|~~?/g, '')
     .replace(/(^|[^\p{L}\p{N}_])_+|_+(?=$|[^\p{L}\p{N}_])/gu, '$1')

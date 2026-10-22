@@ -5,6 +5,7 @@
  * links) are never touched, and reference-style links are rewritten in their definition.
  */
 import type { Nodes, Parents } from 'mdast'
+import { parseImgTag, withImgSrc } from './html'
 import type { LinkRef } from './index'
 import { destinationOf, parseTopLevel } from './mdast'
 import { linkLabelMarkdown } from './serialize'
@@ -46,6 +47,18 @@ export function rewrite(body: string, map: (link: LinkRef) => { href: string; te
   const edits: Edit[] = []
 
   const visit = (node: Nodes, parent: Parents | null, base: number): void => {
+    // DATA-19: an image with a width is `<img src="…" … width="…">`, a block or alone in a paragraph.
+    if (node.type === 'html' && node.position && (parent === null || parent.type !== 'paragraph' || parent.children.length === 1)) {
+      const start = base + (node.position.start.offset ?? 0)
+      const end = base + (node.position.end.offset ?? 0)
+      const source = body.slice(start, end)
+      const img = parseImgTag(source)
+      if (img) {
+        const result = map({ href: img.src, text: img.alt, alone: true, image: true })
+        const text = result && result.href !== img.src ? withImgSrc(source, result.href) : null
+        if (text !== null) edits.push({ start, end, text })
+      }
+    }
     if (node.type === 'link' || node.type === 'image' || node.type === 'definition') {
       const dest = destinationOf(node)
       if (dest && dest.start >= 0 && node.position) {

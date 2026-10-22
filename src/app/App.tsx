@@ -14,6 +14,7 @@ import { DesktopShell, MobileShell } from './layout/Shells'
 import { OverlayHost } from './OverlayHost'
 import { registerServiceWorker } from './pwa'
 import { navigate, useRoute } from './router'
+import { deleteLeftoverLinkGist } from './link/linkGist'
 import { createClient, loadDevice, loadUi, loadWorkspace, onNotice, preloadSearch, saveWorkspace, session, startSession, updateUi } from './session'
 import { useTheme } from './shortcuts'
 import { runInitialSync } from './workspaceAdmin'
@@ -21,7 +22,7 @@ import { runInitialSync } from './workspaceAdmin'
 // First run only: keeps the camera/QR code out of the main bundle.
 const SetupFlow = lazy(() => import('./setup/SetupFlow').then((m) => ({ default: m.SetupFlow })))
 
-type Resume = { token: string; tokenExpiresOn: string }
+type Resume = { token: string; tokenExpiresOn: string | null }
 type Boot = { state: 'loading' } | { state: 'ready'; workspace: Workspace | null; device: DeviceInfo; resume: Resume | null; safariAccepted: boolean }
 
 export function App() {
@@ -36,6 +37,12 @@ export function App() {
         const s = startSession(workspace, device)
         s.engine.start()
         preloadSearch()
+        const gists = createClient(workspace.token)
+        const cleanUp = () =>
+          void deleteLeftoverLinkGist(gists).then((wait) => {
+            if (wait !== null) setTimeout(cleanUp, wait)
+          })
+        cleanUp()
       }
       const resume = resumeRow && resumeRow.key === 'resume' ? resumeRow.value : null
       setBoot({ state: 'ready', workspace, device, resume, safariAccepted: prefs.safariTabModeAccepted ?? false })

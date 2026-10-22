@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   InvalidPayloadError,
+  NEVER_EXPIRES,
   PAIRING_ALPHABET,
   PAYLOAD_PREFIX,
   WrongPairingCodeError,
@@ -42,8 +43,15 @@ describe('pairing code (LINK-1)', () => {
     for (const n of counts.values()) expect(Math.abs(n - expected)).toBeLessThan(expected * 0.2)
   })
 
-  it('formats as XXXX-XXXX', () => {
+  it('formats as XXXX-XXXX (XXXXX-XXXXX for the LINK-5 code)', () => {
     expect(formatPairingCode('K7QM2XPA')).toBe('K7QM-2XPA')
+    expect(formatPairingCode('K7QM2XPA9H')).toBe('K7QM2-XPA9H')
+  })
+
+  it('normalises a 10-character LINK-5 code only when asked for that length', () => {
+    expect(normalizePairingCode('k7qm2-xpa9h', 10)).toBe('K7QM2XPA9H')
+    expect(normalizePairingCode('K7QM2XPA9H')).toBeNull()
+    expect(normalizePairingCode('K7QM2XPA', 10)).toBeNull()
   })
 
   it('normalises lowercase, spaces and dashes; rejects anything outside the alphabet', () => {
@@ -96,6 +104,14 @@ describe('link payload encryption (LINK-1, SEC-8)', () => {
     await expect(decryptLinkPayload(`${PAYLOAD_PREFIX}a.b.c`, 'K7QM2XPA')).rejects.toBeInstanceOf(InvalidPayloadError)
     await expect(decryptLinkPayload(`${PAYLOAD_PREFIX}!!.b.c`, 'K7QM2XPA')).rejects.toBeInstanceOf(InvalidPayloadError)
   }, 60_000)
+
+  it('carries a token that never expires as a far date older versions accept (SETUP-5)', async () => {
+    const payload = await encryptLinkPayload({ ...data, e: null }, 'K7QM2XPA')
+    expect(await decryptLinkPayload(payload, 'K7QM2XPA')).toEqual({ ...data, e: null })
+    // On the wire it is a date, so a device still on an older version can link too.
+    const legacy = await encryptLinkPayload({ ...data, e: NEVER_EXPIRES }, 'K7QM2XPA')
+    expect(await decryptLinkPayload(legacy, 'K7QM2XPA')).toEqual({ ...data, e: null })
+  }, 30_000)
 
   it('rejects decrypted JSON with missing or malformed fields', async () => {
     const bad = { ...data, e: 'tomorrow' } as LinkData

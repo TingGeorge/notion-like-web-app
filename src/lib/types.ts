@@ -3,6 +3,9 @@
  * the workspace operations and the UI. See SPEC.md for the requirement IDs.
  */
 
+/** `tokenExpiresOn` as sent over a device link for a token that never expires (SETUP-5, LINK-1). */
+export const NEVER_EXPIRES = '9999-12-31'
+
 /** DATA-1. A workspace is (owner, repo, branch) plus the credentials for it (STORE-1 `config.workspace`). */
 export interface Workspace {
   owner: string
@@ -10,8 +13,8 @@ export interface Workspace {
   branch: string
   /** Fine-grained or classic token. Never logged, never put in a URL (STORE-7, SEC-2). */
   token: string
-  /** `YYYY-MM-DD`, entered by the user (SETUP-5). */
-  tokenExpiresOn: string
+  /** `YYYY-MM-DD`, entered by the user, or null when the token never expires (SETUP-5). */
+  tokenExpiresOn: string | null
   login: string
   /** GitHub display name, if the account has one. Used for 「<name> 的筆記」. */
   name?: string | null

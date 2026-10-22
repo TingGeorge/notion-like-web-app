@@ -74,7 +74,7 @@ The editor is built directly on ProseMirror, the engine Milkdown wraps, with rem
   | `#/settings/<section>` | settings |
   | `#/setup/<step>` | setup |
   | `#/link` | link a device |
-- **ARCH-3** All network calls go to `https://api.github.com`: the REST API and `/graphql`. The token MUST NOT be sent anywhere else.
+- **ARCH-3** All network calls go to `https://api.github.com`: the REST API and `/graphql`. The token MUST NOT be sent anywhere else. A device that is not linked yet reads the link gist of LINK-5 there without a token.
 - **ARCH-4** No third-party scripts, fonts or analytics are loaded at runtime. Libraries are bundled at build time.
 - **ARCH-5** Fonts and colours:
   - UI text uses the system font stack `-apple-system, BlinkMacSystemFont, "PingFang TC", "Microsoft JhengHei", "Noto Sans TC", "Segoe UI", sans-serif`.
@@ -167,7 +167,7 @@ The editor document is converted to and from Markdown (CommonMark 0.31 + GFM) as
 | Divider | `---` |
 | Code | fenced block with a language: ```` ```js ```` |
 | Simple table | GFM pipe table; the first row is the header |
-| Image | `![caption](/_assets/…)` alone in a paragraph |
+| Image | `![caption](/_assets/…)` alone in a paragraph; with a width (DATA-19), `<img src="/_assets/…" alt="caption" width="320">` alone in a block |
 | File | `[file name.pdf](/_assets/…)` alone in a paragraph |
 | Link to page | `[Title](/path/Title.md)` alone in a paragraph |
 | Line break inside a block | backslash at the end of the line |
@@ -207,7 +207,7 @@ The editor document is converted to and from Markdown (CommonMark 0.31 + GFM) as
   - Other styles (such as `*` bullets) are normalised only when the user edits that page.
 - **DATA-17** Internal links and attachment paths are **root-relative** (start with `/`). github.com resolves those from the repository root, and they keep working when the linking page moves.
   - In paths, these characters are percent-encoded: space, `%`, `(`, `)`, `<`, `>`, `#`, `?`, `[`, `]`. Everything else, including Chinese, stays as is.
-  - When a page or folder moves, every link to it or to any page inside it is rewritten in the same commit.
+  - When a page or folder moves, every link to it or to any page inside it is rewritten in the same commit, including the `src` of an image with a width (DATA-19).
   - Backlinks come from the local index (STORE-4).
 
 ### 3.5 Attachments
@@ -217,6 +217,18 @@ The editor document is converted to and from Markdown (CommonMark 0.31 + GFM) as
   - An image longer than 2560 px on its long edge is scaled down before upload.
   - It is re-encoded as JPEG quality 0.85 unless it has transparency, in which case it stays PNG.
   - Any file over 25 MB is rejected with an explanation.
+  - **Resize** (as in Notion): dragging either side of an image sets its display width, in CSS pixels from 40 to 4000 and at most the page width.
+    - The width is committed on release, as one undo step, and only if the pointer moved: a tap or a cancelled touch changes nothing.
+    - Each side is also a slider for the keyboard: ←/→ change the width by 10 px, by 50 px with Shift.
+    - The width is written as `<img src="…" alt="…" width="320">` (plus `title="…"` if the image has one), alone in a block, so github.com shows the same size. Markdown cannot express a width.
+    - The parser accepts `<img>` with `src`, `width` and optionally `alt` and `title`, in any order and quoting. Any other `<img>` stays raw (DATA-15).
+    - Dragging back to the size the image shows without a width removes the width (`![…](…)` again).
+    - A nested list or a callout's text after such an image is separated by a blank line, because an HTML block runs until one.
+  - **Crop**: the 「裁切圖片」 button on the image opens a crop frame with corner and edge handles; dragging inside moves it. With the keyboard, the arrows move the frame and Shift with the arrows resizes it (1% of the long edge a step, 10% with Alt).
+    - 「完成」 draws the kept part (at most 2560 px on its long edge) and uploads it as a new attachment, re-encoded as above. The block then points at it and keeps its scale on the page: a width is scaled with the crop, and an image without one that showed narrower than its own size gets the width it showed at, scaled.
+    - The dialog follows its image through edits and syncs, closes if the image goes, and changes nothing if the image or the page's editability changed while uploading.
+    - The original stays in the repo (DATA-20), and ⌘Z points the block back at it.
+    - `https:` images cannot be cropped, because the browser does not let a page read their pixels.
 - **DATA-20** Deleting a page does not delete its attachments. Cleaning up orphans is out of scope for v1.
 
 ### 3.6 Settings and trash
@@ -244,7 +256,7 @@ The editor document is converted to and from Markdown (CommonMark 0.31 + GFM) as
 
   | Table | Key | Contents |
   | --- | --- | --- |
-  | `config` | key | `workspace` `{owner, repo, branch, token, tokenExpiresOn, login, linkedAt}`, `device` `{id, name}`, `ui` `{theme, sidebarWidth, collapsed, recent[], lastColor}` |
+  | `config` | key | `workspace` `{owner, repo, branch, token, tokenExpiresOn (YYYY-MM-DD or null), login, linkedAt}`, `device` `{id, name}`, `ui` `{theme, sidebarWidth, collapsed, recent[], lastColor}`, `linkGist` `{id, createdAt}` (LINK-5) |
   | `files` | path | `kind` (`page` / `meta`), `baseSha`, `baseText`, `text`, `pushing` (snapshot text or null), `dirty`, `deleted`, `conflict`, `updatedAt` |
   | `uploads` | path | attachments not yet pushed: `blob`, `sha256`, `createdAt`. Never evicted |
   | `pages` | pageKey | derived: `path`, `title`, `icon`, `parentKey`, `links[]`, `excerpt`, `updatedAt`. Can always be rebuilt from `files` |
@@ -415,7 +427,8 @@ The editor document is converted to and from Markdown (CommonMark 0.31 + GFM) as
 
 - **SETUP-5** Expiry date. Browsers cannot read GitHub's token-expiry response header (it is not CORS-exposed), so the screen asks for 「到期日」.
   - The default is today + 90 days, which matches the pre-filled form.
-  - The value is stored as `tokenExpiresOn` and can be edited in settings.
+  - 「永不過期」 is for a token created with GitHub's 「No expiration」. It disables the date, which is then neither required nor checked, and stores `tokenExpiresOn: null`. Such a token gets no expiry banner (SETUP-13); a `401` still makes the app read-only.
+  - The value is stored as `tokenExpiresOn` and can be edited in settings, which show 「YYYY/MM/DD 到期」 or 「永不過期」.
 - **SETUP-6** On 「連結」:
   1. `GET /user` gives the login. A `401` shows 「token 無效或已過期」.
   2. `GET /user/repos?per_page=100&sort=updated`, paged, lists candidate repos.
@@ -444,7 +457,7 @@ The editor document is converted to and from Markdown (CommonMark 0.31 + GFM) as
   - The source device creates:
     - an 8-character **pairing code** from the alphabet `23456789ABCDEFGHJKMNPQRSTUVWXYZ`, shown as `XXXX-XXXX`;
     - the payload `ghnotes:1:<salt>.<iv>.<ciphertext>`, all base64url.
-  - The ciphertext is AES-GCM of the UTF-8 JSON `{"o","r","b","t","e"}` (owner, repo, branch, token, `tokenExpiresOn`).
+  - The ciphertext is AES-GCM of the UTF-8 JSON `{"o","r","b","t","e"}` (owner, repo, branch, token, `tokenExpiresOn`). A token that never expires is sent as `"e":"9999-12-31"`, a date that older versions accept, and read back as `null`.
   - The key is PBKDF2-SHA-256 of the pairing code, 600,000 iterations, 16-byte salt.
   - The QR code carries the payload followed by `.` and the pairing code (`ghnotes:1:<salt>.<iv>.<ciphertext>.<CODE>`), so scanning needs nothing typed. The setup code (LINK-2) is the payload alone.
   - QR error correction is level M.
@@ -454,24 +467,38 @@ The editor document is converted to and from Markdown (CommonMark 0.31 + GFM) as
   - 「複製設定碼」 copies the encrypted payload (without the pairing code) as text, with a warning that clipboard history and Universal Clipboard can keep it. Only then is the pairing code shown, for typing on the new device.
 - **LINK-3** On the new device: 「用 QR code 從另一台裝置連結」 opens the camera (`getUserMedia`, rear camera, M15). Frames are decoded with jsQR.
   1. A `ghnotes:1:` payload leads to M22. A QR code's own pairing code decrypts it at once; a pasted setup code asks the user for the pairing code. A QR code whose pairing code does not decrypt it shows 「這不是 GitHub Notes 的 QR code」.
-  2. After decryption, M22 shows the owner, repo, GitHub login (`GET /user`) and expiry date, and asks for confirmation.
+  2. After decryption, M22 shows the owner, repo, GitHub login (`GET /user`) and expiry date (or 「token 永不過期」), and asks for confirmation.
   3. Then SETUP-8's write probe runs, and the app goes to D14/M14.
   - Any other QR content shows 「這不是 GitHub Notes 的 QR code」.
   - Three wrong pairing codes in a row discard the scanned payload.
 - **LINK-4** If the camera is denied or unavailable, 「改用設定碼」 (M15) accepts the pasted payload, and the flow continues at M22.
+- **LINK-5** Linking by typing, for a new device that cannot scan (no camera, or a broken one):
+  - **Why a gist**: there is no server, and the new device has no token yet, so the only place both devices can reach is a public gist of the user's account on `api.github.com` (ARCH-3).
+  - **Source device**: 連結新裝置 → 「新裝置沒有相機？改用配對碼」.
+    - It creates a 10-character code from the LINK-1 alphabet, shown as `XXXXX-XXXXX`, and encrypts the LINK-1 payload with it (same key derivation).
+    - It `POST /gists` one public gist: description `GitHub Notes: device link (deleted automatically)`, file `github-notes-link.txt` holding the payload. It then deletes link gists more than 5 minutes older than the new one (left by an app that was closed), judged by GitHub's `created_at` so a device clock that is off does not matter. Younger link gists may be on show in another tab or device and are left alone.
+    - It shows the login from the `POST /gists` answer (current even after a rename) and the code, the warning 「帳號加上配對碼等於你的 token，不要給別人看。」 and a 5-minute countdown. They stay while the window is hidden, because the phone may lock while the user types on the other device.
+    - Every 3 s it checks the gist; once the new device has deleted it, it shows 「新裝置已取得設定」 with 「重新產生」, in case the new device cancels.
+    - It deletes the gist when the code expires (then 「配對碼已失效」 offers 「重新產生」), is replaced, or the dialog closes, and with a `keepalive` request when the page is closed.
+    - The gist id is kept in `config.linkGist` before anything else, so a gist that outlives the page is deleted at the next start, or once it is 5 minutes old if the app starts sooner.
+    - The token needs the Gists account permission (Read and write), or the `gist` scope for a classic token. Without it, `POST /gists` answers `403` / `404`, and the dialog explains how to add it on github.com, with 「在 GitHub 編輯 token ↗」 and 「重試」.
+  - **New device**: 「沒有相機？用配對碼連結」 on D01/M01, or 「改用配對碼」 on M15, asks for the GitHub account and the code.
+    1. Without a token, it lists `GET /users/{login}/gists` and reads the newest three link gists with `GET /gists/{id}`. A gist made a moment ago may not be listed yet, so it looks again, waiting 2, 4 and 6 s between tries.
+    2. It decrypts each with the code. None found: 「找不到配對碼…」. None opens: 「配對碼不正確，請再確認一次。」. Unknown account: 「找不到這個 GitHub 帳號」.
+    3. It deletes the gist with the token it got, then continues at M22 (LINK-3 step 2) without asking for a code.
 
 ### 6.6 Changing the setup (D08 / M17)
 
 - **SETUP-11** 更換 token:
   - The new token is checked as in SETUP-4 and SETUP-6, and also needs the write probe (SETUP-8) on the current repo.
-  - It asks for the new expiry date.
+  - It asks for the new expiry date, or 「永不過期」 (SETUP-5).
   - Only the token and the date are replaced.
 - **SETUP-12** These actions need zero dirty files. If any exist, the user must first sync, or confirm 「放棄 N 個未同步的修改」:
   - **更換 repo**: clears `files`, `pages`, `uploads`, `assets`, `sync` and `search`, then goes to D13.
   - **中斷連結**: clears the whole database and the cache, then returns to D01/M01.
   - **清除這台裝置的資料**: clears the caches and re-downloads everything; the token and repo stay.
 - **SETUP-13** Expiry and Safari tab mode:
-  - **Expiry**: from 14 days before `tokenExpiresOn`, a banner says 「token 將在 N 天後到期」 with 「更換 token」.
+  - **Expiry**: from 14 days before `tokenExpiresOn`, a banner says 「token 將在 N 天後到期」 with 「更換 token」. A token that never expires (`tokenExpiresOn: null`) has no such banner.
   - **Expired or revoked token**: any `401` makes the app read-only, with a banner. Local edits are kept and pushed after the token is replaced.
   - **Safari tab mode**: Safari deletes script-written data of sites the user has not used for 7 days. When the app runs as a normal Safari tab (iOS after 「仍要在 Safari 使用」, or Safari on Mac), a permanent hint suggests 「加入主畫面」 or 「加入 Dock」, and pushes ignore the 30 s spacing.
 
@@ -495,6 +522,7 @@ Each Figma frame is the visual spec for its screen. This section adds the behavi
 | D12–D14 M12–M14 | 首次設定 | §6.2–§6.4 |
 | D15 M21 | 連結新裝置 (show) | LINK-1, LINK-2 |
 | M15 M22 | 掃描 QR code, 輸入配對碼 | LINK-3, LINK-4 |
+| — | 用配對碼連結 (typing the account and code) | LINK-5 |
 | M02 | 首頁 | UI-11 |
 | M04 | 編輯中 | UI-12 |
 | M05 | 所有頁面 | Same tree as the desktop sidebar; tap opens, long-press opens M08 |
@@ -605,7 +633,8 @@ Markdown shortcuts, applied only after composition ends:
 - **SEC-1** Token scope. The UI and the docs tell users to create a fine-grained token with:
   - only the notes repo;
   - Contents: Read and write;
-  - an expiry date.
+  - optionally Gists: Read and write, needed only to link devices by typing a code (LINK-5);
+  - an expiry date, recommended. A token without one (「No expiration」) is accepted (SETUP-5); the docs remind users to revoke it on github.com when a device is lost.
 - **SEC-2** The token is used only in the `Authorization` header of requests to `https://api.github.com`. It MUST NOT appear in URLs, logs, error reports, exports or the service-worker cache.
 - **SEC-3** The Content Security Policy is set with a `<meta>` tag, because GitHub Pages cannot set headers. `<meta>` cannot carry `frame-ancestors`, so the app also refuses to run inside a frame (`if (top !== self)`).
 
@@ -626,10 +655,15 @@ Markdown shortcuts, applied only after composition ends:
   - **Before inviting other people to use the app**, give this repo its own custom domain (for example `notes.example.com`). A custom domain on the user site would be inherited by every project site and does not isolate anything.
   - Thanks to ARCH-1 the build works at any path. Local data does not move to the new origin, so every device syncs, then sets up again.
 - **SEC-7** Token sharing:
-  - QR linking copies the same token to every device, so revoking it on github.com locks all of them. Each device then needs 更換 token, or a fresh QR link from a device that already has the new token.
+  - QR and code linking copy the same token to every device, so revoking it on github.com locks all of them. Each device then needs 更換 token, or a fresh QR link from a device that already has the new token.
   - Users who prefer separate tokens per device can skip QR linking and paste a different token on each device.
   - A lost device: revoke the token. The notes remain in the repo.
 - **SEC-8** The QR code alone links a device: it carries the pairing code with the payload (LINK-1), so anyone who photographs it while it is shown can read the token. That is why it appears only on request, hides after 60 s or when the window is hidden, and carries a warning (LINK-2). The setup code is text that clipboard history can keep, so it stays encrypted with a pairing code shown only on the source device. The new device always shows which account and repo it is about to link to (LINK-3), so a planted QR code cannot silently point it at someone else's repo.
+- **SEC-9** Linking by typing (LINK-5) puts the encrypted payload in a public gist for up to 5 minutes (longer only if the app is closed while the code is shown, or a phone sleeps through the countdown; it is then deleted at the next start).
+  - Public gists are collected by crawlers, so the ciphertext must be assumed kept forever: deleting the gist does not end an offline attack, the token's lifetime does.
+  - It is protected by the 10-character code (31^10, about 2^49.5) and PBKDF2 with 600,000 iterations: at about 15,000 guesses a second on a current GPU, an average search takes some 900 GPU-years.
+  - The gist is deleted by the new device as soon as it has read it, and by the source device when the code expires or is closed. The account and the code are shown only on request, with a warning, and the new device still confirms the account and repo (LINK-3).
+  - A token that may be exposed is revoked on github.com (SEC-7).
 
 ## 9. Non-functional requirements
 
@@ -679,7 +713,7 @@ Markdown shortcuts, applied only after composition ends:
   - Chinese search, and IME composition (simulated `compositionstart` / `compositionend`);
   - QR payload encryption and decryption, with right and wrong pairing codes (the payload is injected; camera capture is not testable);
   - an expired token, and the expiry banner.
-- **TEST-4** CI (GitHub Actions) runs lint, typecheck, unit and e2e tests on every push. A push to `main` deploys to GitHub Pages only if everything passes.
+- **TEST-4** CI (GitHub Actions) runs lint, typecheck, unit and e2e tests on every push. A push to `main` deploys to GitHub Pages only if everything passes; when `package.json` has a version with no GitHub release yet, CI then creates it, with the notes in `docs/releases/v<version>.md`.
 - **TEST-5** Before each release, a person compares the key screens with Figma at both sizes, in light and dark.
 - **TEST-6** v1 is done when:
   - every MUST in this spec has a passing test or a checked manual item;
@@ -705,5 +739,5 @@ Markdown shortcuts, applied only after composition ends:
 | Public repos | Allowed after a confirmation | Not allowed |
 | Classic tokens (`ghp_`) | Allowed after a warning | Fine-grained only |
 | Polling | Every 60 s while visible | Only on open and focus |
-| Token expiry asked at setup | Default today + 90 days, the same as the pre-filled GitHub form | Don't ask; only react to `401` |
+| Token expiry asked at setup | Default today + 90 days, the same as the pre-filled GitHub form; 「永不過期」 for tokens without an expiry | Don't ask; only react to `401` |
 | Attachment cap | 25 MB; images scaled to 2560 px | Other limits |

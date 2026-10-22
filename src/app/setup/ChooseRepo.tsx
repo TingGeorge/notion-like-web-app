@@ -17,7 +17,7 @@ export interface ChooseRepoProps {
   repos: RepoSummary[]
   client: GitHubClient
   token: string
-  tokenExpiresOn: string
+  tokenExpiresOn: string | null
   user: GitHubUser
   welcomePage: string
   now(): Date

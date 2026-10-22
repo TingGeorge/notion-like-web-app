@@ -35,6 +35,8 @@ export interface ConnectOptions {
   token?: string
   /** `YYYY-MM-DD`; the default (today + 90 days) is kept when omitted. */
   expiresOn?: string
+  /** Tick 「永不過期」 (SETUP-5). */
+  neverExpires?: boolean
 }
 
 /** 開始設定 → paste the token → 連結. Stops at the repo list. */
@@ -51,6 +53,7 @@ export async function connectToken(page: Page, options: ConnectOptions = {}): Pr
     const [y, m, d] = options.expiresOn.split('-')
     await page.getByLabel('到期日').fill(`${y}/${m}/${d}`)
   }
+  if (options.neverExpires) await page.getByLabel('永不過期').check()
   await page.getByRole('button', { name: '連結', exact: true }).click()
 }
 

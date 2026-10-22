@@ -107,6 +107,84 @@ describe('Editor component', () => {
     expect(outline(ref.current!.getDoc())).toEqual(['p:a', 'hr', 'p:'])
   })
 
+  it('shows an image at its width, with a crop button for attachments only (DATA-19)', async () => {
+    const img = (src: string, width: number | null) => ({ type: 'image', attrs: { src, alt: '', title: null, width } })
+    const { container } = setup({ doc: docOf(img('/_assets/a.png', 320), img('https://example.com/b.png', null), p('x')) })
+    const [sized, external] = [...container.querySelectorAll<HTMLElement>('figure.image-block')]
+    expect(sized.querySelector<HTMLElement>('.image-frame')!.style.width).toBe('320px')
+    expect(external.querySelector<HTMLElement>('.image-frame')!.style.width).toBe('')
+    expect(sized.querySelector<HTMLElement>('.image-tools')!.hidden).toBe(false)
+    expect(external.querySelector<HTMLElement>('.image-tools')!.hidden).toBe(true)
+    // The crop button opens the crop dialog.
+    await act(async () => {
+      sized.querySelector<HTMLButtonElement>('button[aria-label="裁切圖片"]')!.click()
+    })
+    expect(document.querySelector('[role="dialog"]')?.textContent).toContain('裁切圖片')
+  })
+
+  it('the crop dialog follows its image through edits and closes when it goes (DATA-19)', async () => {
+    const image = { type: 'image', attrs: { src: '/_assets/a.png', alt: '', title: null, width: null } }
+    const { ref, container } = setup({ doc: docOf(p('before'), image, p('x')) })
+    const view = ref.current!.view!
+    const dialog = () => document.querySelector('[role="dialog"]')
+    await act(async () => {
+      container.querySelector<HTMLButtonElement>('button[aria-label="裁切圖片"]')!.click()
+    })
+    expect(dialog()?.textContent).toContain('裁切圖片')
+    const imagePos = () => {
+      let at = -1
+      view.state.doc.forEach((n, offset) => {
+        if (n.type.name === 'image') at = offset
+      })
+      return at
+    }
+    // Its own caption changes (the node is replaced), and a block is inserted before it.
+    await act(async () => {
+      view.dispatch(view.state.tr.setNodeMarkup(imagePos(), null, { ...view.state.doc.nodeAt(imagePos())!.attrs, alt: '說明' }))
+    })
+    await act(async () => {
+      view.dispatch(view.state.tr.insert(0, view.state.schema.nodes.paragraph.create(null, view.state.schema.text('new'))))
+    })
+    expect(dialog()?.textContent).toContain('裁切圖片')
+    // The image is deleted: the dialog goes.
+    await act(async () => {
+      const at = imagePos()
+      view.dispatch(view.state.tr.delete(at, at + 1))
+    })
+    expect(dialog()).toBeNull()
+  })
+
+  it('the crop dialog does not move to a copy of the same picture when its image is deleted (DATA-19)', async () => {
+    const copy = (alt: string) => ({ type: 'image', attrs: { src: '/_assets/a.png', alt, title: null, width: null } })
+    const { ref, container } = setup({ doc: docOf(p('before'), copy('A'), copy('B'), p('x')) })
+    const view = ref.current!.view!
+    await act(async () => {
+      container.querySelector<HTMLButtonElement>('button[aria-label="裁切圖片"]')!.click()
+    })
+    expect(document.querySelector('[role="dialog"]')).not.toBeNull()
+    // A (the first image) is deleted; B, the same picture, moves up into its place.
+    const at = view.state.doc.child(0).nodeSize
+    expect(view.state.doc.nodeAt(at)!.attrs.alt).toBe('A')
+    await act(async () => {
+      view.dispatch(view.state.tr.delete(at, at + 1))
+    })
+    expect(document.querySelector('[role="dialog"]')).toBeNull()
+  })
+
+  it('a tap on a resize handle, without moving, leaves the width alone (DATA-19)', () => {
+    const { container, onChange } = setup({ doc: docOf({ type: 'image', attrs: { src: 'https://example.com/a.png', alt: '', title: null, width: 600 } }, p('x')) })
+    const handle = container.querySelector<HTMLElement>('.image-resize.is-right')!
+    expect(handle.getAttribute('role')).toBe('slider')
+    expect(handle.getAttribute('aria-valuenow')).toBe('600')
+    act(() => {
+      handle.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, button: 0, clientX: 300, pointerId: 1 }))
+      handle.dispatchEvent(new PointerEvent('pointermove', { bubbles: true, clientX: 302, pointerId: 1 }))
+      handle.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, clientX: 302, pointerId: 1 }))
+    })
+    expect(onChange).not.toHaveBeenCalled()
+    expect(container.querySelector<HTMLElement>('.image-frame')!.style.width).toBe('600px')
+  })
+
   it('cleans up on unmount', () => {
     const { ref, unmount } = setup()
     const view = ref.current!.view!

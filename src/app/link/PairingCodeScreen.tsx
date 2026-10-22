@@ -1,7 +1,7 @@
 /**
  * LINK-3 / M22: decrypt the scanned payload — with the pairing code the QR code carries, or the one
  * the user types for a pasted setup code — show what is about to be linked (SEC-8), then probe write
- * access (SETUP-8) and hand the Workspace to the app.
+ * access (SETUP-8) and hand the Workspace to the app. LINK-5 arrives already decrypted.
  */
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { InvalidPayloadError, splitLinkText, WrongPairingCodeError } from '../../lib/link/crypto'
@@ -20,6 +20,8 @@ export const MAX_WRONG_CODES = 3
 export interface PairingCodeScreenProps {
   /** The scanned or pasted `ghnotes:1:…` text, with or without its pairing code. Held in memory only. */
   payload: string
+  /** LINK-5: the data was already decrypted with the typed code; only confirm it. */
+  decrypted?: LinkData
   deps: Required<Pick<SetupDeps, 'createClient' | 'linkCrypto' | 'welcomePage' | 'now'>>
   onCancel(): void
   /** Three wrong codes or a malformed payload: go back to scanning with a message. */
@@ -28,12 +30,12 @@ export interface PairingCodeScreenProps {
   onReady(ws: Workspace): Promise<void>
 }
 
-export function PairingCodeScreen({ payload: text, deps, onCancel, onDiscard, onReady }: PairingCodeScreenProps) {
+export function PairingCodeScreen({ payload: text, decrypted, deps, onCancel, onDiscard, onReady }: PairingCodeScreenProps) {
   const { payload, code: carried } = useMemo(() => splitLinkText(text), [text])
   const [code, setCode] = useState(carried ?? '')
   const [wrong, setWrong] = useState<number | null>(null)
   const [busy, setBusy] = useState(false)
-  const [data, setData] = useState<LinkData | null>(null)
+  const [data, setData] = useState<LinkData | null>(decrypted ?? null)
   const [user, setUser] = useState<GitHubUser | null>(null)
   const [accountError, setAccountError] = useState<string | null>(null)
   const [linking, setLinking] = useState(false)
@@ -110,15 +112,25 @@ export function PairingCodeScreen({ payload: text, deps, onCancel, onDiscard, on
     }
   }
 
-  // A scanned QR code carries its pairing code: decrypt it straight away.
+  // A scanned QR code carries its pairing code: decrypt it straight away. LINK-5 data only needs the account.
   useEffect(() => {
-    if (carried === null || started.current) return
+    if (started.current) return
+    if (decrypted) {
+      started.current = true
+      deps
+        .createClient(decrypted.t)
+        .getUser()
+        .then(setUser, (e: unknown) => setAccountError(errorMessage(e)))
+      return
+    }
+    if (carried === null) return
     started.current = true
     void decrypt(carried)
     // eslint-disable-next-line react-hooks/exhaustive-deps -- once, on mount
   }, [])
 
   const confirmed = data !== null
+  const typing = carried === null && !decrypted
 
   return (
     <div className="pair-screen">
@@ -127,7 +139,7 @@ export function PairingCodeScreen({ payload: text, deps, onCancel, onDiscard, on
           {t.common.cancel}
         </button>
         <div className="pair-main">
-          {carried === null ? (
+          {typing ? (
             <>
               <h1 className="pair-title">{t.link.enterCodeTitle}</h1>
               <p className="pair-intro">{t.link.enterCodeIntro}</p>
@@ -163,7 +175,7 @@ export function PairingCodeScreen({ payload: text, deps, onCancel, onDiscard, on
                 </div>
                 <div className="pair-card-meta">
                   {user ? (
-                    t.link.accountLine(user.login, formatExpiry(data.e))
+                    data.e ? t.link.accountLine(user.login, formatExpiry(data.e)) : t.link.accountLineNoExpiry(user.login)
                   ) : accountError ? (
                     <span className="pair-error-inline">{accountError}</span>
                   ) : (
@@ -186,7 +198,7 @@ export function PairingCodeScreen({ payload: text, deps, onCancel, onDiscard, on
           variant="primary"
           size="lg"
           block
-          disabled={!confirmed || !user || code.length !== PAIRING_LENGTH}
+          disabled={!confirmed || !user || (typing && code.length !== PAIRING_LENGTH)}
           loading={linking}
           onClick={() => void link()}
         >

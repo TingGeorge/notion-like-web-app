@@ -3,20 +3,27 @@
  * Safari tab mode hint, new app version ready.
  */
 import { useState } from 'react'
+import { useLiveQuery } from 'dexie-react-hooks'
 import { isApplePlatform, isIOS, isSafariTab } from '../../lib/data/device'
+import { db } from '../../lib/store/db'
 import type { Workspace } from '../../lib/types'
 import { t } from '../../strings'
 import { daysUntil } from '../format'
 import { useSyncState } from '../hooks'
 import { openOverlay } from '../overlays'
 import { applyUpdate, useUpdateReady } from '../pwa'
+import { session } from '../session'
 import './banners.css'
 
 export function Banners({ workspace }: { workspace: Workspace }) {
   const sync = useSyncState()
   const update = useUpdateReady()
   const [hideSafari, setHideSafari] = useState(false)
-  const days = daysUntil(workspace.tokenExpiresOn)
+  // 更換 token saves a new date (or 永不過期) without reloading, so read the stored workspace.
+  const saved = useLiveQuery(() => db().config.get('workspace'), [])
+  const expiresOn = saved?.key === 'workspace' ? saved.value.tokenExpiresOn : (session()?.workspace ?? workspace).tokenExpiresOn
+  // SETUP-5: a token without an expiry date never gets the warning.
+  const days = expiresOn ? daysUntil(expiresOn) : Infinity
   const unauthorized = sync?.lastError?.kind === 'unauthorized'
   const safariTab = isSafariTab()
 

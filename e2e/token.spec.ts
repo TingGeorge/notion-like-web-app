@@ -26,6 +26,52 @@ test('a token that expires later shows no banner; the date is shown in settings'
   await expect(page.getByRole('dialog', { name: '設定' })).toContainText(`${expiresOn.replaceAll('-', '/')} 到期`)
 })
 
+test('a token that never expires: no expiry banner, settings say 「永不過期」 (SETUP-5)', async ({ page }) => {
+  await setupDevice(page, { neverExpires: true })
+  await expect(page.locator('.banner', { hasText: 'token' })).toHaveCount(0)
+  await openSettings(page)
+  await expect(page.getByRole('dialog', { name: '設定' })).toContainText('永不過期')
+})
+
+test('an empty or past expiry date is refused unless 「永不過期」 is ticked', async ({ page }) => {
+  await page.goto('./')
+  const start = page.getByRole('button', { name: '開始設定' })
+  const inSafari = page.getByRole('button', { name: '仍要在 Safari 使用' })
+  await expect(start.or(inSafari)).toBeVisible()
+  if (await inSafari.isVisible()) await inSafari.click()
+  await start.click()
+  await page.getByLabel('GitHub token').fill(TOKEN)
+  await page.getByLabel('到期日').fill('')
+  await page.getByRole('button', { name: '連結', exact: true }).click()
+  await expect(page.getByText('請輸入有效的到期日')).toBeVisible()
+  await page.getByLabel('到期日').fill('2020/01/01')
+  await expect(page.getByText('到期日不能是過去的日子')).toBeVisible()
+  await page.getByLabel('永不過期').check()
+  await expect(page.getByLabel('到期日')).toBeDisabled()
+  await expect(page.getByText('到期日不能是過去的日子')).toHaveCount(0)
+  await page.getByRole('button', { name: '連結', exact: true }).click()
+  await expect(page.getByRole('button', { name: '使用這個 repo' })).toBeVisible()
+})
+
+test('更換 token can switch to a token that never expires', async ({ page, fake }) => {
+  fake.addToken(NEW_TOKEN, { login: LOGIN })
+  await setupDevice(page, { expiresOn: inDays(10) })
+  await expect(page.locator('.banner.is-warning')).toBeVisible()
+  await page.locator('.banner.is-warning').getByRole('button', { name: '更換 token' }).click()
+  await page.getByRole('button', { name: '更換 token' }).last().click()
+  const dialog = page.getByRole('dialog', { name: '更換 token' })
+  await dialog.getByLabel('GitHub token').fill(NEW_TOKEN)
+  // A date in the past is refused here too.
+  await dialog.getByLabel('到期日').fill('2020-01-01')
+  await dialog.getByRole('button', { name: '更換 token' }).click()
+  await expect(dialog.getByText('到期日不能是過去的日子')).toBeVisible()
+  await dialog.getByLabel('永不過期').check()
+  await dialog.getByRole('button', { name: '更換 token' }).click()
+  await expect(dialog).toHaveCount(0)
+  await expect(page.locator('.banner.is-warning')).toHaveCount(0)
+  await expect(page.getByRole('dialog', { name: '設定' })).toContainText('永不過期')
+})
+
 test('a revoked token makes the app read-only; edits stay; 更換 token pushes them', async ({ page, fake }) => {
   fake.addToken(NEW_TOKEN, { login: LOGIN })
   await setupDevice(page)

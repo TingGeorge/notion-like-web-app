@@ -180,9 +180,45 @@ describe('§3.4 blocks', () => {
     both(doc(file('/_assets/2026/10/ab12cd34.pdf', '報告.pdf')), '[報告.pdf](/_assets/2026/10/ab12cd34.pdf)\n')
     both(doc(pageLink('/工作/會議記錄.md', '會議記錄')), '[會議記錄](/工作/會議記錄.md)\n')
     both(doc(pageLink('/工作/專案%20A.md#目標', '專案 A')), '[專案 A](/工作/專案%20A.md#目標)\n')
+    // DATA-19: an image with a width is HTML, so GitHub shows it at that width too.
+    both(doc(img('/_assets/2026/10/3f9a2c1b.png', '說明', null, 320)), '<img src="/_assets/2026/10/3f9a2c1b.png" alt="說明" width="320">\n')
+    both(doc(img('/_assets/a%20b.png', 'a "q" <b> & c', '標 "題"', 40)), '<img src="/_assets/a%20b.png" alt="a &quot;q&quot; &lt;b&gt; &amp; c" title="標 &quot;題&quot;" width="40">\n')
     // Other links alone stay a paragraph with a link.
     both(doc(p(t('網站', link('https://example.com')))), '[網站](https://example.com)\n')
     both(doc(p(t('相對', link('other.md')))), '[相對](other.md)\n')
+  })
+
+  it('an image with a width inside lists, to-dos, quotes, callouts and toggles (DATA-19)', () => {
+    const sized = img('/_assets/a.png', 'a', null, 320)
+    const tag = '<img src="/_assets/a.png" alt="a" width="320">'
+    // An HTML block runs until a blank line, so a nested list after it needs one.
+    both(doc(ul(li(p(), sized, ul(li(p('子')))))), `- ${tag}\n\n  - 子\n`)
+    both(doc(ul(li(p(), sized), li(p('b')))), `- ${tag}\n- b\n`)
+    both(doc(ul(todo(false, p(), sized))), `- [ ] ${tag}\n`)
+    both(doc(ul(li(p('文字'), sized))), `- 文字\n\n  ${tag}\n`)
+    both(doc(quote(sized, p('x'))), `> ${tag}\n>\n> x\n`)
+    both(doc(callout('NOTE', null, sized)), `> [!NOTE]\n>\n> ${tag}\n`)
+    both(doc(callout('NOTE', '🧠', sized)), `> [!NOTE]\n> <!-- icon: 🧠 -->\n> ${tag}\n`)
+    both(doc(toggle('標題', sized)), `<details>\n<summary>標題</summary>\n\n${tag}\n\n</details>\n`)
+  })
+
+  it('reads other ways of writing <img width>, and keeps any other <img> as Markdown (DATA-15, DATA-19)', () => {
+    const read = (md: string) => parseMarkdown(md)
+    expectSameDoc(read(`<img width='120' src='/_assets/a.png' />\n`), doc(img('/_assets/a.png', '', null, 120)))
+    expectSameDoc(read(`<IMG SRC="/_assets/a.png" ALT="x" TITLE="t" WIDTH="64">\n`), doc(img('/_assets/a.png', 'x', 't', 64)))
+    // The callout marker paragraph can carry it.
+    expectSameDoc(read(`> [!TIP]\n> <img src="/a.png" width="100">\n`), doc(callout('TIP', null, img('/a.png', '', null, 100))))
+    for (const kept of [
+      '<img src="/_assets/a.png">',
+      '<img src="/_assets/a.png" width="50%">',
+      '<img src="/_assets/a.png" width="10">',
+      '<img src="/_assets/a.png" width="100" height="80">',
+      '<img src="/_assets/a.png" width="100" style="x">',
+      '<img src="" width="100">',
+      '<img src="/a.png" width="100"> text',
+    ]) {
+      both(doc(raw(kept)), `${kept}\n`)
+    }
   })
 
   it('line break inside a block: backslash at the end of the line', () => {

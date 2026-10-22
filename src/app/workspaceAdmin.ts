@@ -20,7 +20,7 @@ export function checkTokenFormat(input: string): TokenCheck {
 }
 
 /** SETUP-11: replace the token (checked like SETUP-4/6, plus the write probe on the current repo). */
-export async function replaceToken(input: string, expiresOn: string): Promise<void> {
+export async function replaceToken(input: string, expiresOn: string | null): Promise<void> {
   const s = session()
   if (!s) throw new Error('no session')
   const check = checkTokenFormat(input)

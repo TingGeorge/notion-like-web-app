@@ -80,7 +80,7 @@ class FakeClient extends GitHubClient {
 const GOOD_CODE = 'K7QM2XPA'
 const PAYLOAD = 'ghnotes:1:mockSalt.mockIv.mockCipher'
 const mockCrypto: LinkCrypto = {
-  generatePairingCode: () => GOOD_CODE,
+  generatePairingCode: (length = GOOD_CODE.length) => `${GOOD_CODE}9H`.slice(0, length),
   encryptLinkPayload: async (data, code) => `ghnotes:1:${btoa(JSON.stringify({ ...data, c: code })).replace(/=/g, '')}`,
   decryptLinkPayload: async (payload, code) => {
     await sleep(150)

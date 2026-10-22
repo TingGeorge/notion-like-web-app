@@ -7,7 +7,7 @@ import { deviceName, isSafariTab } from '../lib/data/device'
 import { ulid } from '../lib/data/ulid'
 import { db, type ConfigRow } from '../lib/store/db'
 import { SyncEngine } from '../lib/sync/engine'
-import { DEFAULT_UI, type DeviceInfo, type UiPrefs, type Workspace } from '../lib/types'
+import { DEFAULT_UI, NEVER_EXPIRES, type DeviceInfo, type UiPrefs, type Workspace } from '../lib/types'
 import { flushSearchIndex, getSearchIndex, refreshSearchFor, reindexPaths } from '../lib/workspace/indexer'
 
 type Flusher = () => Promise<void>
@@ -54,7 +54,10 @@ export async function filesChanged(paths: string[]): Promise<void> {
 
 export async function loadWorkspace(): Promise<Workspace | null> {
   const row = await db().config.get('workspace')
-  return row && row.key === 'workspace' ? row.value : null
+  if (!row || row.key !== 'workspace') return null
+  // Older versions could store '' when the date was cleared, or the link's NEVER_EXPIRES: no expiry (SETUP-5).
+  const expires = row.value.tokenExpiresOn
+  return { ...row.value, tokenExpiresOn: expires && expires !== NEVER_EXPIRES ? expires : null }
 }
 
 export async function saveWorkspace(workspace: Workspace): Promise<void> {

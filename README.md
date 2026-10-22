@@ -20,14 +20,14 @@ No server. No sign-up. Works offline, on your computer and your iPhone.
 | **No server, no account** | The app is a static site. It talks only to `api.github.com`, with a token that can reach your notes repo and nothing else. |
 | **Feels like Notion** | Block editor, `/` menu, Markdown shortcuts, colours, toggles, callouts, tables, Notion's keyboard shortcuts. |
 | **Offline first** | Everything is kept on the device. Write on a plane; it syncs when you are back online. |
-| **Computer and iPhone** | Add it to the iPhone home screen and it behaves like an app. Move to a new device by scanning a QR code. |
+| **Computer and iPhone** | Add it to the iPhone home screen and it behaves like an app. Move to a new device by scanning a QR code, or by typing a code. |
 | **History for free** | Every sync is a git commit, so every version of every page is in your repo's history. |
 
 ## Features
 
 ### Write like in Notion
 
-Headings, lists, to-dos, toggles, quotes, callouts, code, tables, images, files and links to other pages. Type `/` for any block, or use Markdown shortcuts as you type (`# `, `- `, `[] `, `> `, ```` ``` ````…).
+Headings, lists, to-dos, toggles, quotes, callouts, code, tables, images, files and links to other pages. Type `/` for any block, or use Markdown shortcuts as you type (`# `, `- `, `[] `, `> `, ```` ``` ````…). Drag either side of an image to resize it, or crop it with 裁切圖片; github.com shows it the same way.
 
 ![The / menu](docs/screenshots/slash.png)
 
@@ -49,9 +49,11 @@ Edits from different devices merge line by line. If both changed the same line, 
 
 ![The conflict dialog](docs/screenshots/conflict.png)
 
-### Add a device with a QR code
+### Add a device with a QR code, or a code
 
-On your computer: 設定 → 連結新裝置. Scan the QR code with your iPhone and type the 8-character pairing code. The token inside the QR code is encrypted with that code.
+On a device that is already set up: 設定 → 連結新裝置 → 顯示 QR code, and scan it on the new device. The token inside the QR code is encrypted.
+
+No camera on the new device? Choose 「新裝置沒有相機？改用配對碼」 instead, and type the GitHub account and the 10-character code it shows on the new device (「沒有相機？用配對碼連結」). The encrypted setup waits for a few minutes in a public gist of your account and is deleted as soon as the new device has it, so the token needs the *Gists: Read and write* permission for this.
 
 ![Linking a new device](docs/screenshots/link.png)
 
@@ -119,8 +121,8 @@ Sub-pages live in a folder with the same name as their parent, images go to `_as
 ## Get started
 
 1. **Create a private repo** for your notes on GitHub, for example `notes`. It can be empty.
-2. **Open the app** and press 開始設定. Use 「在 GitHub 建立 token ↗」 to open a pre-filled token form, then under *Repository access* choose **Only select repositories** → your notes repo. The only permission to set is *Contents: Read and write* (GitHub adds read-only *Metadata* by itself).
-3. **Paste the token**, pick the repo, and wait for the first sync. An empty repo starts with a 歡迎使用 page.
+2. **Open the app** and press 開始設定. Use 「在 GitHub 建立 token ↗」 to open a pre-filled token form, then under *Repository access* choose **Only select repositories** → your notes repo. The only permission you need is *Contents: Read and write* (GitHub adds read-only *Metadata* by itself); add *Gists: Read and write* under *Account permissions* if you want to link devices by typing a code.
+3. **Paste the token** and its expiry date (tick 「永不過期」 for a token created with *No expiration*), pick the repo, and wait for the first sync. An empty repo starts with a 歡迎使用 page.
 4. **On iPhone**, open the app in Safari → Share → 加入主畫面, then use 「用 QR code 從另一台裝置連結」 and scan the code shown on your computer.
 
 The token is stored only on your device, is never sent anywhere except `api.github.com`, and never appears in URLs, logs or exports.

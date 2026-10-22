@@ -12,7 +12,7 @@ import { t } from '../../strings'
 
 /** The parts of `src/lib/link/crypto.ts` the screens call; injectable so tests and the harness can fake them. */
 export interface LinkCrypto {
-  generatePairingCode(): string
+  generatePairingCode(length?: number): string
   encryptLinkPayload(data: LinkData, code: string): Promise<string>
   decryptLinkPayload(payload: string, code: string): Promise<LinkData>
 }
@@ -44,7 +44,7 @@ export interface SetupDeps {
   /** Defaults to `() => new Date()`; used for `linkedAt`. */
   now?(): Date
   /** SETUP-12 更換 repo: a token already in use; setup starts at choosing a repo. */
-  resume?: { token: string; tokenExpiresOn: string } | null
+  resume?: { token: string; tokenExpiresOn: string | null } | null
 }
 
 /** Placeholder until `WELCOME_PAGE` from `src/lib/data/templates.ts` is available. */
@@ -69,7 +69,7 @@ export async function activateRepo(opts: {
   client: GitHubClient
   repo: RepoTarget
   token: string
-  tokenExpiresOn: string
+  tokenExpiresOn: string | null
   user: GitHubUser
   welcomePage: string
   now: Date

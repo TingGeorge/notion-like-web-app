@@ -47,6 +47,19 @@ describe('PairingInput', () => {
     expect(boxes()).toHaveLength(8)
   })
 
+  it('renders ten boxes for the LINK-5 code and completes on the tenth', () => {
+    const done = vi.fn()
+    function Ten() {
+      const [value, setValue] = useState('')
+      return <PairingInput value={value} onChange={setValue} onComplete={done} length={10} />
+    }
+    render(<Ten />)
+    expect(boxes()).toHaveLength(10)
+    fireEvent.change(boxes()[0], { target: { value: 'k7qm2xpa9h' } })
+    expect(joined()).toBe('K7QM2XPA9H')
+    expect(done).toHaveBeenCalledWith('K7QM2XPA9H')
+  })
+
   it('uppercases typed characters and moves focus to the next box', () => {
     render(<Harness onComplete={() => {}} />)
     fireEvent.change(boxes()[0], { target: { value: 'k' } })
