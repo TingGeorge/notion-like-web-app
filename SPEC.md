@@ -705,7 +705,7 @@ Markdown shortcuts, applied only after composition ends:
   - Chinese search, and IME composition (simulated `compositionstart` / `compositionend`);
   - QR payload encryption and decryption, with right and wrong pairing codes (the payload is injected; camera capture is not testable);
   - an expired token, and the expiry banner.
-- **TEST-4** CI (GitHub Actions) runs lint, typecheck, unit and e2e tests on every push. A push to `main` deploys to GitHub Pages only if everything passes.
+- **TEST-4** CI (GitHub Actions) runs lint, typecheck, unit and e2e tests on every push. A push to `main` deploys to GitHub Pages only if everything passes; when `package.json` has a version with no GitHub release yet, CI then creates it, with the notes in `docs/releases/v<version>.md`.
 - **TEST-5** Before each release, a person compares the key screens with Figma at both sizes, in light and dark.
 - **TEST-6** v1 is done when:
   - every MUST in this spec has a passing test or a checked manual item;
