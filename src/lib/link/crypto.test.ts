@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   InvalidPayloadError,
+  NEVER_EXPIRES,
   PAIRING_ALPHABET,
   PAYLOAD_PREFIX,
   WrongPairingCodeError,
@@ -104,9 +105,12 @@ describe('link payload encryption (LINK-1, SEC-8)', () => {
     await expect(decryptLinkPayload(`${PAYLOAD_PREFIX}!!.b.c`, 'K7QM2XPA')).rejects.toBeInstanceOf(InvalidPayloadError)
   }, 60_000)
 
-  it('carries a token that never expires (SETUP-5)', async () => {
+  it('carries a token that never expires as a far date older versions accept (SETUP-5)', async () => {
     const payload = await encryptLinkPayload({ ...data, e: null }, 'K7QM2XPA')
     expect(await decryptLinkPayload(payload, 'K7QM2XPA')).toEqual({ ...data, e: null })
+    // On the wire it is a date, so a device still on an older version can link too.
+    const legacy = await encryptLinkPayload({ ...data, e: NEVER_EXPIRES }, 'K7QM2XPA')
+    expect(await decryptLinkPayload(legacy, 'K7QM2XPA')).toEqual({ ...data, e: null })
   }, 30_000)
 
   it('rejects decrypted JSON with missing or malformed fields', async () => {

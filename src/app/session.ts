@@ -54,7 +54,9 @@ export async function filesChanged(paths: string[]): Promise<void> {
 
 export async function loadWorkspace(): Promise<Workspace | null> {
   const row = await db().config.get('workspace')
-  return row && row.key === 'workspace' ? row.value : null
+  if (!row || row.key !== 'workspace') return null
+  // Older versions could store '' when the date was cleared: it means no known expiry (SETUP-5).
+  return { ...row.value, tokenExpiresOn: row.value.tokenExpiresOn || null }
 }
 
 export async function saveWorkspace(workspace: Workspace): Promise<void> {

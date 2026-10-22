@@ -3,7 +3,8 @@
  *
  * CONTRACT — implemented in this folder.
  * Payload: `ghnotes:1:<salt>.<iv>.<ciphertext>`, all base64url (no padding).
- * Ciphertext: AES-GCM of the UTF-8 JSON `{"o","r","b","t","e"}` (`e` is null for a token that never expires).
+ * Ciphertext: AES-GCM of the UTF-8 JSON `{"o","r","b","t","e"}`. A token that never expires is sent as
+ * `e: "9999-12-31"`, a date older versions accept, and read back as null.
  * Key: PBKDF2-SHA-256 of the pairing code (normalised, without the dash), 600,000 iterations, 16-byte salt.
  * QR code: the payload, a dot, then the pairing code (`ghnotes:1:<salt>.<iv>.<ciphertext>.<CODE>`), so
  * scanning needs nothing typed. The setup code (copied text) is the payload alone.
@@ -25,6 +26,8 @@ export interface LinkData {
 }
 
 export const PAIRING_ALPHABET = '23456789ABCDEFGHJKMNPQRSTUVWXYZ'
+/** `e` on the wire for a token that never expires (SETUP-5). */
+export const NEVER_EXPIRES = '9999-12-31'
 export const PAYLOAD_PREFIX = 'ghnotes:1:'
 
 export class WrongPairingCodeError extends Error {
@@ -146,7 +149,7 @@ export async function encryptLinkPayload(data: LinkData, code: string): Promise<
   const salt = crypto.getRandomValues(new Uint8Array(SALT_BYTES))
   const iv = crypto.getRandomValues(new Uint8Array(IV_BYTES))
   const key = await deriveKey(normalized, salt)
-  const json = JSON.stringify({ o: data.o, r: data.r, b: data.b, t: data.t, e: data.e })
+  const json = JSON.stringify({ o: data.o, r: data.r, b: data.b, t: data.t, e: data.e || NEVER_EXPIRES })
   const cipher = new Uint8Array(
     await crypto.subtle.encrypt({ name: 'AES-GCM', iv: iv as BufferSource }, key, encoder.encode(json)),
   )
@@ -191,5 +194,5 @@ export async function decryptLinkPayload(payload: string, code: string): Promise
   ) {
     throw new InvalidPayloadError('bad fields')
   }
-  return { o, r, b, t, e }
+  return { o, r, b, t, e: e === NEVER_EXPIRES ? null : e }
 }

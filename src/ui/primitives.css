@@ -146,6 +146,17 @@
   accent-color: var(--accent-default);
   cursor: pointer;
 }
+/* A finger-sized target (WCAG 2.5.8). */
+@media (pointer: coarse) {
+  .check-row {
+    min-height: 32px;
+    font-size: 15px;
+  }
+  .check-row input {
+    width: 20px;
+    height: 20px;
+  }
+}
 
 /* Switch (自動同步) */
 .switch {

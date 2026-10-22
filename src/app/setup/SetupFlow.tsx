@@ -52,7 +52,7 @@ export function SetupFlow({ step, navigate, deps, mockSafariToolbar }: SetupFlow
     const client = deps.createClient(resume.token)
     Promise.all([client.getUser(), client.listRepos()])
       .then(([user, repos]) => {
-        setConnected({ client, token: resume.token, tokenExpiresOn: resume.tokenExpiresOn, user, repos })
+        setConnected({ client, token: resume.token, tokenExpiresOn: resume.tokenExpiresOn || null, user, repos })
         navigate('repo')
       })
       .catch(() => navigate('connect'))

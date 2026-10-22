@@ -12,6 +12,7 @@ import { daysUntil } from '../format'
 import { useSyncState } from '../hooks'
 import { openOverlay } from '../overlays'
 import { applyUpdate, useUpdateReady } from '../pwa'
+import { session } from '../session'
 import './banners.css'
 
 export function Banners({ workspace }: { workspace: Workspace }) {
@@ -20,7 +21,7 @@ export function Banners({ workspace }: { workspace: Workspace }) {
   const [hideSafari, setHideSafari] = useState(false)
   // 更換 token saves a new date (or 永不過期) without reloading, so read the stored workspace.
   const saved = useLiveQuery(() => db().config.get('workspace'), [])
-  const expiresOn = saved?.key === 'workspace' ? saved.value.tokenExpiresOn : workspace.tokenExpiresOn
+  const expiresOn = saved?.key === 'workspace' ? saved.value.tokenExpiresOn : (session()?.workspace ?? workspace).tokenExpiresOn
   // SETUP-5: a token without an expiry date never gets the warning.
   const days = expiresOn ? daysUntil(expiresOn) : Infinity
   const unauthorized = sync?.lastError?.kind === 'unauthorized'

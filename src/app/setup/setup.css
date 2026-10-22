@@ -942,6 +942,10 @@
     width: 20px;
     height: 20px;
   }
+  /* The phone fields are already grey: a disabled one fades instead. */
+  .field-wrap.is-disabled {
+    opacity: 0.5;
+  }
   .setup-footer {
     position: sticky;
     bottom: 0;
