@@ -15,7 +15,7 @@ export interface UIState {
   toolbarMenu: null | 'turnInto' | 'color' | 'more' | 'link'
   /** Mobile sheets opened from the keyboard toolbar. */
   mobileSheet: null | 'turnInto' | 'color'
-  /** DATA-19: crop dialog for the image at `pos`. */
+  /** DATA-19: crop dialog for the image at `pos` (mapped through every transaction, in place). */
   crop: null | { pos: number }
 }
 

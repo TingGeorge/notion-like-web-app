@@ -3,24 +3,24 @@ import type { Page } from '@playwright/test'
 import { expect, modKey, test } from './fixtures'
 import { assetPaths, bodyOf, createPage, editor, expectUploadedImages, readRepoFile, setupDevice, syncAndWaitForCommit } from './helpers'
 
-/** A 600×300 PNG: red on the left half, blue on the right. */
-async function twoColourPng(page: Page): Promise<{ name: string; mimeType: string; buffer: Buffer }> {
-  const b64 = await page.evaluate(() => {
+/** A `width`×`width/2` PNG: red on the left half, blue on the right. */
+async function twoColourPng(page: Page, width = 600): Promise<{ name: string; mimeType: string; buffer: Buffer }> {
+  const b64 = await page.evaluate((w) => {
     const c = document.createElement('canvas')
-    c.width = 600
-    c.height = 300
+    c.width = w
+    c.height = w / 2
     const g = c.getContext('2d')!
     g.fillStyle = '#ff0000'
-    g.fillRect(0, 0, 300, 300)
+    g.fillRect(0, 0, w / 2, w / 2)
     g.fillStyle = '#0000ff'
-    g.fillRect(300, 0, 300, 300)
+    g.fillRect(w / 2, 0, w / 2, w / 2)
     return c.toDataURL('image/png').split(',')[1]
-  })
+  }, width)
   return { name: 'halves.png', mimeType: 'image/png', buffer: Buffer.from(b64, 'base64') }
 }
 
-async function insertImage(page: Page) {
-  const file = await twoColourPng(page)
+async function insertImage(page: Page, width = 600) {
+  const file = await twoColourPng(page, width)
   const chooser = page.waitForEvent('filechooser')
   await page.keyboard.type('/圖片')
   await expect(page.getByRole('listbox', { name: '插入區塊' })).toBeVisible()
@@ -122,4 +122,63 @@ test('dragging an image back to its own size removes the width', async ({ page, 
   await expect.poll(async () => Math.round((await frame.boundingBox())!.width)).toBe(600)
   await syncAndWaitForCommit(page, fake)
   expect(bodyOf(await readRepoFile(fake, '圖片寬度.md'))).toMatch(/^!\[\]\([^)]+\)\n$/)
+})
+
+test('a tap on a handle changes nothing; the keyboard resizes and crops too', async ({ page, fake }) => {
+  await setupDevice(page)
+  await createPage(page, '鍵盤圖片', '')
+  await insertImage(page)
+  const frame = editor(page).locator('figure.image-block .image-frame')
+  await expect.poll(async () => Math.round((await frame.boundingBox())!.width)).toBe(600)
+  // A tap (no movement) on a side.
+  await frame.hover()
+  const handle = editor(page).locator('figure.image-block .image-resize.is-right')
+  await handle.click()
+  await expect.poll(async () => Math.round((await frame.boundingBox())!.width)).toBe(600)
+
+  // ← / Shift+← on a focused handle.
+  await handle.focus()
+  await page.keyboard.press('ArrowLeft')
+  await page.keyboard.press('ArrowLeft')
+  await expect.poll(async () => Math.round((await frame.boundingBox())!.width)).toBe(580)
+  await page.keyboard.press('Shift+ArrowLeft')
+  await expect.poll(async () => Math.round((await frame.boundingBox())!.width)).toBe(530)
+  await expect(handle).toHaveAttribute('aria-valuenow', '530')
+  await syncAndWaitForCommit(page, fake)
+  expect(imgTags(bodyOf(await readRepoFile(fake, '鍵盤圖片.md')))[0].width).toBe(530)
+
+  // Crop with the keyboard: Shift+Alt+← takes 10% of the long edge off the right each time.
+  await frame.hover()
+  await page.getByRole('button', { name: '裁切圖片' }).click()
+  const dialog = page.getByRole('dialog', { name: '裁切圖片' })
+  await expect(dialog.locator('.gn-crop-size')).toHaveText('600 × 300')
+  await dialog.getByRole('group', { name: /裁切範圍/ }).focus()
+  for (let i = 0; i < 5; i++) await page.keyboard.press('Shift+Alt+ArrowLeft')
+  await expect(dialog.locator('.gn-crop-size')).toHaveText('300 × 300')
+  // Arrows alone move the frame (it stays inside the picture).
+  await page.keyboard.press('Alt+ArrowRight')
+  await expect(dialog.locator('.gn-crop-size')).toHaveText('300 × 300')
+  await dialog.getByRole('button', { name: '完成' }).click()
+  await expect(dialog).toHaveCount(0)
+  await expect.poll(() => editor(page).locator('figure.image-block img').evaluate((img) => (img as HTMLImageElement).naturalWidth)).toBe(300)
+  await expect.poll(async () => Math.round((await frame.boundingBox())!.width)).toBe(265)
+})
+
+test('cropping a picture wider than the page keeps the size it shows at', async ({ page }) => {
+  await setupDevice(page)
+  await createPage(page, '大圖', '')
+  await insertImage(page, 1400)
+  const frame = editor(page).locator('figure.image-block .image-frame')
+  const shown = Math.round((await frame.boundingBox())!.width)
+  expect(shown).toBeLessThan(1400)
+  await frame.hover()
+  await page.getByRole('button', { name: '裁切圖片' }).click()
+  const dialog = page.getByRole('dialog', { name: '裁切圖片' })
+  await dialog.getByRole('group', { name: /裁切範圍/ }).focus()
+  for (let i = 0; i < 5; i++) await page.keyboard.press('Shift+Alt+ArrowLeft')
+  await expect(dialog.locator('.gn-crop-size')).toHaveText('700 × 700')
+  await dialog.getByRole('button', { name: '完成' }).click()
+  await expect(dialog).toHaveCount(0)
+  // Half the picture, half the width it showed at.
+  await expect.poll(async () => Math.round((await frame.boundingBox())!.width)).toBe(Math.round(shown / 2))
 })

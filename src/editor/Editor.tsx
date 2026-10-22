@@ -185,6 +185,12 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor(prop
         if (tr.docChanged) {
           // The block handle hides while text is typed and returns on the next mouse move.
           if (ctx.hover.pos !== null) ctx.hover.pos = isSimpleTextEdit(tr) ? null : tr.mapping.map(ctx.hover.pos)
+          // DATA-19: the image being cropped moves with the document (the dialog closes if it goes).
+          const crop = ctx.ui.getSnapshot().crop
+          if (crop) {
+            const mapped = tr.mapping.mapResult(crop.pos)
+            crop.pos = mapped.deleted ? -1 : mapped.pos
+          }
           if (!tr.getMeta('gn-ui-only') && !tr.getMeta('gn-silent')) {
             if (v.composing) pendingChange = true
             else latest.current.onChange(next.doc)

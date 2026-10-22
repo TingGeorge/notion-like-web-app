@@ -114,6 +114,10 @@ describe('analyzePage', () => {
     expect(a.plainText).not.toMatch(/\*\*|^#|<details>|\[r\]/m)
   })
 
+  it('finds the src of an image with a width, so a move rewrites it (DATA-17, DATA-19)', () => {
+    expect(analyzePage('<img src="/工作/圖%20a.png" alt="" width="320">\n\n- <img width=64 src=\'/b.png\'>\n').links.sort()).toEqual(['b.png', '工作/圖 a.png'])
+  })
+
   it('keeps the caption of an image with a width (DATA-19)', () => {
     const page = analyzePage('<img src="/_assets/a.png" alt="海邊 &amp; 夕陽" width="320">\n\n文字\n')
     expect(page.plainText).toBe('海邊 & 夕陽\n文字')

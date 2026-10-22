@@ -154,6 +154,27 @@ function escapeAttr(text: string): string {
   return text.replace(/[&"<>\n]/g, (c) => (c === '&' ? '&amp;' : c === '"' ? '&quot;' : c === '<' ? '&lt;' : c === '>' ? '&gt;' : '&#10;'))
 }
 
+/**
+ * DATA-17: the same `<img>` with only its `src` value replaced (every other byte kept), or null if
+ * `html` is not an image `parseImgTag` reads.
+ */
+export function withImgSrc(html: string, src: string): string | null {
+  if (!parseImgTag(html)) return null
+  const open = /^[ \t]*<img(?=\s)/i.exec(html)!
+  let pos = open[0].length
+  for (;;) {
+    IMG_ATTR.lastIndex = pos
+    const m = IMG_ATTR.exec(html)
+    if (!m) return null
+    if (m[1].toLowerCase() === 'src') {
+      const value = m[0].slice(m[0].indexOf('=') + 1).trimStart()
+      const at = IMG_ATTR.lastIndex - value.length
+      return `${html.slice(0, at)}"${escapeAttr(src)}"${html.slice(IMG_ATTR.lastIndex)}`
+    }
+    pos = IMG_ATTR.lastIndex
+  }
+}
+
 /** The canonical form `parseImgTag` reads back. */
 export function imgTag(img: ImgTag): string {
   const title = img.title ? ` title="${escapeAttr(img.title)}"` : ''

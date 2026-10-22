@@ -418,6 +418,8 @@ export const zhTW = {
     cropImage: '裁切圖片',
     cropTitle: '裁切圖片',
     cropReset: '重設',
+    cropFrame: '裁切範圍：方向鍵移動，Shift 加方向鍵調整大小',
+    resizeImage: '圖片寬度',
     cropFailed: '無法裁切這張圖片',
     uploading: '上傳中…',
     uploadFailed: '上傳失敗',

@@ -122,6 +122,20 @@ describe('Editor component', () => {
     expect(document.querySelector('[role="dialog"]')?.textContent).toContain('裁切圖片')
   })
 
+  it('a tap on a resize handle, without moving, leaves the width alone (DATA-19)', () => {
+    const { container, onChange } = setup({ doc: docOf({ type: 'image', attrs: { src: 'https://example.com/a.png', alt: '', title: null, width: 600 } }, p('x')) })
+    const handle = container.querySelector<HTMLElement>('.image-resize.is-right')!
+    expect(handle.getAttribute('role')).toBe('slider')
+    expect(handle.getAttribute('aria-valuenow')).toBe('600')
+    act(() => {
+      handle.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, button: 0, clientX: 300, pointerId: 1 }))
+      handle.dispatchEvent(new PointerEvent('pointermove', { bubbles: true, clientX: 302, pointerId: 1 }))
+      handle.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, clientX: 302, pointerId: 1 }))
+    })
+    expect(onChange).not.toHaveBeenCalled()
+    expect(container.querySelector<HTMLElement>('.image-frame')!.style.width).toBe('600px')
+  })
+
   it('cleans up on unmount', () => {
     const { ref, unmount } = setup()
     const view = ref.current!.view!

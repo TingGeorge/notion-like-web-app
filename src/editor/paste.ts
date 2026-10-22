@@ -26,7 +26,7 @@ const ALLOWED_TAGS = [
   'span', 'div', 'details', 'summary', 'input', 'sub', 'sup', 'kbd',
 ]
 const ALLOWED_ATTR = [
-  'href', 'src', 'alt', 'title', 'colspan', 'rowspan', 'start', 'checked', 'type', 'open', 'style', 'align',
+  'href', 'src', 'alt', 'title', 'width', 'colspan', 'rowspan', 'start', 'checked', 'type', 'open', 'style', 'align',
   'data-color', 'data-bg', 'data-callout', 'data-icon', 'data-checked', 'data-file', 'data-page-link',
   'data-language', 'data-raw', 'data-pm-slice', 'data-pm-slice-id',
 ]
@@ -55,7 +55,7 @@ export function sanitizePastedHTML(html: string): string {
 /** True for text that is probably Markdown source rather than prose. */
 export function looksLikeMarkdown(text: string): boolean {
   const lines = text.split(/\r?\n/)
-  const block = /^(#{1,6}\s+\S|\s*[-*+]\s+\S|\s*\d+[.)]\s+\S|>\s?\S|```|~~~|\s*[-*_]{3,}\s*$|\|.+\|\s*$|\s*- \[[ xX]\]\s|<details[\s>]|<summary>|\$\$)/
+  const block = /^(#{1,6}\s+\S|\s*[-*+]\s+\S|\s*\d+[.)]\s+\S|>\s?\S|```|~~~|\s*[-*_]{3,}\s*$|\|.+\|\s*$|\s*- \[[ xX]\]\s|<details[\s>]|<summary>|<img\s[^>]*\bwidth=|\$\$)/
   if (lines.some((l) => block.test(l))) return true
   // Inline syntax, including what this app writes: `<u>`, colour spans, character references
   // (`&#x20;`) and backslash escapes.

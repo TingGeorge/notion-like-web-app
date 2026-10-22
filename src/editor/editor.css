@@ -521,7 +521,8 @@
 .gn-prose .image-frame.has-image:hover .image-resize,
 .gn-prose .image-block.ProseMirror-selectednode .image-frame.has-image .image-tools,
 .gn-prose .image-block.ProseMirror-selectednode .image-frame.has-image .image-resize,
-.gn-prose .image-frame.is-resizing .image-resize {
+.gn-prose .image-frame.is-resizing .image-resize,
+.gn-prose .image-frame.has-image .image-resize:focus-visible {
   opacity: 1;
   pointer-events: auto;
 }
@@ -568,6 +569,10 @@
   outline: 1px solid var(--crop-line);
   cursor: move;
   touch-action: none;
+}
+.gn-crop-frame:focus-visible {
+  outline: 2px solid var(--accent-default);
+  outline-offset: -2px;
 }
 .gn-crop-handle {
   position: absolute;

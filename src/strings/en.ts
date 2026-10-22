@@ -419,6 +419,8 @@ export const en: Strings = {
     cropImage: 'Crop image',
     cropTitle: 'Crop image',
     cropReset: 'Reset',
+    cropFrame: 'Crop area: arrow keys move it, Shift with arrow keys resizes it',
+    resizeImage: 'Image width',
     cropFailed: 'This image can’t be cropped',
     uploading: 'Uploading…',
     uploadFailed: 'Upload failed',

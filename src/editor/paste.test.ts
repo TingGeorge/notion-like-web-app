@@ -58,6 +58,8 @@ describe('Markdown detection', () => {
       // What the app itself writes (§3.4).
       '<u>底線</u>', '<span data-color="red">紅</span>', '<details>\n<summary>T</summary>\n\n</details>', '&#x20; 縮排', 'a\\*b',
       '![](/_assets/a.png)', '$$\nx\n$$', '[a \\[b\\]](/x.md)',
+      // DATA-19: an image with a width.
+      '<img src="/_assets/a.png" alt="說明" width="320">',
     ]) {
       expect(looksLikeMarkdown(md), md).toBe(true)
     }

@@ -81,6 +81,35 @@ describe('DATA-17 rewriteLinks', () => {
     expect(rewriteLinks(body, moveMap)).toBe(expected)
   })
 
+  it('rewrites the src of an image with a width, keeping every other byte (DATA-19)', () => {
+    const body = [
+      '<img src="/工作/會議記錄/圖.png" alt="圖" width="300">',
+      '',
+      "- [ ] <img width='120' alt=\"清單\" src='/工作/會議記錄/b c.png'>",
+      '',
+      '> <img src="/工作/其他.png" alt="" width="64">',
+      '',
+      '文字 <img src="/工作/會議記錄/圖.png" alt="" width="64"> 不是圖片區塊',
+      '',
+      '<div><img src="/工作/會議記錄/圖.png" width="64"></div>',
+      '',
+    ].join('\n')
+    expect(rewriteLinks(body, moveMap)).toBe(
+      [
+        '<img src="/封存/2026%20會議/圖.png" alt="圖" width="300">',
+        '',
+        "- [ ] <img width='120' alt=\"清單\" src=\"/封存/2026%20會議/b%20c.png\">",
+        '',
+        '> <img src="/工作/其他.png" alt="" width="64">',
+        '',
+        '文字 <img src="/工作/會議記錄/圖.png" alt="" width="64"> 不是圖片區塊',
+        '',
+        '<div><img src="/工作/會議記錄/圖.png" width="64"></div>',
+        '',
+      ].join('\n'),
+    )
+  })
+
   it('passes what it knows about each link to the map', () => {
     const seen: LinkRef[] = []
     rewriteLinks('[a](/x.md)\n\nb [c *d*](/y.md) ![e](/z.png)\n\n![f](/w.png)\n\n[r]: /def.md\n', (link) => {

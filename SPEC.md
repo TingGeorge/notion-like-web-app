@@ -207,7 +207,7 @@ The editor document is converted to and from Markdown (CommonMark 0.31 + GFM) as
   - Other styles (such as `*` bullets) are normalised only when the user edits that page.
 - **DATA-17** Internal links and attachment paths are **root-relative** (start with `/`). github.com resolves those from the repository root, and they keep working when the linking page moves.
   - In paths, these characters are percent-encoded: space, `%`, `(`, `)`, `<`, `>`, `#`, `?`, `[`, `]`. Everything else, including Chinese, stays as is.
-  - When a page or folder moves, every link to it or to any page inside it is rewritten in the same commit.
+  - When a page or folder moves, every link to it or to any page inside it is rewritten in the same commit, including the `src` of an image with a width (DATA-19).
   - Backlinks come from the local index (STORE-4).
 
 ### 3.5 Attachments
@@ -218,12 +218,15 @@ The editor document is converted to and from Markdown (CommonMark 0.31 + GFM) as
   - It is re-encoded as JPEG quality 0.85 unless it has transparency, in which case it stays PNG.
   - Any file over 25 MB is rejected with an explanation.
   - **Resize** (as in Notion): dragging either side of an image sets its display width, in CSS pixels from 40 to 4000 and at most the page width.
+    - The width is committed on release, as one undo step, and only if the pointer moved: a tap or a cancelled touch changes nothing.
+    - Each side is also a slider for the keyboard: ←/→ change the width by 10 px, by 50 px with Shift.
     - The width is written as `<img src="…" alt="…" width="320">` (plus `title="…"` if the image has one), alone in a block, so github.com shows the same size. Markdown cannot express a width.
     - The parser accepts `<img>` with `src`, `width` and optionally `alt` and `title`, in any order and quoting. Any other `<img>` stays raw (DATA-15).
     - Dragging back to the size the image shows without a width removes the width (`![…](…)` again).
     - A nested list or a callout's text after such an image is separated by a blank line, because an HTML block runs until one.
-  - **Crop**: the 「裁切圖片」 button on the image opens a crop frame with corner and edge handles; dragging inside moves it.
-    - 「完成」 draws the kept part at full resolution and uploads it as a new attachment, re-encoded as above. The block then points at it and keeps its scale on the page.
+  - **Crop**: the 「裁切圖片」 button on the image opens a crop frame with corner and edge handles; dragging inside moves it. With the keyboard, the arrows move the frame and Shift with the arrows resizes it (1% of the long edge a step, 10% with Alt).
+    - 「完成」 draws the kept part (at most 2560 px on its long edge) and uploads it as a new attachment, re-encoded as above. The block then points at it and keeps its scale on the page: a width is scaled with the crop, and an image without one that showed narrower than its own size gets the width it showed at, scaled.
+    - The dialog follows its image through edits and syncs, closes if the image goes, and changes nothing if the image or the page's editability changed while uploading.
     - The original stays in the repo (DATA-20), and ⌘Z points the block back at it.
     - `https:` images cannot be cropped, because the browser does not let a page read their pixels.
 - **DATA-20** Deleting a page does not delete its attachments. Cleaning up orphans is out of scope for v1.

@@ -326,11 +326,21 @@ class ImageView extends BaseView {
   media = el('div', 'image-media')
   tools = el('div', 'image-tools')
   cropButton = el('button', 'image-tool', { type: 'button', 'aria-label': t.editor.cropImage, title: t.editor.cropImage })
-  handles = [el('div', 'image-resize is-left', { 'aria-hidden': 'true' }), el('div', 'image-resize is-right', { 'aria-hidden': 'true' })]
+  handles = ['is-left', 'is-right'].map((side) =>
+    el('div', `image-resize ${side}`, {
+      role: 'slider',
+      tabindex: '0',
+      'aria-label': t.editor.resizeImage,
+      'aria-orientation': 'horizontal',
+      'aria-valuemin': String(IMAGE_WIDTH_MIN),
+    }),
+  )
   caption = el('input', 'image-caption', { type: 'text', placeholder: t.editor.imageCaption, 'aria-label': t.editor.imageCaption })
   img: HTMLImageElement | null = null
   src = ''
   disposed = false
+  /** Ends a drag in progress without changing the width. */
+  cancelResize: (() => void) | null = null
   constructor(node: PMNode, view: EditorView, getPos: () => number | undefined, ctx: EditorContext) {
     super(node, view, getPos, ctx)
     this.cropButton.innerHTML = icons.crop(14)
@@ -354,7 +364,11 @@ class ImageView extends BaseView {
       const pos = this.getPos()
       if (pos !== undefined && this.view.editable) this.ctx.ui.set({ crop: { pos } })
     })
-    this.handles.forEach((handle, i) => handle.addEventListener('pointerdown', (e) => this.startResize(e, handle, i === 0 ? -1 : 1)))
+    this.handles.forEach((handle, i) => {
+      handle.addEventListener('pointerdown', (e) => this.startResize(e, handle, i === 0 ? -1 : 1))
+      handle.addEventListener('keydown', (e) => this.keyResize(e))
+      handle.addEventListener('focus', () => this.syncSlider())
+    })
     this.load()
     this.syncCaption()
     this.applyWidth()
@@ -368,6 +382,8 @@ class ImageView extends BaseView {
     const width = this.node.attrs.width as number | null
     this.frame.style.width = width ? `${width}px` : ''
     this.frame.classList.toggle('is-sized', !!width)
+    // The shown width is read once the picture is on screen (syncSlider); until then, the stored one.
+    if (!this.frame.classList.contains('has-image')) for (const h of this.handles) h.setAttribute('aria-valuenow', String(width ?? IMAGE_WIDTH_MIN))
   }
   placeholder(loading: boolean) {
     this.media.textContent = ''
@@ -402,6 +418,7 @@ class ImageView extends BaseView {
         this.media.textContent = ''
         this.media.append(img)
         this.frame.classList.add('has-image')
+        this.syncSlider()
       })
       img.src = url
       this.img = img
@@ -417,39 +434,75 @@ class ImageView extends BaseView {
       else this.placeholder(false)
     })
   }
-  /** Drag one side; `side` is -1 for the left handle. The width is committed on release (one undo step). */
+  /**
+   * Drag one side; `side` is -1 for the left handle. The width is committed on release (one undo
+   * step), and only after the pointer really moved: a tap, or a cancelled touch, changes nothing.
+   */
   startResize(e: PointerEvent, handle: HTMLElement, side: -1 | 1) {
     if (!this.view.editable || e.button !== 0 || !this.img) return
     e.preventDefault()
     e.stopPropagation()
+    this.cancelResize?.()
     const startX = e.clientX
     const startWidth = this.frame.getBoundingClientRect().width
     const pageWidth = this.dom.getBoundingClientRect().width
     const naturalWidth = this.img.naturalWidth || startWidth
     let dragged = startWidth
+    let moved = false
     handle.setPointerCapture?.(e.pointerId)
     this.frame.classList.add('is-resizing')
     const move = (ev: PointerEvent) => {
+      if (!moved && Math.abs(ev.clientX - startX) < 4) return
+      moved = true
       dragged = Math.min(pageWidth, Math.max(IMAGE_WIDTH_MIN, startWidth + side * (ev.clientX - startX)))
       this.frame.style.width = `${Math.round(dragged)}px`
       this.frame.classList.add('is-sized')
     }
-    const end = () => {
+    const finish = (commit: boolean) => {
       handle.removeEventListener('pointermove', move)
-      handle.removeEventListener('pointerup', end)
-      handle.removeEventListener('pointercancel', end)
+      handle.removeEventListener('pointerup', up)
+      handle.removeEventListener('pointercancel', cancel)
+      this.cancelResize = null
       this.frame.classList.remove('is-resizing')
-      const width = widthAfterResize(dragged, naturalWidth, pageWidth)
+      const width = commit && moved ? widthAfterResize(dragged, naturalWidth, pageWidth) : this.node.attrs.width
       if (width !== this.node.attrs.width) this.dispatchAttrs({ width })
       else this.applyWidth()
     }
+    const up = () => finish(true)
+    const cancel = () => finish(false)
+    this.cancelResize = cancel
     handle.addEventListener('pointermove', move)
-    handle.addEventListener('pointerup', end)
-    handle.addEventListener('pointercancel', end)
+    handle.addEventListener('pointerup', up)
+    handle.addEventListener('pointercancel', cancel)
+  }
+  /** Keyboard resize on a focused handle: ←/→ by 10 px, with Shift by 50 px. */
+  keyResize(e: KeyboardEvent) {
+    if (e.isComposing || !this.view.editable || !this.img) return
+    const step = e.shiftKey ? 50 : 10
+    const delta = e.key === 'ArrowRight' || e.key === 'ArrowUp' ? step : e.key === 'ArrowLeft' || e.key === 'ArrowDown' ? -step : 0
+    if (!delta) return
+    e.preventDefault()
+    const pageWidth = this.dom.getBoundingClientRect().width
+    const current = this.frame.getBoundingClientRect().width
+    const width = widthAfterResize(current + delta, this.img.naturalWidth || current, pageWidth)
+    if (width !== this.node.attrs.width) this.dispatchAttrs({ width })
+    this.syncSlider()
+  }
+  /** The handles' slider value: the width shown, in CSS pixels. */
+  syncSlider() {
+    const now = String(Math.round(this.frame.getBoundingClientRect().width))
+    const max = String(Math.round(this.dom.getBoundingClientRect().width))
+    for (const h of this.handles) {
+      h.setAttribute('aria-valuenow', now)
+      h.setAttribute('aria-valuemax', max)
+      h.setAttribute('aria-valuetext', `${now} px`)
+    }
   }
   update(node: PMNode): boolean {
     if (node.type !== this.node.type) return false
     const srcChanged = node.attrs.src !== this.node.attrs.src
+    // Another image took this view's place (a sync): the drag was for the old one.
+    if (srcChanged) this.cancelResize?.()
     this.node = node
     if (srcChanged) this.load()
     else if (this.img) this.img.alt = (node.attrs.alt as string) ?? ''
@@ -473,6 +526,7 @@ class ImageView extends BaseView {
   }
   destroy() {
     this.disposed = true
+    this.cancelResize?.()
   }
 }
 
