@@ -29,6 +29,7 @@ import type { EditorHandle, EditorProps } from './types'
 import { uploadPlugin } from './upload'
 import { BlockHandle } from './ui/BlockHandle'
 import { BlockMenu } from './ui/BlockMenu'
+import { CropDialog } from './ui/CropDialog'
 import { EmojiPicker } from './ui/EmojiPicker'
 import { FormatToolbar } from './ui/FormatToolbar'
 import { LinkPopover } from './ui/LinkPopover'
@@ -270,6 +271,7 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor(prop
           <EmojiPicker />
           <BlockMenu />
           <TableBar />
+          <CropDialog />
           {mobile && <MobileBar />}
         </EditorUIContext.Provider>
       )}

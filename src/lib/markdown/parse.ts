@@ -8,7 +8,7 @@ import type { Blockquote, List, ListItem, Paragraph, PhrasingContent, RootConten
 import { CALLOUT_KINDS, schema, type CalloutKind } from '../schema'
 import { canonicalize } from './canonicalize'
 import { aloneLinkKind } from './hrefs'
-import { isDetailsClose, looksLikeDetailsOpen, parseDetailsOpen, parseIconComment, parseInlineTag, type InlineTagName } from './html'
+import { isDetailsClose, looksLikeDetailsOpen, parseDetailsOpen, parseIconComment, parseImgTag, parseInlineTag, type InlineTagName } from './html'
 import { parseMdastPiece, parseTopLevel, type TopNode } from './mdast'
 
 const nodes = schema.nodes
@@ -225,8 +225,13 @@ function convertBlock(node: RootContent, ctx: Ctx, top: boolean): PMNode {
       return convertList(node, ctx)
     case 'table':
       return convertTable(node)
+    case 'html': {
+      // DATA-19: an image with a width; any other HTML (other than toggles) stays raw.
+      const img = parseImgTag(node.value)
+      return img ? nodes.image.create(img) : unsupported()
+    }
     default:
-      // html (other than toggles), math, footnote and link definitions, …
+      // math, footnote and link definitions, …
       return unsupported()
   }
 }
@@ -237,6 +242,11 @@ function aloneBlock(children: readonly PhrasingContent[]): PMNode | null {
   const c = children[0]
   if (c.type === 'image') {
     return nodes.image.create({ src: c.url, alt: c.alt ?? '', title: c.title || null })
+  }
+  // DATA-19: `<img … width>` where an HTML block cannot start (after `[ ]`, or `[!NOTE]`).
+  if (c.type === 'html') {
+    const img = parseImgTag(c.value)
+    return img ? nodes.image.create(img) : null
   }
   if (c.type === 'link' && c.children.every((k) => k.type === 'text')) {
     const kind = aloneLinkKind(c.url, c.title ?? null)

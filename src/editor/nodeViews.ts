@@ -7,10 +7,11 @@ import { NodeSelection, TextSelection, type Transaction } from 'prosemirror-stat
 import type { Node as PMNode } from 'prosemirror-model'
 import type { EditorView, NodeView, NodeViewConstructor, ViewMutationRecord } from 'prosemirror-view'
 import { addColumnAfter, addRowAfter } from 'prosemirror-tables'
-import { CALLOUT_DEFAULT_ICON, type CalloutKind } from '../lib/schema'
+import { CALLOUT_DEFAULT_ICON, IMAGE_WIDTH_MIN, type CalloutKind } from '../lib/schema'
 import { t } from '../strings'
 import type { EditorContext } from './context'
 import { setToggleOpen } from './commands'
+import { widthAfterResize } from './crop'
 import { icons } from './icons'
 import { downloadAsset } from './links'
 
@@ -314,15 +315,27 @@ class CodeBlockView extends BaseView {
 
 // --- image -----------------------------------------------------------------------------------
 
+/** Images that can be cropped: attachments and `blob:` URLs. An `https:` image would taint the canvas. */
+export function canCropImage(src: string): boolean {
+  return src !== '' && !/^https?:/i.test(src)
+}
+
 class ImageView extends BaseView {
   dom = el('figure', 'image-block', NOT_EDITABLE)
   frame = el('div', 'image-frame')
+  media = el('div', 'image-media')
+  tools = el('div', 'image-tools')
+  cropButton = el('button', 'image-tool', { type: 'button', 'aria-label': t.editor.cropImage, title: t.editor.cropImage })
+  handles = [el('div', 'image-resize is-left', { 'aria-hidden': 'true' }), el('div', 'image-resize is-right', { 'aria-hidden': 'true' })]
   caption = el('input', 'image-caption', { type: 'text', placeholder: t.editor.imageCaption, 'aria-label': t.editor.imageCaption })
   img: HTMLImageElement | null = null
   src = ''
   disposed = false
   constructor(node: PMNode, view: EditorView, getPos: () => number | undefined, ctx: EditorContext) {
     super(node, view, getPos, ctx)
+    this.cropButton.innerHTML = icons.crop(14)
+    this.tools.append(this.cropButton)
+    this.frame.append(this.media, this.tools, ...this.handles)
     this.dom.append(this.frame, this.caption)
     this.caption.addEventListener('change', () => this.dispatchAttrs({ alt: this.caption.value }))
     this.caption.addEventListener('keydown', (e) => {
@@ -334,16 +347,31 @@ class ImageView extends BaseView {
       }
     })
     this.caption.readOnly = !view.editable
+    // DATA-19: crop in a dialog (the React layer), resize by dragging either side.
+    this.cropButton.addEventListener('mousedown', (e) => e.preventDefault())
+    this.cropButton.addEventListener('click', (e) => {
+      e.preventDefault()
+      const pos = this.getPos()
+      if (pos !== undefined && this.view.editable) this.ctx.ui.set({ crop: { pos } })
+    })
+    this.handles.forEach((handle, i) => handle.addEventListener('pointerdown', (e) => this.startResize(e, handle, i === 0 ? -1 : 1)))
     this.load()
     this.syncCaption()
+    this.applyWidth()
   }
   syncCaption() {
     const alt = (this.node.attrs.alt as string) ?? ''
     if (document.activeElement !== this.caption) this.caption.value = alt
     this.dom.toggleAttribute('data-has-caption', alt.length > 0)
   }
+  applyWidth() {
+    const width = this.node.attrs.width as number | null
+    this.frame.style.width = width ? `${width}px` : ''
+    this.frame.classList.toggle('is-sized', !!width)
+  }
   placeholder(loading: boolean) {
-    this.frame.textContent = ''
+    this.media.textContent = ''
+    this.frame.classList.remove('has-image')
     const box = el('div', `image-placeholder${loading ? ' is-loading' : ''}`)
     box.innerHTML = `${icons.image(20)}<span></span>`
     box.lastElementChild!.textContent = loading ? t.common.loading : t.editor.imageUnavailable
@@ -355,11 +383,12 @@ class ImageView extends BaseView {
         this.load(true)
       })
     }
-    this.frame.append(box)
+    this.media.append(box)
   }
   load(force = false) {
     const src = this.node.attrs.src as string
     this.src = src
+    this.tools.hidden = !canCropImage(src)
     const show = (url: string) => {
       if (this.disposed || this.src !== src) return
       const img = el('img')
@@ -370,8 +399,9 @@ class ImageView extends BaseView {
       })
       img.addEventListener('load', () => {
         if (this.disposed || this.src !== src) return
-        this.frame.textContent = ''
-        this.frame.append(img)
+        this.media.textContent = ''
+        this.media.append(img)
+        this.frame.classList.add('has-image')
       })
       img.src = url
       this.img = img
@@ -387,6 +417,36 @@ class ImageView extends BaseView {
       else this.placeholder(false)
     })
   }
+  /** Drag one side; `side` is -1 for the left handle. The width is committed on release (one undo step). */
+  startResize(e: PointerEvent, handle: HTMLElement, side: -1 | 1) {
+    if (!this.view.editable || e.button !== 0 || !this.img) return
+    e.preventDefault()
+    e.stopPropagation()
+    const startX = e.clientX
+    const startWidth = this.frame.getBoundingClientRect().width
+    const pageWidth = this.dom.getBoundingClientRect().width
+    const naturalWidth = this.img.naturalWidth || startWidth
+    let dragged = startWidth
+    handle.setPointerCapture?.(e.pointerId)
+    this.frame.classList.add('is-resizing')
+    const move = (ev: PointerEvent) => {
+      dragged = Math.min(pageWidth, Math.max(IMAGE_WIDTH_MIN, startWidth + side * (ev.clientX - startX)))
+      this.frame.style.width = `${Math.round(dragged)}px`
+      this.frame.classList.add('is-sized')
+    }
+    const end = () => {
+      handle.removeEventListener('pointermove', move)
+      handle.removeEventListener('pointerup', end)
+      handle.removeEventListener('pointercancel', end)
+      this.frame.classList.remove('is-resizing')
+      const width = widthAfterResize(dragged, naturalWidth, pageWidth)
+      if (width !== this.node.attrs.width) this.dispatchAttrs({ width })
+      else this.applyWidth()
+    }
+    handle.addEventListener('pointermove', move)
+    handle.addEventListener('pointerup', end)
+    handle.addEventListener('pointercancel', end)
+  }
   update(node: PMNode): boolean {
     if (node.type !== this.node.type) return false
     const srcChanged = node.attrs.src !== this.node.attrs.src
@@ -394,6 +454,7 @@ class ImageView extends BaseView {
     if (srcChanged) this.load()
     else if (this.img) this.img.alt = (node.attrs.alt as string) ?? ''
     this.syncCaption()
+    this.applyWidth()
     return true
   }
   selectNode() {
@@ -403,7 +464,9 @@ class ImageView extends BaseView {
     this.dom.classList.remove('ProseMirror-selectednode')
   }
   stopEvent(e: Event): boolean {
-    return e.target === this.caption || (e.target instanceof Node && this.frame.contains(e.target) && e.type === 'click' && !!this.frame.querySelector('.image-placeholder:not(.is-loading)'))
+    const target = e.target instanceof Node ? e.target : null
+    if (target && (this.tools.contains(target) || this.handles.some((h) => h.contains(target)))) return true
+    return e.target === this.caption || (!!target && this.frame.contains(target) && e.type === 'click' && !!this.frame.querySelector('.image-placeholder:not(.is-loading)'))
   }
   ignoreMutation(): boolean {
     return true

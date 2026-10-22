@@ -141,6 +141,8 @@ export function stripInline(s: string): string {
     .replace(/\[([^\]]*)\]\(<[^>]*>[^)]*\)/g, '$1')
     .replace(/\[([^\]]+)\]\[[^\]]*\]/g, '$1')
     .replace(/<((?:https?|mailto|ftp):[^>\s]+)>/gi, '$1')
+    // An image with a width (DATA-19): its caption, like `![caption](…)`.
+    .replace(/<img\s[^<>]*?\balt\s*=\s*(?:"([^"]*)"|'([^']*)')[^<>]*>/gi, (_all, d?: string, q?: string) => d ?? q ?? '')
     .replace(/<\/?[A-Za-z][A-Za-z0-9-]*(?:\s[^<>]*)?\/?>/g, '')
     .replace(/\*+|~~?/g, '')
     .replace(/(^|[^\p{L}\p{N}_])_+|_+(?=$|[^\p{L}\p{N}_])/gu, '$1')

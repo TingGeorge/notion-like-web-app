@@ -107,6 +107,21 @@ describe('Editor component', () => {
     expect(outline(ref.current!.getDoc())).toEqual(['p:a', 'hr', 'p:'])
   })
 
+  it('shows an image at its width, with a crop button for attachments only (DATA-19)', async () => {
+    const img = (src: string, width: number | null) => ({ type: 'image', attrs: { src, alt: '', title: null, width } })
+    const { container } = setup({ doc: docOf(img('/_assets/a.png', 320), img('https://example.com/b.png', null), p('x')) })
+    const [sized, external] = [...container.querySelectorAll<HTMLElement>('figure.image-block')]
+    expect(sized.querySelector<HTMLElement>('.image-frame')!.style.width).toBe('320px')
+    expect(external.querySelector<HTMLElement>('.image-frame')!.style.width).toBe('')
+    expect(sized.querySelector<HTMLElement>('.image-tools')!.hidden).toBe(false)
+    expect(external.querySelector<HTMLElement>('.image-tools')!.hidden).toBe(true)
+    // The crop button opens the crop dialog.
+    await act(async () => {
+      sized.querySelector<HTMLButtonElement>('button[aria-label="裁切圖片"]')!.click()
+    })
+    expect(document.querySelector('[role="dialog"]')?.textContent).toContain('裁切圖片')
+  })
+
   it('cleans up on unmount', () => {
     const { ref, unmount } = setup()
     const view = ref.current!.view!

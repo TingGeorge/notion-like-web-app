@@ -18,7 +18,7 @@ import type { PhrasingContent, Paragraph } from 'mdast'
 import { toMarkdown, defaultHandlers, type Handle, type Info, type State, type Unsafe } from 'mdast-util-to-markdown'
 import { schema } from '../schema'
 import { MARK_LEVELS } from './canonicalize'
-import { escapeHtmlText } from './html'
+import { escapeHtmlText, imgTag } from './html'
 import { inlineContentsFromMarkdown, inlineFromMarkdown } from './parse'
 
 const nodes = schema.nodes
@@ -227,7 +227,11 @@ function serializeBlock(node: PMNode, state: State): string {
       return codeBlock(node)
     case 'horizontal_rule':
       return '---'
-    case 'image':
+    case 'image': {
+      // DATA-19: a width needs HTML; GitHub shows it at that width too.
+      const { src, alt, title, width } = node.attrs as { src: string; alt: string; title: string | null; width: number | null }
+      return width ? imgTag({ src, alt, title, width }) : phrasing(state, [aloneNode(node)])
+    }
     case 'file':
     case 'page_link':
       return phrasing(state, [aloneNode(node)])
@@ -399,8 +403,12 @@ function codeBlock(node: PMNode): string {
   return `${fence}${escapeInfo(language)}\n${text}${text ? '\n' : ''}${fence}`
 }
 
+/**
+ * A block a nested list or a callout's text may follow on the next line. An image with a width
+ * is an HTML block, which runs until a blank line, so it needs one after it.
+ */
 function isParagraphLike(node: PMNode): boolean {
-  return node.type === nodes.paragraph || isAloneBlock(node)
+  return node.type === nodes.paragraph || (isAloneBlock(node) && !(node.type === nodes.image && node.attrs.width))
 }
 
 /**
@@ -434,11 +442,13 @@ function listItem(item: PMNode, marker: string, state: State): string {
   let rest = children.slice(1)
   let head: string
   let headIsText: boolean
+  let headBlock = first
   if (first.content.size > 0) {
     head = inlineMarkdown(first, state, 'paragraph')
     headIsText = true
   } else if (rest.length > 0 && isAloneBlock(rest[0])) {
     head = serializeBlock(rest[0], state)
+    headBlock = rest[0]
     rest = rest.slice(1)
     headIsText = true
   } else {
@@ -447,7 +457,7 @@ function listItem(item: PMNode, marker: string, state: State): string {
   }
   if (box) head = head ? `${box} ${head}` : box
   let body = head
-  let prev: PMNode | null = headIsText ? first : null
+  let prev: PMNode | null = headIsText ? headBlock : null
   for (const child of rest) {
     const text = serializeBlock(child, state)
     if (prev === null) {

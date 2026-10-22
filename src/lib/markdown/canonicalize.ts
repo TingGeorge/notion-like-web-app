@@ -66,7 +66,7 @@
  * read as one list with it; neither is normalised here.
  */
 import { Fragment, type Mark, type Node as PMNode } from 'prosemirror-model'
-import { CALLOUT_KINDS, isNotionColor, schema } from '../schema'
+import { CALLOUT_KINDS, imageWidth, isNotionColor, schema } from '../schema'
 import { aloneLinkKind, isFileHref, isPageHref } from './hrefs'
 
 const nodes = schema.nodes
@@ -146,10 +146,13 @@ function canonBlock(node: PMNode): PMNode | null {
       return nodes.horizontal_rule.create()
     case 'image': {
       const title = node.attrs.title as string | null
+      const src = normalizeText(String(node.attrs.src ?? ''))
       return nodes.image.create({
-        src: normalizeText(String(node.attrs.src ?? '')),
+        src,
         alt: normalizeText(String(node.attrs.alt ?? '')),
         title: title ? normalizeText(title) : null,
+        // DATA-19: `<img src="" …>` would not read back as an image.
+        width: src ? imageWidth(node.attrs.width) : null,
       })
     }
     case 'file':

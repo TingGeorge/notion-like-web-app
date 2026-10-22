@@ -167,7 +167,7 @@ The editor document is converted to and from Markdown (CommonMark 0.31 + GFM) as
 | Divider | `---` |
 | Code | fenced block with a language: ```` ```js ```` |
 | Simple table | GFM pipe table; the first row is the header |
-| Image | `![caption](/_assets/…)` alone in a paragraph |
+| Image | `![caption](/_assets/…)` alone in a paragraph; with a width (DATA-19), `<img src="/_assets/…" alt="caption" width="320">` alone in a block |
 | File | `[file name.pdf](/_assets/…)` alone in a paragraph |
 | Link to page | `[Title](/path/Title.md)` alone in a paragraph |
 | Line break inside a block | backslash at the end of the line |
@@ -217,6 +217,15 @@ The editor document is converted to and from Markdown (CommonMark 0.31 + GFM) as
   - An image longer than 2560 px on its long edge is scaled down before upload.
   - It is re-encoded as JPEG quality 0.85 unless it has transparency, in which case it stays PNG.
   - Any file over 25 MB is rejected with an explanation.
+  - **Resize** (as in Notion): dragging either side of an image sets its display width, in CSS pixels from 40 to 4000 and at most the page width.
+    - The width is written as `<img src="…" alt="…" width="320">` (plus `title="…"` if the image has one), alone in a block, so github.com shows the same size. Markdown cannot express a width.
+    - The parser accepts `<img>` with `src`, `width` and optionally `alt` and `title`, in any order and quoting. Any other `<img>` stays raw (DATA-15).
+    - Dragging back to the size the image shows without a width removes the width (`![…](…)` again).
+    - A nested list or a callout's text after such an image is separated by a blank line, because an HTML block runs until one.
+  - **Crop**: the 「裁切圖片」 button on the image opens a crop frame with corner and edge handles; dragging inside moves it.
+    - 「完成」 draws the kept part at full resolution and uploads it as a new attachment, re-encoded as above. The block then points at it and keeps its scale on the page.
+    - The original stays in the repo (DATA-20), and ⌘Z points the block back at it.
+    - `https:` images cannot be cropped, because the browser does not let a page read their pixels.
 - **DATA-20** Deleting a page does not delete its attachments. Cleaning up orphans is out of scope for v1.
 
 ### 3.6 Settings and trash

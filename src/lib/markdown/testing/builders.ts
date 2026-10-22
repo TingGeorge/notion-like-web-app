@@ -26,7 +26,8 @@ export const toggle = (summary: string, ...children: PMNode[]): PMNode =>
 export const hr = (): PMNode => n.horizontal_rule.create()
 export const code = (language: string, text: string): PMNode =>
   n.code_block.create({ language }, text ? schema.text(text) : null)
-export const img = (src: string, alt = '', title: string | null = null): PMNode => n.image.create({ src, alt, title })
+export const img = (src: string, alt = '', title: string | null = null, width: number | null = null): PMNode =>
+  n.image.create({ src, alt, title, width })
 export const file = (href: string, name: string): PMNode => n.file.create({ href, name })
 export const pageLink = (href: string, title: string): PMNode => n.page_link.create({ href, title })
 export const raw = (text: string): PMNode => n.raw.create(null, schema.text(text))

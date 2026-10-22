@@ -1,8 +1,9 @@
 /**
- * The few HTML forms the editor understands (§3.4): toggles, colour spans, underline and the
- * callout icon comment (DATA-12). Everything else in HTML is kept raw (DATA-15).
+ * The few HTML forms the editor understands (§3.4): toggles, colour spans, underline, the
+ * callout icon comment (DATA-12) and an image with a width (DATA-19). Everything else in HTML is
+ * kept raw (DATA-15).
  */
-import { isNotionColor, type NotionColor } from '../schema'
+import { IMAGE_WIDTH_MAX, IMAGE_WIDTH_MIN, isNotionColor, type NotionColor } from '../schema'
 
 /** Inline tags that are marks: `<u>`, colour spans, and the HTML forms of bold / italic / strike. */
 export type InlineTagName = 'u' | 'span' | 'strong' | 'b' | 'em' | 'i' | 'del' | 's'
@@ -108,4 +109,53 @@ export function parseIconComment(html: string): string | null {
   const m = ICON.exec(html.trim())
   if (!m || m[1] === '' || /--|>|\n/.test(m[1])) return null
   return m[1]
+}
+
+/** DATA-19: an image with a display width, as `<img src="…" alt="…" width="320">`. */
+export interface ImgTag {
+  src: string
+  alt: string
+  title: string | null
+  width: number
+}
+
+const IMG_ATTR = /\s+([a-zA-Z]+)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'=<>`]+))/y
+
+/**
+ * `<img>` with `src`, an optional `alt` and `title`, and a whole-pixel `width` within bounds, in
+ * any order and quoting, and nothing else; else null (the HTML stays raw).
+ */
+export function parseImgTag(html: string): ImgTag | null {
+  const open = /^[ \t]*<img(?=\s)/i.exec(html)
+  if (!open) return null
+  const values = new Map<string, string>()
+  let pos = open[0].length
+  for (;;) {
+    IMG_ATTR.lastIndex = pos
+    const m = IMG_ATTR.exec(html)
+    if (!m) break
+    const name = m[1].toLowerCase()
+    const value = decodeHtmlText(m[2] ?? m[3] ?? m[4])
+    if (!['src', 'alt', 'title', 'width'].includes(name) || values.has(name) || value === null) return null
+    values.set(name, value)
+    pos = IMG_ATTR.lastIndex
+  }
+  if (!/^\s*\/?>[ \t]*\n?$/.test(html.slice(pos))) return null
+  const src = values.get('src')
+  const width = values.get('width')
+  if (!src || width === undefined || !/^[1-9]\d*$/.test(width)) return null
+  const px = Number(width)
+  if (px < IMAGE_WIDTH_MIN || px > IMAGE_WIDTH_MAX) return null
+  return { src, alt: values.get('alt') ?? '', title: values.get('title') || null, width: px }
+}
+
+/** Attribute value escaping (double quotes). */
+function escapeAttr(text: string): string {
+  return text.replace(/[&"<>\n]/g, (c) => (c === '&' ? '&amp;' : c === '"' ? '&quot;' : c === '<' ? '&lt;' : c === '>' ? '&gt;' : '&#10;'))
+}
+
+/** The canonical form `parseImgTag` reads back. */
+export function imgTag(img: ImgTag): string {
+  const title = img.title ? ` title="${escapeAttr(img.title)}"` : ''
+  return `<img src="${escapeAttr(img.src)}" alt="${escapeAttr(img.alt)}"${title} width="${img.width}">`
 }
