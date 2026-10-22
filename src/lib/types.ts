@@ -3,6 +3,9 @@
  * the workspace operations and the UI. See SPEC.md for the requirement IDs.
  */
 
+/** `tokenExpiresOn` as sent over a device link for a token that never expires (SETUP-5, LINK-1). */
+export const NEVER_EXPIRES = '9999-12-31'
+
 /** DATA-1. A workspace is (owner, repo, branch) plus the credentials for it (STORE-1 `config.workspace`). */
 export interface Workspace {
   owner: string

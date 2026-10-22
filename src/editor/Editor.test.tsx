@@ -154,6 +154,23 @@ describe('Editor component', () => {
     expect(dialog()).toBeNull()
   })
 
+  it('the crop dialog does not move to a copy of the same picture when its image is deleted (DATA-19)', async () => {
+    const copy = (alt: string) => ({ type: 'image', attrs: { src: '/_assets/a.png', alt, title: null, width: null } })
+    const { ref, container } = setup({ doc: docOf(p('before'), copy('A'), copy('B'), p('x')) })
+    const view = ref.current!.view!
+    await act(async () => {
+      container.querySelector<HTMLButtonElement>('button[aria-label="裁切圖片"]')!.click()
+    })
+    expect(document.querySelector('[role="dialog"]')).not.toBeNull()
+    // A (the first image) is deleted; B, the same picture, moves up into its place.
+    const at = view.state.doc.child(0).nodeSize
+    expect(view.state.doc.nodeAt(at)!.attrs.alt).toBe('A')
+    await act(async () => {
+      view.dispatch(view.state.tr.delete(at, at + 1))
+    })
+    expect(document.querySelector('[role="dialog"]')).toBeNull()
+  })
+
   it('a tap on a resize handle, without moving, leaves the width alone (DATA-19)', () => {
     const { container, onChange } = setup({ doc: docOf({ type: 'image', attrs: { src: 'https://example.com/a.png', alt: '', title: null, width: 600 } }, p('x')) })
     const handle = container.querySelector<HTMLElement>('.image-resize.is-right')!

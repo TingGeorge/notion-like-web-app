@@ -11,6 +11,9 @@
  * Linking by typing (LINK-5) uses the same payload with a 10-character code, because the payload
  * is briefly public in a gist.
  */
+import { NEVER_EXPIRES } from '../types'
+
+export { NEVER_EXPIRES }
 
 export interface LinkData {
   /** owner */
@@ -26,8 +29,6 @@ export interface LinkData {
 }
 
 export const PAIRING_ALPHABET = '23456789ABCDEFGHJKMNPQRSTUVWXYZ'
-/** `e` on the wire for a token that never expires (SETUP-5). */
-export const NEVER_EXPIRES = '9999-12-31'
 export const PAYLOAD_PREFIX = 'ghnotes:1:'
 
 export class WrongPairingCodeError extends Error {

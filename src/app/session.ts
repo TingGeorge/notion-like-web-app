@@ -5,10 +5,9 @@
 import { GitHubClient } from '../lib/github/client'
 import { deviceName, isSafariTab } from '../lib/data/device'
 import { ulid } from '../lib/data/ulid'
-import { NEVER_EXPIRES } from '../lib/link/crypto'
 import { db, type ConfigRow } from '../lib/store/db'
 import { SyncEngine } from '../lib/sync/engine'
-import { DEFAULT_UI, type DeviceInfo, type UiPrefs, type Workspace } from '../lib/types'
+import { DEFAULT_UI, NEVER_EXPIRES, type DeviceInfo, type UiPrefs, type Workspace } from '../lib/types'
 import { flushSearchIndex, getSearchIndex, refreshSearchFor, reindexPaths } from '../lib/workspace/indexer'
 
 type Flusher = () => Promise<void>

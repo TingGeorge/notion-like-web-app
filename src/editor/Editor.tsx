@@ -94,7 +94,9 @@ function linkClickPlugin(ctx: EditorContext): Plugin {
 
 /**
  * Where the image at `pos` is after `tr`, or -1 if it is gone. A change to the image's own
- * attributes (a caption, a width) replaces the node, so it is followed by its `src`.
+ * attributes (a caption, a width) replaces the node, so it is followed to the image this
+ * transaction put in its place with the same `src`; an image that merely moved up into its place
+ * (a copy of the same picture right after it) is not it.
  */
 function mapImage(tr: Transaction, doc: PMNode, pos: number): number {
   if (pos < 0) return -1
@@ -102,6 +104,7 @@ function mapImage(tr: Transaction, doc: PMNode, pos: number): number {
   if (!after.deleted) return after.pos
   const src = tr.before.nodeAt(pos)?.attrs.src as string | undefined
   const at = tr.mapping.map(pos, -1)
+  if (!tr.mapping.invert().mapResult(at, 1).deleted) return -1
   const node = at < doc.content.size ? doc.nodeAt(at) : null
   return node?.type === schema.nodes.image && node.attrs.src === src ? at : -1
 }
