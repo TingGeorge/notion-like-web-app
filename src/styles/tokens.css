@@ -83,6 +83,10 @@
   /* The crop frame sits on the picture itself, so it looks the same in every theme (DATA-19). */
   --crop-shade: rgb(0 0 0 / 55%);
   --crop-line: #ffffff;
+  --crop-frame-line: rgb(255 255 255 / 80%);
+  --crop-grid: rgb(255 255 255 / 45%);
+  --crop-stage: #1c1c1e;
+  --crop-stage-text: #d4d4d4;
   --print-bg: #ffffff;
   --print-text: #000000;
 

@@ -28,7 +28,8 @@ jobs:
       - run: npm test
 
   e2e:
-    runs-on: ubuntu-latest
+    # Playwright 1.56 cannot install its browsers on Ubuntu 26.04, which ubuntu-latest became.
+    runs-on: ubuntu-24.04
     needs: check
     steps:
       - uses: actions/checkout@v4

@@ -66,6 +66,7 @@ function Cropper({ node }: { node: PMNode }) {
   const imgRef = useRef<HTMLImageElement>(null)
   const drag = useRef<{ handle: CropHandle; x: number; y: number; start: Rect; scale: number } | null>(null)
   const busyRef = useRef(false)
+  const [dragging, setDragging] = useState(false)
 
   useEffect(() => {
     let alive = true
@@ -96,11 +97,12 @@ function Cropper({ node }: { node: PMNode }) {
   }
 
   const startDrag = (handle: CropHandle) => (e: React.PointerEvent) => {
-    if (!rect || !natural || !imgRef.current || busy) return
+    if (!rect || !natural || !imgRef.current || busy || e.button !== 0) return
     e.preventDefault()
     e.stopPropagation()
     const scale = imgRef.current.getBoundingClientRect().width / natural.w
     drag.current = { handle, x: e.clientX, y: e.clientY, start: rect, scale }
+    setDragging(true)
     ;(e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId)
   }
   const onMove = (e: React.PointerEvent) => {
@@ -110,6 +112,7 @@ function Cropper({ node }: { node: PMNode }) {
   }
   const endDrag = () => {
     drag.current = null
+    setDragging(false)
   }
 
   // Keyboard: arrows move the frame by about 1% of the image (10% with Alt); Shift + arrows resize it.
@@ -173,7 +176,8 @@ function Cropper({ node }: { node: PMNode }) {
     }
   }
 
-  // The frame and the dimmed outside, in percent of the shown image.
+  // The frame and the dimmed outside, in percent of the shown image. The dimming is clipped to the
+  // picture; the frame's marks are not, so they can sit just outside its edges.
   const box =
     rect && natural
       ? { left: `${(rect.x / natural.w) * 100}%`, top: `${(rect.y / natural.h) * 100}%`, width: `${(rect.w / natural.w) * 100}%`, height: `${(rect.h / natural.h) * 100}%` }
@@ -181,13 +185,18 @@ function Cropper({ node }: { node: PMNode }) {
 
   return (
     <Modal open onClose={close} title={t.editor.cropTitle} showTitle width={640} className="gn-crop-modal">
-      <div className="gn-crop-stage" onPointerMove={onMove} onPointerUp={endDrag} onPointerCancel={endDrag}>
+      <div className="gn-crop-stage" onPointerMove={onMove} onPointerUp={endDrag} onPointerCancel={endDrag} onLostPointerCapture={endDrag}>
         {url ? (
           <div className="gn-crop-canvas">
             <img ref={imgRef} src={url} alt={(node.attrs.alt as string) ?? ''} draggable={false} onLoad={onLoad} onError={() => setFailed(true)} />
             {box && (
+              <div className="gn-crop-shade" aria-hidden="true">
+                <div style={box} />
+              </div>
+            )}
+            {box && (
               <div
-                className="gn-crop-frame"
+                className={`gn-crop-frame${dragging ? ' is-dragging' : ''}`}
                 style={box}
                 role="group"
                 tabIndex={0}
