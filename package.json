@@ -1,6 +1,6 @@
 {
   "name": "github-notes",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "private": true,
   "description": "A Notion-like notes PWA that stores every page as a Markdown file in your own private GitHub repository.",
   "license": "MIT",

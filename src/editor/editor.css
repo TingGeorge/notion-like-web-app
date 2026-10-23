@@ -539,22 +539,23 @@
 .gn-crop-modal:focus-visible {
   outline: none;
 }
+/* Dark around the picture, as in Photos, so the white marks show at every edge. */
 .gn-crop-stage {
   margin-top: 16px;
   display: flex;
   align-items: center;
   justify-content: center;
   min-height: 160px;
-  padding: 16px;
+  padding: 20px;
   border-radius: var(--radius-m);
-  background: var(--bg-sidebar);
+  background: var(--crop-stage);
+  color: var(--crop-stage-text);
   user-select: none;
   -webkit-user-select: none;
   touch-action: none;
 }
 .gn-crop-canvas {
   position: relative;
-  overflow: hidden;
   line-height: 0;
 }
 .gn-crop-canvas img {
@@ -563,10 +564,19 @@
   max-height: min(60vh, 480px);
   pointer-events: none;
 }
-.gn-crop-frame {
+.gn-crop-shade {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+.gn-crop-shade > div {
   position: absolute;
   box-shadow: 0 0 0 9999px var(--crop-shade);
-  outline: 1px solid var(--crop-line);
+}
+.gn-crop-frame {
+  position: absolute;
+  outline: 1px solid var(--crop-frame-line);
   cursor: move;
   touch-action: none;
 }
@@ -574,42 +584,81 @@
   outline: 2px solid var(--accent-default);
   outline-offset: -2px;
 }
+/* Rule-of-thirds lines while the frame is dragged, as in Photos. */
+.gn-crop-frame.is-dragging {
+  background-image:
+    linear-gradient(to right, transparent calc(100% / 3), var(--crop-grid) calc(100% / 3), var(--crop-grid) calc(100% / 3 + 1px), transparent calc(100% / 3 + 1px), transparent calc(200% / 3), var(--crop-grid) calc(200% / 3), var(--crop-grid) calc(200% / 3 + 1px), transparent calc(200% / 3 + 1px)),
+    linear-gradient(to bottom, transparent calc(100% / 3), var(--crop-grid) calc(100% / 3), var(--crop-grid) calc(100% / 3 + 1px), transparent calc(100% / 3 + 1px), transparent calc(200% / 3), var(--crop-grid) calc(200% / 3), var(--crop-grid) calc(200% / 3 + 1px), transparent calc(200% / 3 + 1px));
+}
+/*
+ * Handles, as in Photos: what shows is thin, an L just outside each corner and a short bar just
+ * outside the middle of each side. Each sits in an invisible target centred on the edge, larger
+ * than the mark.
+ */
 .gn-crop-handle {
+  --hit: 28px;
+  --edge-hit: 40px;
+  --mark: 18px;
+  --line: 3px;
   position: absolute;
-  width: 14px;
-  height: 14px;
-  border-radius: 2px;
-  background: var(--crop-line);
-  box-shadow: var(--shadow-control);
   touch-action: none;
 }
+.gn-crop-handle::after {
+  content: '';
+  position: absolute;
+}
+/* Corners: above the side handles where they meet on a small frame. */
 .gn-crop-handle.is-nw,
-.gn-crop-handle.is-n,
+.gn-crop-handle.is-ne,
+.gn-crop-handle.is-se,
+.gn-crop-handle.is-sw {
+  z-index: 1;
+  width: var(--hit);
+  height: var(--hit);
+}
+.gn-crop-handle.is-nw::after,
+.gn-crop-handle.is-ne::after,
+.gn-crop-handle.is-se::after,
+.gn-crop-handle.is-sw::after {
+  width: var(--mark);
+  height: var(--mark);
+  border: 0 solid var(--crop-line);
+}
+.gn-crop-handle.is-nw,
 .gn-crop-handle.is-ne {
-  top: 0;
+  top: calc(var(--hit) / -2);
 }
 .gn-crop-handle.is-sw,
-.gn-crop-handle.is-s,
 .gn-crop-handle.is-se {
-  bottom: 0;
+  bottom: calc(var(--hit) / -2);
 }
 .gn-crop-handle.is-nw,
-.gn-crop-handle.is-w,
 .gn-crop-handle.is-sw {
-  left: 0;
+  left: calc(var(--hit) / -2);
 }
 .gn-crop-handle.is-ne,
-.gn-crop-handle.is-e,
 .gn-crop-handle.is-se {
-  right: 0;
+  right: calc(var(--hit) / -2);
 }
-.gn-crop-handle.is-n,
-.gn-crop-handle.is-s {
-  left: calc(50% - 7px);
+.gn-crop-handle.is-nw::after,
+.gn-crop-handle.is-ne::after {
+  top: calc(50% - var(--line));
+  border-top-width: var(--line);
 }
-.gn-crop-handle.is-w,
-.gn-crop-handle.is-e {
-  top: calc(50% - 7px);
+.gn-crop-handle.is-sw::after,
+.gn-crop-handle.is-se::after {
+  bottom: calc(50% - var(--line));
+  border-bottom-width: var(--line);
+}
+.gn-crop-handle.is-nw::after,
+.gn-crop-handle.is-sw::after {
+  left: calc(50% - var(--line));
+  border-left-width: var(--line);
+}
+.gn-crop-handle.is-ne::after,
+.gn-crop-handle.is-se::after {
+  right: calc(50% - var(--line));
+  border-right-width: var(--line);
 }
 .gn-crop-handle.is-nw,
 .gn-crop-handle.is-se {
@@ -619,26 +668,65 @@
 .gn-crop-handle.is-sw {
   cursor: nesw-resize;
 }
+/* Sides */
 .gn-crop-handle.is-n,
 .gn-crop-handle.is-s {
+  left: calc(50% - var(--edge-hit) / 2);
+  width: var(--edge-hit);
+  height: var(--hit);
   cursor: ns-resize;
 }
-.gn-crop-handle.is-e,
-.gn-crop-handle.is-w {
+.gn-crop-handle.is-n {
+  top: calc(var(--hit) / -2);
+}
+.gn-crop-handle.is-s {
+  bottom: calc(var(--hit) / -2);
+}
+.gn-crop-handle.is-n::after,
+.gn-crop-handle.is-s::after {
+  left: calc(50% - var(--mark) / 2);
+  width: var(--mark);
+  height: var(--line);
+  background: var(--crop-line);
+}
+.gn-crop-handle.is-n::after {
+  top: calc(50% - var(--line));
+}
+.gn-crop-handle.is-s::after {
+  bottom: calc(50% - var(--line));
+}
+.gn-crop-handle.is-w,
+.gn-crop-handle.is-e {
+  top: calc(50% - var(--edge-hit) / 2);
+  width: var(--hit);
+  height: var(--edge-hit);
   cursor: ew-resize;
 }
+.gn-crop-handle.is-w {
+  left: calc(var(--hit) / -2);
+}
+.gn-crop-handle.is-e {
+  right: calc(var(--hit) / -2);
+}
+.gn-crop-handle.is-w::after,
+.gn-crop-handle.is-e::after {
+  top: calc(50% - var(--mark) / 2);
+  width: var(--line);
+  height: var(--mark);
+  background: var(--crop-line);
+}
+.gn-crop-handle.is-w::after {
+  left: calc(50% - var(--line));
+}
+.gn-crop-handle.is-e::after {
+  right: calc(50% - var(--line));
+}
+/* A finger needs a bigger target; the marks grow only a little. */
 @media (pointer: coarse) {
   .gn-crop-handle {
-    width: 22px;
-    height: 22px;
-  }
-  .gn-crop-handle.is-n,
-  .gn-crop-handle.is-s {
-    left: calc(50% - 11px);
-  }
-  .gn-crop-handle.is-w,
-  .gn-crop-handle.is-e {
-    top: calc(50% - 11px);
+    --hit: 40px;
+    --edge-hit: 48px;
+    --mark: 20px;
   }
 }
 .gn-crop-size {
@@ -653,7 +741,8 @@
   align-items: center;
   gap: 8px;
   font-size: 13px;
-  color: var(--text-secondary);
+  line-height: 18px;
+  color: inherit;
 }
 .gn-crop-error {
   margin-top: 8px;
