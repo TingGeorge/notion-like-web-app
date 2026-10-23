@@ -97,7 +97,7 @@ function Cropper({ node }: { node: PMNode }) {
   }
 
   const startDrag = (handle: CropHandle) => (e: React.PointerEvent) => {
-    if (!rect || !natural || !imgRef.current || busy) return
+    if (!rect || !natural || !imgRef.current || busy || e.button !== 0) return
     e.preventDefault()
     e.stopPropagation()
     const scale = imgRef.current.getBoundingClientRect().width / natural.w
@@ -185,7 +185,7 @@ function Cropper({ node }: { node: PMNode }) {
 
   return (
     <Modal open onClose={close} title={t.editor.cropTitle} showTitle width={640} className="gn-crop-modal">
-      <div className="gn-crop-stage" onPointerMove={onMove} onPointerUp={endDrag} onPointerCancel={endDrag}>
+      <div className="gn-crop-stage" onPointerMove={onMove} onPointerUp={endDrag} onPointerCancel={endDrag} onLostPointerCapture={endDrag}>
         {url ? (
           <div className="gn-crop-canvas">
             <img ref={imgRef} src={url} alt={(node.attrs.alt as string) ?? ''} draggable={false} onLoad={onLoad} onError={() => setFailed(true)} />

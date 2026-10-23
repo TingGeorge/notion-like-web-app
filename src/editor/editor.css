@@ -561,7 +561,8 @@
 .gn-crop-canvas img {
   display: block;
   max-width: 100%;
-  max-height: min(60vh, 480px);
+  /* Room for the title, the size and the buttons, so a tall picture never makes the dialog scroll. */
+  max-height: min(60vh, 480px, calc(100vh - 280px));
   pointer-events: none;
 }
 .gn-crop-shade {
@@ -592,20 +593,26 @@
 }
 /*
  * Handles, as in Photos: what shows is thin, an L just outside each corner and a short bar just
- * outside the middle of each side. Each sits in an invisible target centred on the edge, larger
- * than the mark.
+ * outside the middle of each side. Each sits in an invisible target that reaches --hit/2 outside the
+ * edge and at most half the frame inside it, so on a small frame the targets of opposite sides do
+ * not cover each other. The marks are placed from the outer side.
  */
 .gn-crop-handle {
   --hit: 28px;
   --edge-hit: 40px;
   --mark: 18px;
   --line: 3px;
+  --out: calc(var(--hit) / 2);
+  --across: calc(var(--out) + min(var(--out), 50%));
+  --mark-at: calc(var(--out) - var(--line));
   position: absolute;
   touch-action: none;
 }
+/* Only the targets take the pointer: a mark can reach past its target's half of a small frame. */
 .gn-crop-handle::after {
   content: '';
   position: absolute;
+  pointer-events: none;
 }
 /* Corners: above the side handles where they meet on a small frame. */
 .gn-crop-handle.is-nw,
@@ -613,8 +620,8 @@
 .gn-crop-handle.is-se,
 .gn-crop-handle.is-sw {
   z-index: 1;
-  width: var(--hit);
-  height: var(--hit);
+  width: var(--across);
+  height: var(--across);
 }
 .gn-crop-handle.is-nw::after,
 .gn-crop-handle.is-ne::after,
@@ -626,38 +633,38 @@
 }
 .gn-crop-handle.is-nw,
 .gn-crop-handle.is-ne {
-  top: calc(var(--hit) / -2);
+  top: calc(var(--out) * -1);
 }
 .gn-crop-handle.is-sw,
 .gn-crop-handle.is-se {
-  bottom: calc(var(--hit) / -2);
+  bottom: calc(var(--out) * -1);
 }
 .gn-crop-handle.is-nw,
 .gn-crop-handle.is-sw {
-  left: calc(var(--hit) / -2);
+  left: calc(var(--out) * -1);
 }
 .gn-crop-handle.is-ne,
 .gn-crop-handle.is-se {
-  right: calc(var(--hit) / -2);
+  right: calc(var(--out) * -1);
 }
 .gn-crop-handle.is-nw::after,
 .gn-crop-handle.is-ne::after {
-  top: calc(50% - var(--line));
+  top: var(--mark-at);
   border-top-width: var(--line);
 }
 .gn-crop-handle.is-sw::after,
 .gn-crop-handle.is-se::after {
-  bottom: calc(50% - var(--line));
+  bottom: var(--mark-at);
   border-bottom-width: var(--line);
 }
 .gn-crop-handle.is-nw::after,
 .gn-crop-handle.is-sw::after {
-  left: calc(50% - var(--line));
+  left: var(--mark-at);
   border-left-width: var(--line);
 }
 .gn-crop-handle.is-ne::after,
 .gn-crop-handle.is-se::after {
-  right: calc(50% - var(--line));
+  right: var(--mark-at);
   border-right-width: var(--line);
 }
 .gn-crop-handle.is-nw,
@@ -673,14 +680,14 @@
 .gn-crop-handle.is-s {
   left: calc(50% - var(--edge-hit) / 2);
   width: var(--edge-hit);
-  height: var(--hit);
+  height: var(--across);
   cursor: ns-resize;
 }
 .gn-crop-handle.is-n {
-  top: calc(var(--hit) / -2);
+  top: calc(var(--out) * -1);
 }
 .gn-crop-handle.is-s {
-  bottom: calc(var(--hit) / -2);
+  bottom: calc(var(--out) * -1);
 }
 .gn-crop-handle.is-n::after,
 .gn-crop-handle.is-s::after {
@@ -690,23 +697,23 @@
   background: var(--crop-line);
 }
 .gn-crop-handle.is-n::after {
-  top: calc(50% - var(--line));
+  top: var(--mark-at);
 }
 .gn-crop-handle.is-s::after {
-  bottom: calc(50% - var(--line));
+  bottom: var(--mark-at);
 }
 .gn-crop-handle.is-w,
 .gn-crop-handle.is-e {
   top: calc(50% - var(--edge-hit) / 2);
-  width: var(--hit);
+  width: var(--across);
   height: var(--edge-hit);
   cursor: ew-resize;
 }
 .gn-crop-handle.is-w {
-  left: calc(var(--hit) / -2);
+  left: calc(var(--out) * -1);
 }
 .gn-crop-handle.is-e {
-  right: calc(var(--hit) / -2);
+  right: calc(var(--out) * -1);
 }
 .gn-crop-handle.is-w::after,
 .gn-crop-handle.is-e::after {
@@ -716,10 +723,10 @@
   background: var(--crop-line);
 }
 .gn-crop-handle.is-w::after {
-  left: calc(50% - var(--line));
+  left: var(--mark-at);
 }
 .gn-crop-handle.is-e::after {
-  right: calc(50% - var(--line));
+  right: var(--mark-at);
 }
 /* A finger needs a bigger target; the marks grow only a little. */
 @media (pointer: coarse) {
