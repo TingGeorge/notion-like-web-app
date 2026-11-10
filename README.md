@@ -8,7 +8,7 @@ No server. No sign-up. Works offline, on your computer and your iPhone.
 
 [**Open the app →**](https://tinggeorge.github.io/notion-like-web-app/) · [Spec](SPEC.md) · [Illustrated spec](SPEC.html)
 
-![GitHub Notes on a desktop browser and an iPhone](docs/screenshots/hero.png)
+![GitHub Notes in a desktop browser, showing the 歡迎使用 page](docs/screenshots/app.webp)
 
 </div>
 
@@ -29,25 +29,17 @@ No server. No sign-up. Works offline, on your computer and your iPhone.
 
 Headings, lists, to-dos, toggles, quotes, callouts, code, tables, images, files and links to other pages. Type `/` for any block, or use Markdown shortcuts as you type (`# `, `- `, `[] `, `> `, ```` ``` ````…). Drag either side of an image to resize it, or crop it with 裁切圖片; github.com shows it the same way.
 
-![The / menu](docs/screenshots/slash.png)
-
 ### Find anything, in Chinese too
 
 `⌘K` searches titles, headings and text across all pages, with proper Chinese word segmentation. Results come back in about 30 ms with 1,000 pages.
-
-![Search](docs/screenshots/search.png)
 
 ### Built for the iPhone
 
 A layout of its own: tab bar, large titles, bottom sheets, and a toolbar above the keyboard for inserting blocks.
 
-![Home, a page and the insert-block sheet on iPhone](docs/screenshots/iphone.png)
-
 ### Two devices, one set of notes
 
 Edits from different devices merge line by line. If both changed the same line, you see both versions and choose; nothing is thrown away (the other version goes to the trash, and git keeps everything).
-
-![The conflict dialog](docs/screenshots/conflict.png)
 
 ### Add a device with a QR code, or a code
 
@@ -55,13 +47,9 @@ On a device that is already set up: 設定 → 連結新裝置 → 顯示 QR cod
 
 No camera on the new device? Choose 「新裝置沒有相機？改用配對碼」 instead, and type the GitHub account and the 10-character code it shows on the new device (「沒有相機？用配對碼連結」). The encrypted setup waits for a few minutes in a public gist of your account and is deleted as soon as the new device has it, so the token needs the *Gists: Read and write* permission for this.
 
-![Linking a new device](docs/screenshots/link.png)
-
 ### Light and dark
 
 Follows the system, or switch with `⌘⇧L`. Colours meet WCAG AA contrast in both themes.
-
-![Dark mode](docs/screenshots/dark.png)
 
 ### Everything else you would expect
 
